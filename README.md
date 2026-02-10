@@ -1,3 +1,6 @@
+[![Google Play](https://img.shields.io/badge/Google%20Play-Disponível-brightgreen)](
+https://play.google.com/store/apps/details?id=com.lukestudio.fileencryptor2)
+
 # Android File Encryption – Code Snippet
 
 Trecho de código extraído do app **S File Encryptor** (Android).
@@ -28,8 +31,5 @@ MIT
 Este repositório contém apenas trechos educacionais do código.
 
 O aplicativo completo está disponível na Google Play:
-[![Google Play](https://img.shields.io/badge/Google%20Play-Disponível-brightgreen)](
-https://play.google.com/store/apps/details?id=com.lukestudio.fileencryptor2)
-)
 
 👉 [S File Encryptor](https://play.google.com/store/apps/details?id=com.lukestudio.fileencryptor2)
