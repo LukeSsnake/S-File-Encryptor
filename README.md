@@ -22,12 +22,16 @@ Demonstrar a lógica principal de criptografia para estudo e referência.
 
 [relatorio_seguranca_codigo.pdf](https://github.com/user-attachments/files/25208921/relatorio_seguranca_codigo.pdf)
 
+
 ## ⚠️ Observação sobre antivírus
 
 Este aplicativo utiliza técnicas de **ofuscação de código** (StringFog e ProGuard).
 
 Em alguns antivírus Android, essas tecnologias podem ocasionalmente gerar
 **falsos positivos**, apesar de o aplicativo não conter comportamento malicioso.
+O aplicativo é distribuído oficialmente pela Google Play
+e segue as políticas de segurança da plataforma.
+
 
 
 ## Licença
