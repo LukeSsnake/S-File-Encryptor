@@ -1,6 +1,6 @@
 ## 📄 RELATÓRIO DE ANÁLISE DE SEGURANÇA DO CÓDIGO CRIPTOGRÁFICO
 
-1. Algoritmos e Mecanismos Criptográficos
+1. **Algoritmos e Mecanismos Criptográficos**
 
 - Derivação de chave:
   PBKDF2 com HmacSHA256, utilizando 100.000 iterações e salt de 16 bytes.
@@ -15,7 +15,7 @@
   HMAC-SHA256 calculado sobre salt + IV + ciphertext.
   Garante proteção contra alterações, corrupção de dados e falsificações.
 
-2. Manuseio de Senha e Chaves
+2. **Manuseio de Senha e Chaves**
 
 - A senha é lida da interface, copiada para um array char[], utilizada e limpa logo após o uso.
 - A chave derivada é separada em duas partes: uma para AES e outra para HMAC.
@@ -23,7 +23,7 @@
 - Limpeza redundante realizada na seção finally, reduzindo o risco de vazamento de dados sensíveis.
 - Observação: a limpeza do campo Editable na thread de background pode não ser ideal do ponto de vista de UI/threading.
 
-3. Fluxo de Criptografia e Armazenamento
+3. **Fluxo de Criptografia e Armazenamento**
 
 - Estrutura do arquivo criptografado:
   1) Salt
@@ -34,7 +34,7 @@
 - As permissões do arquivo são ajustadas para restringir acessos indevidos.
 - Uso correto de streams encadeados para cifragem e atualização simultânea do HMAC durante a gravação.
 
-4. Fluxo de Descriptografia e Verificação
+4. **Fluxo de Descriptografia e Verificação**
 
 - Leitura inicial do salt e IV para derivação das chaves.
 - Cálculo e verificação do HMAC antes da descriptografia, garantindo a integridade do arquivo.
@@ -44,7 +44,7 @@
 - Em caso de erro, o arquivo temporário é sobrescrito com zeros e removido de forma segura.
 - O arquivo final somente substitui o original após verificação completa de integridade.
 
-5. Tratamento de Exceções e Limpeza
+5. **Tratamento de Exceções e Limpeza**
 
 - Exceções específicas são tratadas com mensagens claras e apropriadas.
 - Variáveis sensíveis são limpas sistematicamente.
