@@ -39,8 +39,6 @@ MIT
 
 ## 📱 App na Google Play
 
-Este repositório contém apenas trechos educacionais do código.
-
-O aplicativo completo está disponível na Google Play:
+Você pode baixar a versão completa e estável do aplicativo:
 
 👉 [S File Encryptor](https://play.google.com/store/apps/details?id=com.lukestudio.fileencryptor2)
