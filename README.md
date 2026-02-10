@@ -1,0 +1,1 @@
+# android-file-encryption-snippet
