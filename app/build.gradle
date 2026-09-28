@@ -1,0 +1,15 @@
+plugins { id 'com.android.application' }
+
+android {
+    namespace 'com.lukestudio.fileencryptor2'
+    compileSdk 35
+
+    defaultConfig {
+        applicationId 'com.lukestudio.fileencryptor2'
+        minSdk 23
+        targetSdk 35
+        versionCode 16
+        versionName '1.0.0'
+    }
+}
+

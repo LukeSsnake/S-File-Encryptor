@@ -1,0 +1,18 @@
+<resources>
+    <string name="app_name">S File Encryptor</string>
+    <string name="no_file">Nenhum arquivo selecionado</string>
+    <string name="open">ABRIR</string>
+    <string name="password_hint">Senha</string>
+    <string name="encrypt">ENCRYPT</string>
+    <string name="decrypt">DECRYPT</string>
+    <string name="encrypting">CRIPTOGRAFANDO...</string>
+    <string name="decrypting">DESCRIPTOGRAFANDO...</string>
+    <string name="encrypted">CRIPTOGRAFADO!</string>
+    <string name="decrypted">DESCRIPTOGRAFADO!</string>
+    <string name="wrong_password">Senha errada ou arquivo alterado!</string>
+    <string name="corrupt_file">Arquivo corrompido!</string>
+    <string name="select_file">Selecione um arquivo</string>
+    <string name="select_destination">Escolha onde salvar o arquivo</string>
+    <string name="error_encrypt">Erro ao criptografar!</string>
+    <string name="error_decrypt">Erro na descriptografia!</string>
+</resources>

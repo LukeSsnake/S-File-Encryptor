@@ -1,0 +1,119 @@
+<?xml version="1.0" encoding="utf-8"?>
+<LinearLayout xmlns:android="http://schemas.android.com/apk/res/android"
+    android:layout_width="match_parent"
+    android:layout_height="match_parent"
+    android:orientation="vertical"
+    android:background="#263238">
+
+    <LinearLayout
+        android:layout_width="match_parent"
+        android:layout_height="50dp"
+        android:orientation="vertical"
+        android:background="#263238"
+        android:padding="8dp" />
+
+    <LinearLayout
+        android:id="@+id/logoContainer"
+        android:layout_width="match_parent"
+        android:layout_height="wrap_content"
+        android:orientation="vertical"
+        android:gravity="center_horizontal"
+        android:background="#263238"
+        android:padding="8dp">
+
+        <ImageView
+            android:id="@+id/appLogo"
+            android:layout_width="40dp"
+            android:layout_height="40dp"
+            android:src="@drawable/app_icon"
+            android:scaleType="center" />
+    </LinearLayout>
+
+    <LinearLayout
+        android:id="@+id/contentContainer"
+        android:layout_width="match_parent"
+        android:layout_height="match_parent"
+        android:orientation="vertical"
+        android:gravity="center"
+        android:background="#263238"
+        android:padding="8dp">
+
+        <LinearLayout
+            android:layout_width="match_parent"
+            android:layout_height="wrap_content"
+            android:orientation="vertical"
+            android:gravity="center"
+            android:background="@drawable/card_background"
+            android:padding="8dp"
+            android:layout_marginBottom="15dp"
+            android:elevation="10dp">
+
+            <TextView
+                android:id="@+id/fileName"
+                android:layout_width="wrap_content"
+                android:layout_height="wrap_content"
+                android:text="@string/no_file"
+                android:textSize="16sp"
+                android:textColor="#546E7A"
+                android:padding="8dp" />
+
+            <Button
+                android:id="@+id/openButton"
+                android:layout_width="wrap_content"
+                android:layout_height="wrap_content"
+                android:text="@string/open"
+                android:textSize="16sp"
+                android:textColor="#000000"
+                android:padding="8dp" />
+        </LinearLayout>
+
+        <LinearLayout
+            android:layout_width="match_parent"
+            android:layout_height="150dp"
+            android:orientation="vertical"
+            android:gravity="center"
+            android:background="@drawable/card_background"
+            android:padding="8dp"
+            android:elevation="10dp">
+
+            <EditText
+                android:id="@+id/password"
+                android:layout_width="wrap_content"
+                android:layout_height="wrap_content"
+                android:hint="@string/password_hint"
+                android:textSize="16sp"
+                android:textColor="#000000"
+                android:textColorHint="#607D8B"
+                android:padding="8dp"
+                android:singleLine="true"
+                android:imeOptions="actionDone"
+                android:inputType="text" />
+
+            <Button
+                android:id="@+id/actionButton"
+                android:layout_width="wrap_content"
+                android:layout_height="wrap_content"
+                android:text="@string/encrypt"
+                android:textSize="16sp"
+                android:textColor="#000000"
+                android:padding="8dp" />
+        </LinearLayout>
+
+        <ProgressBar
+            android:id="@+id/progress"
+            style="?android:attr/progressBarStyleHorizontal"
+            android:layout_width="match_parent"
+            android:layout_height="wrap_content"
+            android:max="100"
+            android:visibility="gone"
+            android:layout_marginTop="16dp" />
+
+        <TextView
+            android:id="@+id/progressText"
+            android:layout_width="wrap_content"
+            android:layout_height="wrap_content"
+            android:text="0%"
+            android:textColor="#FFFFFF"
+            android:visibility="gone" />
+    </LinearLayout>
+</LinearLayout>
