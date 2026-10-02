@@ -15,4 +15,26 @@
     <string name="select_destination">Escolha onde salvar o arquivo</string>
     <string name="error_encrypt">Erro ao criptografar!</string>
     <string name="error_decrypt">Erro na descriptografia!</string>
+    <string name="biometric">Biometria</string>
+    <string name="biometric_settings">Configurações da biometria</string>
+    <string name="register_default_password">Registrar senha padrão</string>
+    <string name="register_default_password_message">Essa senha será usada automaticamente após a autenticação biométrica.</string>
+    <string name="default_password">Senha padrão</string>
+    <string name="change_default_password_message">A senha registrada é mostrada abaixo. Você pode alterá-la.</string>
+    <string name="save">SALVAR</string>
+    <string name="enter_password">Digite uma senha</string>
+    <string name="biometric_title">S File Encryptor</string>
+    <string name="biometric_register_subtitle">Confirme sua biometria para proteger a senha padrão.</string>
+    <string name="biometric_unlock_subtitle">Confirme sua biometria para usar a senha padrão.</string>
+    <string name="biometric_change_subtitle">Confirme sua biometria para salvar a nova senha.</string>
+    <string name="biometric_enabled">Biometria ativada.</string>
+    <string name="biometric_disabled">Biometria desativada.</string>
+    <string name="biometric_not_enrolled">Nenhuma biometria compatível está cadastrada no aparelho.</string>
+    <string name="biometric_unavailable">A biometria forte não está disponível neste aparelho.</string>
+    <string name="biometric_setup_error">Não foi possível configurar a biometria.</string>
+    <string name="password_changed">Senha padrão alterada.</string>
+    <string name="manual_password">Usar senha manualmente</string>
+    <string name="use_manual_password">Usar senha manualmente</string>
+    <string name="continue_button">CONTINUAR</string>
+
 </resources>
