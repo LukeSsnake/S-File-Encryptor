@@ -81,6 +81,18 @@ private final ExecutorService executor =
 @Override
 protected void onCreate(Bundle b) {
     super.onCreate(b);
+    
+    getWindow().setNavigationBarColor(
+        android.graphics.Color.rgb(38, 50, 56)
+);
+
+if (android.os.Build.VERSION.SDK_INT >= android.os.Build.VERSION_CODES.Q) {
+    getWindow().setNavigationBarContrastEnforced(false);
+}
+
+getWindow().getDecorView().setSystemUiVisibility(0);
+
+setContentView(R.layout.main);
     setContentView(R.layout.main);
 
     fileName = findViewById(R.id.fileName);
