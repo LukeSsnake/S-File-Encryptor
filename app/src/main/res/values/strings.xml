@@ -10,7 +10,7 @@
 <string name="help_title">Como usar</string>
 
 <string name="help_message">
-    Para criptografar pastas use o botão PASTA. Para descriptografar uma pasta, use o botão ARQUIVO.
+    Para criptografar pastas use o botão PASTA. Para descriptografar uma pasta, use o botão ARQUIVO e selecione o arquivo com final "_pasta.aes".
 </string>
 
 <string name="compressing_progress">
