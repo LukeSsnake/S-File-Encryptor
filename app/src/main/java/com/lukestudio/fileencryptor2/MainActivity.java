@@ -1,5 +1,6 @@
 package com.lukestudio.fileencryptor2;
 
+import java.util.zip.ZipFile;
 import android.app.AlertDialog;
 import android.content.Intent;
 import android.database.Cursor;
@@ -93,7 +94,6 @@ if (android.os.Build.VERSION.SDK_INT >= android.os.Build.VERSION_CODES.Q) {
 getWindow().getDecorView().setSystemUiVisibility(0);
 
 setContentView(R.layout.main);
-    setContentView(R.layout.main);
 
     fileName = findViewById(R.id.fileName);
     progress = findViewById(R.id.progress);
@@ -2074,21 +2074,17 @@ private long calculateUnzipTotal(
     long total = 0;
 
     try (
-            InputStream fis =
-                    new FileInputStream(
-                            zipFile
-                    );
-
-            ZipInputStream zis =
-                    new ZipInputStream(fis)
+            ZipFile zip =
+                    new ZipFile(zipFile)
     ) {
 
-        ZipEntry entry;
+        java.util.Enumeration<? extends ZipEntry> entries =
+                zip.entries();
 
-        while (
-                (entry = zis.getNextEntry())
-                        != null
-        ) {
+        while (entries.hasMoreElements()) {
+
+            ZipEntry entry =
+                    entries.nextElement();
 
             if (!entry.isDirectory()) {
 
@@ -2099,8 +2095,6 @@ private long calculateUnzipTotal(
                     total += size;
                 }
             }
-
-            zis.closeEntry();
         }
     }
 
