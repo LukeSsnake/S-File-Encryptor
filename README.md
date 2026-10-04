@@ -20,7 +20,7 @@ During decryption, the authentication code is verified before the decrypted resu
 
 The application does not require network access and has no Google Play Services, analytics, advertising, or crash-reporting SDKs.
 
-The application uses `MANAGE_EXTERNAL_STORAGE` to read and write arbitrary user-selected files in shared storage. The legacy `READ_EXTERNAL_STORAGE` and `WRITE_EXTERNAL_STORAGE` permissions are declared only through API 28.
+File and folder access is handled through Android's **Storage Access Framework (SAF)**. The application only accesses files and folders explicitly selected by the user.
 
 ## Building
 
@@ -28,9 +28,7 @@ The project uses the Android Gradle Plugin and the Gradle wrapper included in th
 
 To build the application from the command line:
 
-```bash
-./gradlew assembleRelease
-```
+    ./gradlew assembleRelease
 
 ## Source Status
 
@@ -39,4 +37,3 @@ This repository contains a reconstructed and maintained implementation of S File
 ## License
 
 MIT. See [LICENSE](LICENSE).
-
