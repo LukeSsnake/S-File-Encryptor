@@ -2,6 +2,8 @@
 
 S File Encryptor is an Android application for encrypting and decrypting files locally with a password.
 
+[![Google Play](https://img.shields.io/badge/Google%20Play-Download-414141?logo=googleplay&logoColor=white)](https://play.google.com/store/apps/details?id=com.lukestudio.fileencryptor2)
+
 ## Cryptography
 
 S File Encryptor supports two file formats.
