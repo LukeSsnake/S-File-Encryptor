@@ -50,6 +50,16 @@ public class MainActivity extends FragmentActivity {
     private static final int MODE_FILE = 0;
     private static final int MODE_FOLDER = 1;
 
+    /*
+     * Tamanho mínimo exigido para novas senhas.
+     *
+     * Essa regra é aplicada somente ao criar ou alterar
+     * senhas. A descriptografia continua aceitando senhas
+     * menores para preservar compatibilidade com arquivos
+     * antigos.
+     */
+    private static final int MIN_PASSWORD_LENGTH = 6;
+
     private Uri inputUri;
     private Uri outputUri;
 
@@ -175,81 +185,81 @@ public class MainActivity extends FragmentActivity {
 
     private void showSupport() {
 
-    AlertDialog dialog =
-            new AlertDialog.Builder(this)
-                    .setTitle(
-                            R.string.support_title
-                    )
-                    .setMessage(
-                            getString(
-                                    R.string.support_message,
-                                    getString(
-                                            R.string.pix_email
-                                    )
-                            )
-                    )
-                    .setNegativeButton(
-                            "AVALIAR ⭐",
-                            (d, which) -> {
+        AlertDialog dialog =
+                new AlertDialog.Builder(this)
+                        .setTitle(
+                                R.string.support_title
+                        )
+                        .setMessage(
+                                getString(
+                                        R.string.support_message,
+                                        getString(
+                                                R.string.pix_email
+                                        )
+                                )
+                        )
+                        .setNegativeButton(
+                                "AVALIAR ⭐",
+                                (d, which) -> {
 
-                                try {
+                                    try {
 
-                                    Intent intent =
-                                            new Intent(
-                                                    Intent.ACTION_VIEW,
-                                                    Uri.parse(
-                                                            "market://details?id=com.lukestudio.fileencryptor2"
-                                                    )
-                                            );
-
-                                    startActivity(intent);
-
-                                } catch (Exception e) {
-
-                                    Intent intent =
-                                            new Intent(
-                                                    Intent.ACTION_VIEW,
-                                                    Uri.parse(
-                                                            "https://play.google.com/store/apps/details?id=com.lukestudio.fileencryptor2"
-                                                    )
-                                            );
-
-                                    startActivity(intent);
-                                }
-                            }
-                    )
-                    .setPositiveButton(
-                            R.string.copy_pix,
-                            (d, which) -> {
-
-                                ClipboardManager clipboard =
-                                        (ClipboardManager)
-                                                getSystemService(
-                                                        CLIPBOARD_SERVICE
+                                        Intent intent =
+                                                new Intent(
+                                                        Intent.ACTION_VIEW,
+                                                        Uri.parse(
+                                                                "market://details?id=com.lukestudio.fileencryptor2"
+                                                        )
                                                 );
 
-                                if (clipboard != null) {
+                                        startActivity(intent);
 
-                                    clipboard.setPrimaryClip(
-                                            ClipData.newPlainText(
-                                                    "PIX",
-                                                    getString(
-                                                            R.string.pix_email
-                                                    )
-                                            )
-                                    );
+                                    } catch (Exception e) {
 
-                                    Toast.makeText(
-                                            MainActivity.this,
-                                            R.string.pix_copied,
-                                            Toast.LENGTH_SHORT
-                                    ).show();
+                                        Intent intent =
+                                                new Intent(
+                                                        Intent.ACTION_VIEW,
+                                                        Uri.parse(
+                                                                "https://play.google.com/store/apps/details?id=com.lukestudio.fileencryptor2"
+                                                        )
+                                                );
+
+                                        startActivity(intent);
+                                    }
                                 }
-                            }
-                    )
-                    .create();
+                        )
+                        .setPositiveButton(
+                                R.string.copy_pix,
+                                (d, which) -> {
 
-    dialog.show();
+                                    ClipboardManager clipboard =
+                                            (ClipboardManager)
+                                                    getSystemService(
+                                                            CLIPBOARD_SERVICE
+                                                    );
+
+                                    if (clipboard != null) {
+
+                                        clipboard.setPrimaryClip(
+                                                ClipData.newPlainText(
+                                                        "PIX",
+                                                        getString(
+                                                                R.string.pix_email
+                                                        )
+                                                )
+                                        );
+
+                                        Toast.makeText(
+                                                MainActivity.this,
+                                                R.string.pix_copied,
+                                                Toast.LENGTH_SHORT
+                                        ).show();
+                                    }
+                                }
+                        )
+                        .create();
+
+        dialog.show();
     }
 
     private void enableBiometric() {
@@ -350,8 +360,25 @@ public class MainActivity extends FragmentActivity {
                 ).setOnClickListener(v -> {
 
                     if (field.getText().length() == 0) {
+
                         field.requestFocus();
-                        toast(R.string.enter_password);
+
+                        toast(
+                                R.string.enter_password
+                        );
+
+                        return;
+                    }
+
+                    if (field.getText().length() <
+                            MIN_PASSWORD_LENGTH) {
+
+                        field.requestFocus();
+
+                        toast(
+                                R.string.short_password
+                        );
+
                         return;
                     }
 
@@ -781,8 +808,25 @@ public class MainActivity extends FragmentActivity {
                 ).setOnClickListener(v -> {
 
                     if (field.getText().length() == 0) {
+
                         field.requestFocus();
-                        toast(R.string.enter_password);
+
+                        toast(
+                                R.string.enter_password
+                        );
+
+                        return;
+                    }
+
+                    if (field.getText().length() <
+                            MIN_PASSWORD_LENGTH) {
+
+                        field.requestFocus();
+
+                        toast(
+                                R.string.short_password
+                        );
+
                         return;
                     }
 
@@ -1347,7 +1391,11 @@ public class MainActivity extends FragmentActivity {
     private void startWork() {
 
         if (inputUri == null) {
-            toast(R.string.select_file);
+
+            toast(
+                    R.string.select_file
+            );
+
             return;
         }
 
@@ -1357,15 +1405,38 @@ public class MainActivity extends FragmentActivity {
         ) {
 
             unlockWithBiometric();
+
             return;
         }
 
-        if (password.getText().length() == 0) {
+        int passwordLength =
+                password.getText().length();
+
+        if (passwordLength == 0) {
 
             password.requestFocus();
 
             toast(
                     R.string.enter_password
+            );
+
+            return;
+        }
+
+        /*
+         * A senha mínima de 6 caracteres é exigida
+         * somente para novas criptografias.
+         *
+         * Na descriptografia, senhas antigas menores
+         * continuam sendo aceitas.
+         */
+        if (!decryptMode &&
+                passwordLength < MIN_PASSWORD_LENGTH) {
+
+            password.requestFocus();
+
+            toast(
+                    R.string.short_password
             );
 
             return;
@@ -1481,16 +1552,24 @@ public class MainActivity extends FragmentActivity {
                         AlertDialog.BUTTON_POSITIVE
                 ).setOnClickListener(v -> {
 
-                    if (field.getText().length() == 0) {
+                    String inputName =
+        name(inputUri).toLowerCase();
 
-                        field.requestFocus();
+boolean encrypted =
+        inputName.endsWith(".aes")
+                || inputName.endsWith("_pasta.aes");
 
-                        toast(
-                                R.string.enter_password
-                        );
+if (!encrypted
+        && field.getText().length() < 6) {
 
-                        return;
-                    }
+    field.requestFocus();
+
+    toast(
+            R.string.short_password
+    );
+
+    return;
+}
 
                     clearPendingPassword();
 
@@ -1574,6 +1653,7 @@ public class MainActivity extends FragmentActivity {
                     tempInput.length();
 
             if (total < 1) {
+
                 throw new Exception(
                         "Arquivo vazio."
                 );
@@ -1893,6 +1973,7 @@ public class MainActivity extends FragmentActivity {
         ) {
 
             if (c == null) {
+
                 throw new Exception(
                         "Não foi possível ler a pasta."
                 );
@@ -2012,6 +2093,7 @@ public class MainActivity extends FragmentActivity {
         ) {
 
             if (c == null) {
+
                 throw new Exception(
                         "Não foi possível ler a pasta."
                 );
@@ -2082,6 +2164,7 @@ public class MainActivity extends FragmentActivity {
                     ) {
 
                         if (in == null) {
+
                             throw new Exception(
                                     "Não foi possível abrir "
                                             + childName
@@ -2274,6 +2357,7 @@ public class MainActivity extends FragmentActivity {
                         entry.getName();
 
                 if (!isSafeZipPath(entryName)) {
+
                     throw new Exception(
                             "Arquivo ZIP inválido."
                     );
@@ -2308,6 +2392,7 @@ public class MainActivity extends FragmentActivity {
                                     );
 
                     if (parent == null) {
+
                         throw new Exception(
                                 "Não foi possível criar "
                                         + entryName
@@ -2328,6 +2413,7 @@ public class MainActivity extends FragmentActivity {
                             );
 
                     if (fileUri == null) {
+
                         throw new Exception(
                                 "Não foi possível criar "
                                         + fileName
@@ -2343,6 +2429,7 @@ public class MainActivity extends FragmentActivity {
                     ) {
 
                         if (out == null) {
+
                             throw new Exception(
                                     "Não foi possível escrever "
                                             + fileName
@@ -2672,6 +2759,7 @@ public class MainActivity extends FragmentActivity {
         ) {
 
             if (in == null) {
+
                 throw new Exception(
                         "Não foi possível abrir o arquivo."
                 );
@@ -2769,6 +2857,7 @@ public class MainActivity extends FragmentActivity {
         ) {
 
             if (out == null) {
+
                 throw new Exception(
                         "Não foi possível abrir o destino."
                 );
