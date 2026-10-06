@@ -1,163 +1,215 @@
-<?xml version="1.0" encoding="utf-8"?><resources><string name="app_name">S File Encryptor</string>
+<?xml version="1.0" encoding="utf-8"?>
 
-<string name="no_file">Nenhum arquivo selecionado</string>
+<resources>
 
-<string name="file">ARQUIVO</string>
-<string name="folder">PASTA</string>
+    <string name="app_name">S File Encryptor</string>
 
-<string name="help_button">?</string>
+    <string name="no_file">Nenhum arquivo selecionado</string>
 
-<string name="help_title">Como usar</string>
+    <string name="short_password">Senha muito curta!</string>
 
-<string name="help_message">
-    Para criptografar pastas use o botão PASTA. Para descriptografar uma pasta, use o botão ARQUIVO e selecione o arquivo com final "_pasta.aes".
-</string>
+    <string name="file">ARQUIVO</string>
+    <string name="folder">PASTA</string>
 
-<string name="compressing_progress">
-    COMPACTANDO... %1$d%%
-</string>
+    <string name="help_button">?</string>
 
-<string name="decompressing_progress">
-    DESCOMPACTANDO... %1$d%%
-</string>
+    <string name="help_title">Como usar</string>
 
-<string name="encrypting_progress">
-    CRIPTOGRAFANDO... %1$d%%
-</string>
+    <string name="help_message">
+        Para criptografar pastas use o botão PASTA. Para descriptografar uma pasta, use o botão ARQUIVO e selecione o arquivo com final "_pasta.aes".
+    </string>
 
-<string name="decrypting_progress">
-    DESCRIPTOGRAFANDO... %1$d%%
-</string>
+    <string name="compressing_progress">
+        COMPACTANDO... %1$d%%
+    </string>
 
-<string name="password_hint">Senha</string>
+    <string name="decompressing_progress">
+        DESCOMPACTANDO... %1$d%%
+    </string>
 
-<string name="encrypt">ENCRYPT</string>
-<string name="decrypt">DECRYPT</string>
+    <string name="encrypting_progress">
+        CRIPTOGRAFANDO... %1$d%%
+    </string>
 
-<string name="encrypting">CRIPTOGRAFANDO...</string>
-<string name="decrypting">DESCRIPTOGRAFANDO...</string>
+    <string name="decrypting_progress">
+        DESCRIPTOGRAFANDO... %1$d%%
+    </string>
 
-<string name="encrypted">CRIPTOGRAFADO!</string>
-<string name="decrypted">DESCRIPTOGRAFADO!</string>
+    <string name="password_hint">Senha</string>
 
-<string name="wrong_password">
-    Senha errada ou arquivo alterado!
-</string>
+    <string name="encrypt">ENCRYPT</string>
+    <string name="decrypt">DECRYPT</string>
 
-<string name="corrupt_file">
-    Arquivo corrompido!
-</string>
+    <string name="encrypting">CRIPTOGRAFANDO...</string>
+    <string name="decrypting">DESCRIPTOGRAFANDO...</string>
 
-<string name="select_file">
-    Selecione um arquivo ou pasta
-</string>
+    <string name="encrypted">CRIPTOGRAFADO!</string>
+    <string name="decrypted">DESCRIPTOGRAFADO!</string>
 
-<string name="select_destination">
-    Escolha onde salvar o arquivo
-</string>
+    <string name="wrong_password">
+        Senha errada ou arquivo alterado!
+    </string>
 
-<string name="error_encrypt">
-    Erro ao criptografar!
-</string>
+    <string name="corrupt_file">
+        Arquivo corrompido!
+    </string>
 
-<string name="error_decrypt">
-    Erro na descriptografia!
-</string>
+    <string name="select_file">
+        Selecione um arquivo ou pasta
+    </string>
 
-<string name="biometric">
-    Biometria
-</string>
+    <string name="select_destination">
+        Escolha onde salvar o arquivo
+    </string>
 
-<string name="biometric_settings">
-    Configurações da biometria
-</string>
+    <string name="error_encrypt">
+        Erro ao criptografar!
+    </string>
 
-<string name="register_default_password">
-    Registrar senha padrão
-</string>
+    <string name="error_decrypt">
+        Erro na descriptografia!
+    </string>
 
-<string name="register_default_password_message">
-    Essa senha será usada automaticamente após a autenticação biométrica.
-</string>
+    <string name="biometric">
+        Biometria
+    </string>
 
-<string name="default_password">
-    Senha padrão
-</string>
+    <string name="biometric_settings">
+        Configurações da biometria
+    </string>
 
-<string name="change_default_password_message">
-    A senha registrada é mostrada abaixo. Você pode alterá-la.
-</string>
+    <string name="register_default_password">
+        Registrar senha padrão
+    </string>
 
-<string name="save">
-    SALVAR
-</string>
+    <string name="register_default_password_message">
+        Essa senha será usada automaticamente após a autenticação biométrica.
+    </string>
 
-<string name="enter_password">
-    Digite uma senha
-</string>
+    <string name="default_password">
+        Senha padrão
+    </string>
 
-<string name="biometric_title">
-    S File Encryptor
-</string>
+    <string name="change_default_password_message">
+        A senha registrada é mostrada abaixo. Você pode alterá-la.
+    </string>
 
-<string name="biometric_register_subtitle">
-    Confirme sua biometria para proteger a senha padrão.
-</string>
+    <string name="save">
+        SALVAR
+    </string>
 
-<string name="biometric_unlock_subtitle">
-    Confirme sua biometria para usar a senha padrão.
-</string>
+    <string name="enter_password">
+        Digite uma senha
+    </string>
 
-<string name="biometric_change_subtitle">
-    Confirme sua biometria para salvar a nova senha.
-</string>
+    <string name="biometric_title">
+        S File Encryptor
+    </string>
 
-<string name="biometric_enabled">
-    Biometria ativada.
-</string>
+    <string name="biometric_register_subtitle">
+        Confirme sua biometria para proteger a senha padrão.
+    </string>
 
-<string name="biometric_disabled">
-    Biometria desativada.
-</string>
+    <string name="biometric_unlock_subtitle">
+        Confirme sua biometria para usar a senha padrão.
+    </string>
 
-<string name="biometric_not_enrolled">
-    Nenhuma biometria compatível está cadastrada no aparelho.
-</string>
+    <string name="biometric_change_subtitle">
+        Confirme sua biometria para salvar a nova senha.
+    </string>
 
-<string name="biometric_unavailable">
-    A biometria forte não está disponível neste aparelho.
-</string>
+    <string name="biometric_enabled">
+        Biometria ativada.
+    </string>
 
-<string name="biometric_setup_error">
-    Não foi possível configurar a biometria.
-</string>
+    <string name="biometric_disabled">
+        Biometria desativada.
+    </string>
 
-<string name="password_changed">
-    Senha padrão alterada.
-</string>
+    <string name="biometric_not_enrolled">
+        Nenhuma biometria compatível está cadastrada no aparelho.
+    </string>
 
-<string name="manual_password">
-    Usar senha manualmente
-</string>
+    <string name="biometric_unavailable">
+        A biometria forte não está disponível neste aparelho.
+    </string>
 
-<string name="use_manual_password">
-    Usar senha manualmente
-</string>
+    <string name="biometric_setup_error">
+        Não foi possível configurar a biometria.
+    </string>
 
-<string name="continue_button">
-    CONTINUAR
-</string>
+    <string name="password_changed">
+        Senha padrão alterada.
+    </string>
 
-<string name="disable_biometric_title">
-    Desativar biometria
-</string>
+    <string name="manual_password">
+        Usar senha manualmente
+    </string>
 
-<string name="disable_biometric_message">
-    A senha será apagada ao desativar a biometria.
-</string>
+    <string name="use_manual_password">
+        Usar senha manualmente
+    </string>
 
-<string name="confirm">
-    CONFIRMAR
-</string>
+    <string name="continue_button">
+        CONTINUAR
+    </string>
+
+    <string name="disable_biometric_title">
+        Desativar biometria
+    </string>
+
+    <string name="disable_biometric_message">
+        A senha será apagada ao desativar a biometria.
+    </string>
+
+    <string name="confirm">
+        CONFIRMAR
+    </string>
+
+    <!-- =====================================================
+         APOIO AO PROJETO
+         ===================================================== -->
+
+    <string name="info_button">ⓘ</string>
+
+    <string name="info_title">
+        Informações
+    </string>
+
+    <string name="support_title">
+        💙 Apoie o Projeto
+    </string>
+
+    <string name="support_message">
+        Gostou do S File Encryptor?\n\n
+
+        O SFE é gratuito e open source, sem anúncios, rastreamento ou assinaturas.\n
+
+        Se o aplicativo foi útil para você, considere apoiar o desenvolvimento.\n\n
+
+        ☕ Apoiar o projeto\n\n
+
+        Seu apoio ajuda a manter o projeto atualizado e continuar desenvolvendo novos recursos.\n\n
+
+        🇧🇷 PIX: %1$s\n\n
+
+        Obrigado pelo apoio!
+    </string>
+
+    <string name="pix_email">
+        lucas.jorgeto@gmail.com
+    </string>
+
+    <string name="copy_pix">
+        COPIAR PIX
+    </string>
+
+    <string name="support_later">
+        TALVEZ MAIS TARDE
+    </string>
+
+    <string name="pix_copied">
+        PIX copiado!
+    </string>
 
 </resources>
