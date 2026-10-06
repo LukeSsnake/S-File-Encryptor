@@ -4,17 +4,51 @@ S File Encryptor is an Android application for encrypting and decrypting files l
 
 ## Cryptography
 
-The application uses:
+S File Encryptor supports two file formats.
 
-* PBKDF2-HMAC-SHA256 with 100,000 iterations and a 512-bit derived key
+### V2 — Current format
+
+New files are encrypted using:
+
+* Argon2id for password-based key derivation
+* 64 MiB memory
+* 3 iterations
+* 1 lane
+* 256-bit derived key
+* AES-256-GCM for encryption and authentication
+* 12-byte random nonce
+* 16-byte authentication tag
+* The 48-byte file header is authenticated as GCM additional authenticated data (AAD)
+
+The V2 file format is:
+
+`48-byte header || AES-256-GCM ciphertext || 16-byte authentication tag`
+
+The V2 header contains the file format version, KDF and cipher identifiers, Argon2id parameters, a 16-byte random salt, and a 12-byte random nonce.
+
+During decryption, the GCM authentication tag is verified before the decrypted plaintext is committed to the final destination.
+
+Large files are processed using streaming I/O to avoid loading the entire file into memory.
+
+### V1 — Legacy format
+
+Older files created by previous versions of S File Encryptor remain supported.
+
+V1 uses:
+
+* PBKDF2-HMAC-SHA256 with 100,000 iterations
+* 512-bit derived key material
 * AES-256-CBC for encryption
 * HMAC-SHA256 for authentication
+* 16-byte random salt
+* 16-byte random IV
+* 32-byte HMAC
 
-The file format is:
+The V1 file format is:
 
 `16-byte salt || 16-byte IV || AES-256-CBC ciphertext || 32-byte HMAC-SHA256`
 
-During decryption, the authentication code is verified before the decrypted result is committed to the destination.
+V1 files are decrypted for compatibility but new files are always created using the V2 format.
 
 ## Privacy
 
