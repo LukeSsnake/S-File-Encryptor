@@ -1,195 +1,207 @@
-<?xml version="1.0" encoding="utf-8"?><LinearLayout
-xmlns:android="http://schemas.android.com/apk/res/android"
-android:layout_width="match_parent"
-android:layout_height="match_parent"
-android:orientation="vertical"
-android:background="#263238">
+<?xml version="1.0" encoding="utf-8"?>
 
 <LinearLayout
+    xmlns:android="http://schemas.android.com/apk/res/android"
     android:layout_width="match_parent"
-    android:layout_height="50dp"
+    android:layout_height="match_parent"
     android:orientation="vertical"
-    android:background="#263238"
-    android:padding="8dp" />
+    android:background="#263238">
 
-<LinearLayout
-    android:id="@+id/logoContainer"
-    android:layout_width="match_parent"
-    android:layout_height="wrap_content"
-    android:orientation="vertical"
-    android:gravity="center_horizontal"
-    android:background="#263238"
-    android:padding="8dp">
+    <!-- Logo + botão Info -->
+    <FrameLayout
+        android:id="@+id/logoContainer"
+        android:layout_width="match_parent"
+        android:layout_height="56dp"
+        android:layout_marginTop="50dp"
+        android:background="#263238">
 
-    <ImageView
-        android:id="@+id/appLogo"
-        android:layout_width="40dp"
-        android:layout_height="40dp"
-        android:src="@drawable/app_icon"
-        android:scaleType="center" />
-</LinearLayout>
+        <ImageView
+            android:id="@+id/appLogo"
+            android:layout_width="40dp"
+            android:layout_height="40dp"
+            android:layout_gravity="center"
+            android:src="@drawable/app_icon"
+            android:scaleType="center" />
 
-<LinearLayout
-    android:id="@+id/biometricContainer"
-    android:layout_width="match_parent"
-    android:layout_height="wrap_content"
-    android:orientation="horizontal"
-    android:gravity="center"
-    android:background="#263238"
-    android:padding="4dp">
+        <Button
+            android:id="@+id/infoButton"
+            android:layout_width="44dp"
+            android:layout_height="wrap_content"
+            android:layout_gravity="end|center_vertical"
+            android:text="@string/info_button"
+            android:textSize="22sp"
+            android:textColor="#000000"
+            android:minWidth="0dp"
+            android:padding="0dp"
+            android:layout_marginEnd="8dp"
+            android:contentDescription="@string/info_title" />
 
-    <TextView
-        android:id="@+id/biometricLabel"
-        android:layout_width="wrap_content"
-        android:layout_height="wrap_content"
-        android:text="@string/biometric"
-        android:textSize="16sp"
-        android:textColor="#FFFFFF"
-        android:padding="8dp" />
+    </FrameLayout>
 
-    <Switch
-        android:id="@+id/biometricSwitch"
-        android:layout_width="wrap_content"
-        android:layout_height="wrap_content"
-        android:contentDescription="@string/biometric" />
-
-    <TextView
-        android:id="@+id/biometricSettings"
-        android:layout_width="wrap_content"
-        android:layout_height="wrap_content"
-        android:text="⚙"
-        android:textSize="22sp"
-        android:textColor="#FFFFFF"
-        android:padding="8dp"
-        android:clickable="true"
-        android:focusable="true"
-        android:enabled="false"
-        android:contentDescription="@string/biometric_settings" />
-</LinearLayout>
-
-<LinearLayout
-    android:id="@+id/contentContainer"
-    android:layout_width="match_parent"
-    android:layout_height="0dp"
-    android:layout_weight="1"
-    android:orientation="vertical"
-    android:gravity="center"
-    android:background="#263238"
-    android:padding="8dp">
-
+    <!-- Biometria -->
     <LinearLayout
+        android:id="@+id/biometricContainer"
         android:layout_width="match_parent"
         android:layout_height="wrap_content"
-        android:orientation="vertical"
+        android:orientation="horizontal"
         android:gravity="center"
-        android:background="@drawable/card_background"
-        android:padding="8dp"
-        android:layout_marginBottom="15dp"
-        android:elevation="10dp">
+        android:background="#263238"
+        android:padding="4dp">
 
         <TextView
-            android:id="@+id/fileName"
+            android:id="@+id/biometricLabel"
             android:layout_width="wrap_content"
             android:layout_height="wrap_content"
-            android:text="@string/no_file"
+            android:text="@string/biometric"
             android:textSize="16sp"
-            android:textColor="#546E7A"
+            android:textColor="#FFFFFF"
+            android:padding="8dp" />
+
+        <Switch
+            android:id="@+id/biometricSwitch"
+            android:layout_width="wrap_content"
+            android:layout_height="wrap_content"
+            android:contentDescription="@string/biometric" />
+
+        <TextView
+            android:id="@+id/biometricSettings"
+            android:layout_width="wrap_content"
+            android:layout_height="wrap_content"
+            android:text="⚙"
+            android:textSize="22sp"
+            android:textColor="#FFFFFF"
             android:padding="8dp"
-            android:maxLines="2"
-            android:ellipsize="middle" />
+            android:clickable="true"
+            android:focusable="true"
+            android:enabled="false"
+            android:contentDescription="@string/biometric_settings" />
+
+    </LinearLayout>
+
+    <!-- Conteúdo principal -->
+    <LinearLayout
+        android:id="@+id/contentContainer"
+        android:layout_width="match_parent"
+        android:layout_height="0dp"
+        android:layout_weight="1"
+        android:orientation="vertical"
+        android:gravity="center"
+        android:background="#263238"
+        android:padding="8dp">
 
         <LinearLayout
-            android:layout_width="wrap_content"
+            android:layout_width="match_parent"
             android:layout_height="wrap_content"
-            android:orientation="horizontal"
-            android:gravity="center">
+            android:orientation="vertical"
+            android:gravity="center"
+            android:background="@drawable/card_background"
+            android:padding="8dp"
+            android:layout_marginBottom="15dp"
+            android:elevation="10dp">
 
-            <Button
-                android:id="@+id/fileButton"
+            <TextView
+                android:id="@+id/fileName"
                 android:layout_width="wrap_content"
                 android:layout_height="wrap_content"
-                android:text="@string/file"
+                android:text="@string/no_file"
                 android:textSize="16sp"
-                android:textColor="#000000"
+                android:textColor="#546E7A"
                 android:padding="8dp"
-                android:layout_marginEnd="6dp" />
+                android:maxLines="2"
+                android:ellipsize="middle" />
 
-            <Button
-                android:id="@+id/folderButton"
+            <LinearLayout
                 android:layout_width="wrap_content"
                 android:layout_height="wrap_content"
-                android:text="@string/folder"
-                android:textSize="16sp"
-                android:textColor="#000000"
-                android:padding="8dp"
-                android:layout_marginStart="6dp"
-                android:layout_marginEnd="4dp" />
+                android:orientation="horizontal"
+                android:gravity="center">
 
-            <Button
-                android:id="@+id/helpButton"
-                android:layout_width="44dp"
-                android:layout_height="wrap_content"
-                android:text="@string/help_button"
-                android:textSize="18sp"
-                android:textColor="#000000"
-                android:minWidth="0dp"
-                android:padding="4dp"
-                android:contentDescription="@string/help_title" />
+                <Button
+                    android:id="@+id/fileButton"
+                    android:layout_width="wrap_content"
+                    android:layout_height="wrap_content"
+                    android:text="@string/file"
+                    android:textSize="16sp"
+                    android:textColor="#000000"
+                    android:padding="8dp"
+                    android:layout_marginEnd="6dp" />
+
+                <Button
+                    android:id="@+id/folderButton"
+                    android:layout_width="wrap_content"
+                    android:layout_height="wrap_content"
+                    android:text="@string/folder"
+                    android:textSize="16sp"
+                    android:textColor="#000000"
+                    android:padding="8dp"
+                    android:layout_marginStart="6dp"
+                    android:layout_marginEnd="4dp" />
+
+                <Button
+                    android:id="@+id/helpButton"
+                    android:layout_width="44dp"
+                    android:layout_height="wrap_content"
+                    android:text="@string/help_button"
+                    android:textSize="18sp"
+                    android:textColor="#000000"
+                    android:minWidth="0dp"
+                    android:padding="4dp"
+                    android:contentDescription="@string/help_title" />
+
+            </LinearLayout>
 
         </LinearLayout>
 
-    </LinearLayout>
-
-    <LinearLayout
-        android:layout_width="match_parent"
-        android:layout_height="150dp"
-        android:orientation="vertical"
-        android:gravity="center"
-        android:background="@drawable/card_background"
-        android:padding="8dp"
-        android:elevation="10dp">
-
-        <EditText
-            android:id="@+id/password"
-            android:layout_width="wrap_content"
-            android:layout_height="wrap_content"
-            android:hint="@string/password_hint"
-            android:textSize="16sp"
-            android:textColor="#000000"
-            android:textColorHint="#607D8B"
+        <LinearLayout
+            android:layout_width="match_parent"
+            android:layout_height="150dp"
+            android:orientation="vertical"
+            android:gravity="center"
+            android:background="@drawable/card_background"
             android:padding="8dp"
-            android:singleLine="true"
-            android:imeOptions="actionDone"
-            android:inputType="text" />
+            android:elevation="10dp">
 
-        <Button
-            android:id="@+id/actionButton"
+            <EditText
+                android:id="@+id/password"
+                android:layout_width="wrap_content"
+                android:layout_height="wrap_content"
+                android:hint="@string/password_hint"
+                android:textSize="16sp"
+                android:textColor="#000000"
+                android:textColorHint="#607D8B"
+                android:padding="8dp"
+                android:singleLine="true"
+                android:imeOptions="actionDone"
+                android:inputType="text" />
+
+            <Button
+                android:id="@+id/actionButton"
+                android:layout_width="wrap_content"
+                android:layout_height="wrap_content"
+                android:text="@string/encrypt"
+                android:textSize="16sp"
+                android:textColor="#000000"
+                android:padding="8dp" />
+
+        </LinearLayout>
+
+        <ProgressBar
+            android:id="@+id/progress"
+            style="?android:attr/progressBarStyleHorizontal"
+            android:layout_width="match_parent"
+            android:layout_height="wrap_content"
+            android:max="100"
+            android:visibility="gone"
+            android:layout_marginTop="16dp" />
+
+        <TextView
+            android:id="@+id/progressText"
             android:layout_width="wrap_content"
             android:layout_height="wrap_content"
-            android:text="@string/encrypt"
-            android:textSize="16sp"
-            android:textColor="#000000"
-            android:padding="8dp" />
+            android:text="0%"
+            android:textColor="#FFFFFF"
+            android:visibility="gone" />
 
     </LinearLayout>
-
-    <ProgressBar
-        android:id="@+id/progress"
-        style="?android:attr/progressBarStyleHorizontal"
-        android:layout_width="match_parent"
-        android:layout_height="wrap_content"
-        android:max="100"
-        android:visibility="gone"
-        android:layout_marginTop="16dp" />
-
-    <TextView
-        android:id="@+id/progressText"
-        android:layout_width="wrap_content"
-        android:layout_height="wrap_content"
-        android:text="0%"
-        android:textColor="#FFFFFF"
-        android:visibility="gone" />
-
-</LinearLayout>
 
 </LinearLayout>
