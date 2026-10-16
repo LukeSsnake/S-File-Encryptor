@@ -212,4 +212,38 @@
         PIX copiado!
     </string>
 
+    <!-- =====================================================
+         AES-256 Info
+         ===================================================== -->
+
+    <string name="info_crypto">🔐</string>
+
+    <string name="c_title">
+        Info
+    </string>
+
+    <string name="crypto_title">
+        🔐 Crypto Info
+    </string>
+
+    <string name="crypto_message">
+        \n Algoritmo: AES-256-GCM\n
+
+        Geração de chave: Argon2id\n\n
+
+        ⚠️ IMPORTANTE:\n GUARDE SUA SENHA!\n\n
+
+        Não é possível recuperar uma senha esquecida. Se você perder ou esquecer sua senha, poderá perder permanentemente o acesso aos arquivos criptografados.\n\n
+
+        Você é responsável por manter sua senha em segurança.\n\n
+    </string>    
+
+    <string name="okay">
+        Entendi
+    </string>
+
+    <string name="source_code">
+        CÓDIGO FONTE
+    </string>
+
 </resources>
