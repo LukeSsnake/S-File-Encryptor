@@ -19,6 +19,10 @@ import java.io.OutputStream;
 import java.io.SequenceInputStream;
 import java.nio.ByteBuffer;
 import java.nio.ByteOrder;
+import java.nio.CharBuffer;
+import java.nio.charset.CharacterCodingException;
+import java.nio.charset.CharsetEncoder;
+import java.nio.charset.CodingErrorAction;
 import java.nio.charset.StandardCharsets;
 import java.security.GeneralSecurityException;
 import java.security.MessageDigest;
@@ -38,6 +42,9 @@ public final class CryptoEngine {
 
     private static final SecureRandom RANDOM =
             new SecureRandom();
+
+    /* Serializa Argon2 para impedir várias derivações caras simultâneas. */
+    private static final Object ARGON2_LOCK = new Object();
 
     /*
      * ============================================================
@@ -136,6 +143,7 @@ public final class CryptoEngine {
     private static final int ARGON2_MIN_MEMORY_KIB =
             8 * 1024;
 
+    // Mantido no limite do formato anterior para preservar arquivos V2 já existentes.
     private static final int ARGON2_MAX_MEMORY_KIB =
             256 * 1024;
 
@@ -204,6 +212,12 @@ public final class CryptoEngine {
      * Arquivos novos são sempre V2.
      */
 
+    /*
+     * Segurança operacional: como a API recebe OutputStream genérico, ela não
+     * consegue desfazer bytes já escritos se o processo falhar. Ao gravar em
+     * arquivo, o chamador deve usar arquivo temporário no diretório privado e
+     * renomeá-lo atomicamente somente depois que este método retornar com sucesso.
+     */
     public static void encrypt(
             InputStream input,
             OutputStream output,
@@ -234,10 +248,7 @@ public final class CryptoEngine {
         try {
 
             passwordBytes =
-                    new String(password)
-                            .getBytes(
-                                    StandardCharsets.UTF_8
-                            );
+                    passwordToUtf8(password);
 
             RANDOM.nextBytes(salt);
             RANDOM.nextBytes(nonce);
@@ -444,8 +455,17 @@ public final class CryptoEngine {
             OutputStream output,
             char[] password,
             long totalBytes,
-            Progress progress
+            Progress progress,
+            File tempDirectory
     ) throws Exception {
+
+        if (tempDirectory == null
+                || !tempDirectory.isDirectory()
+                || !tempDirectory.canWrite()) {
+            throw new IOException(
+            "Diretório temporário privado indisponível."
+            );
+        }
 
         if (verifyInput == null ||
                 decryptInput == null ||
@@ -484,7 +504,8 @@ public final class CryptoEngine {
                         password,
                         totalBytes,
                         progress,
-                        prefix
+                        prefix,
+                        tempDirectory
                 );
 
             } else {
@@ -503,7 +524,8 @@ public final class CryptoEngine {
                         output,
                         password,
                         totalBytes,
-                        progress
+                        progress,
+                        tempDirectory
                 );
             }
 
@@ -541,7 +563,8 @@ public final class CryptoEngine {
             char[] password,
             long totalBytes,
             Progress progress,
-            byte[] alreadyReadMagic
+            byte[] alreadyReadMagic,
+            File tempDirectory
     ) throws Exception {
 
         byte[] header =
@@ -675,10 +698,7 @@ public final class CryptoEngine {
                     );
 
             passwordBytes =
-                    new String(password)
-                            .getBytes(
-                                    StandardCharsets.UTF_8
-                            );
+                    passwordToUtf8(password);
 
             key =
                     deriveArgon2id(
@@ -770,10 +790,7 @@ public final class CryptoEngine {
              */
 
             tempFile =
-                    File.createTempFile(
-                            "sfe-v2-",
-                            ".tmp"
-                    );
+                    createPrivateTempFile("sfe-v2-", ".tmp", tempDirectory);
 
             buffer =
                     new byte[BUFFER_SIZE];
@@ -1014,13 +1031,9 @@ public final class CryptoEngine {
 
         } finally {
 
-            if (tempFile != null &&
-                    tempFile.exists()) {
-
-                /*
-                 *noinspection ResultOfMethodCallIgnored
-                 */
-                tempFile.delete();
+            if (tempFile != null && tempFile.exists() && !tempFile.delete()) {
+                // Best effort: armazenamento flash não garante apagamento físico.
+                tempFile.deleteOnExit();
             }
 
             if (buffer != null) {
@@ -1086,337 +1099,145 @@ public final class CryptoEngine {
             OutputStream output,
             char[] password,
             long totalBytes,
-            Progress progress
+            Progress progress,
+            File tempDirectory
     ) throws Exception {
 
-        if (totalBytes <
-                V1_SALT_SIZE
-                        + V1_IV_SIZE
-                        + V1_HMAC_SIZE
-                        + 1) {
-
+        if (totalBytes < V1_SALT_SIZE + V1_IV_SIZE + V1_HMAC_SIZE + 16) {
             throw new CorruptFileException();
         }
 
-        byte[] salt =
-                new byte[V1_SALT_SIZE];
-
-        byte[] iv =
-                new byte[V1_IV_SIZE];
-
-        byte[] derived =
-                null;
-
-        byte[] aesKey =
-                null;
-
-        byte[] hmacKey =
-                null;
-
-        byte[] buffer =
-                null;
+        byte[] salt = new byte[V1_SALT_SIZE];
+        byte[] iv = new byte[V1_IV_SIZE];
+        byte[] derived = null;
+        byte[] aesKey = null;
+        byte[] hmacKey = null;
+        byte[] buffer = new byte[BUFFER_SIZE];
+        byte[] decryptSalt = new byte[V1_SALT_SIZE];
+        byte[] decryptIv = new byte[V1_IV_SIZE];
+        byte[] storedHmac = new byte[V1_HMAC_SIZE];
+        byte[] calculatedHmac = null;
+        File ciphertextTemp = null;
 
         try {
+            // Passagem 1: valida o arquivo original antes de descriptografar.
+            readFully(verifyInput, salt);
+            readFully(verifyInput, iv);
+            derived = deriveV1(password, salt);
+            aesKey = Arrays.copyOfRange(derived, 0, V1_KEY_SIZE);
+            hmacKey = Arrays.copyOfRange(derived, V1_KEY_SIZE, V1_DERIVED_SIZE);
 
-            /*
-             * Primeira passagem:
-             * verifica o HMAC antes de aceitar os dados.
-             */
-
-            readFully(
-                    verifyInput,
-                    salt
-            );
-
-            readFully(
-                    verifyInput,
-                    iv
-            );
-
-            derived =
-                    deriveV1(
-                            password,
-                            salt
-                    );
-
-            aesKey =
-                    Arrays.copyOfRange(
-                            derived,
-                            0,
-                            V1_KEY_SIZE
-                    );
-
-            hmacKey =
-                    Arrays.copyOfRange(
-                            derived,
-                            V1_KEY_SIZE,
-                            V1_DERIVED_SIZE
-                    );
-
-            Mac mac =
-                    Mac.getInstance(
-                            "HmacSHA256"
-                    );
-
-            mac.init(
-                    new SecretKeySpec(
-                            hmacKey,
-                            "HmacSHA256"
-                    )
-            );
-
-            mac.update(salt);
-            mac.update(iv);
-
-            long ciphertextLength =
-                    totalBytes
-                            - V1_SALT_SIZE
-                            - V1_IV_SIZE
-                            - V1_HMAC_SIZE;
-
-            if (ciphertextLength <= 0 ||
-                    (ciphertextLength % 16) != 0) {
-
+            long ciphertextLength = totalBytes - V1_SALT_SIZE - V1_IV_SIZE - V1_HMAC_SIZE;
+            if (ciphertextLength <= 0 || (ciphertextLength % 16) != 0) {
                 throw new CorruptFileException();
             }
 
-            buffer =
-                    new byte[BUFFER_SIZE];
-
-            long remaining =
-                    ciphertextLength;
-
+            Mac firstMac = Mac.getInstance("HmacSHA256");
+            firstMac.init(new SecretKeySpec(hmacKey, "HmacSHA256"));
+            firstMac.update(salt);
+            firstMac.update(iv);
+            long remaining = ciphertextLength;
             while (remaining > 0) {
-
-                int wanted =
-                        (int) Math.min(
-                                buffer.length,
-                                remaining
-                        );
-
-                int read =
-                        readSome(
-                                verifyInput,
-                                buffer,
-                                0,
-                                wanted
-                        );
-
-                if (read < 0) {
-                    throw new CorruptFileException();
-                }
-
-                if (read == 0) {
-                    continue;
-                }
-
-                mac.update(
-                        buffer,
-                        0,
-                        read
-                );
-
+                int wanted = (int) Math.min(buffer.length, remaining);
+                int read = readSome(verifyInput, buffer, 0, wanted);
+                if (read < 0) throw new CorruptFileException();
+                if (read == 0) continue;
+                firstMac.update(buffer, 0, read);
                 remaining -= read;
             }
+            readFully(verifyInput, storedHmac);
+            calculatedHmac = firstMac.doFinal();
+            if (!MessageDigest.isEqual(calculatedHmac, storedHmac)) {
+                throw new WrongPasswordException();
+            }
+            Arrays.fill(calculatedHmac, (byte) 0);
+            calculatedHmac = null;
+            Arrays.fill(storedHmac, (byte) 0);
 
-            byte[] storedHmac =
-                    new byte[V1_HMAC_SIZE];
+            // Passagem 2: autentica DE NOVO os bytes que realmente serão usados.
+            // Guarda apenas ciphertext temporariamente; não expõe plaintext antes do HMAC.
+            readFully(decryptInput, decryptSalt);
+            readFully(decryptInput, decryptIv);
+            if (!MessageDigest.isEqual(salt, decryptSalt) ||
+                    !MessageDigest.isEqual(iv, decryptIv)) {
+                throw new CorruptFileException("O arquivo mudou durante a leitura.");
+            }
 
-            byte[] calculatedHmac =
-                    null;
+            Mac secondMac = Mac.getInstance("HmacSHA256");
+            secondMac.init(new SecretKeySpec(hmacKey, "HmacSHA256"));
+            secondMac.update(decryptSalt);
+            secondMac.update(decryptIv);
+            ciphertextTemp = createPrivateTempFile("sfe-v1-", ".cipher.tmp", tempDirectory);
 
+            try (FileOutputStream tempOut = new FileOutputStream(ciphertextTemp)) {
+                remaining = ciphertextLength;
+                long processed = V1_SALT_SIZE + V1_IV_SIZE;
+                while (remaining > 0) {
+                    int wanted = (int) Math.min(buffer.length, remaining);
+                    int read = readSome(decryptInput, buffer, 0, wanted);
+                    if (read < 0) throw new CorruptFileException();
+                    if (read == 0) continue;
+                    secondMac.update(buffer, 0, read);
+                    tempOut.write(buffer, 0, read);
+                    Arrays.fill(buffer, 0, read, (byte) 0);
+                    remaining -= read;
+                    processed += read;
+                    if (progress != null) progress.onProgress(processed);
+                }
+                readFully(decryptInput, storedHmac);
+                calculatedHmac = secondMac.doFinal();
+                if (!MessageDigest.isEqual(calculatedHmac, storedHmac)) {
+                    throw new CorruptFileException("O arquivo mudou durante a descriptografia.");
+                }
+                if (decryptInput.read() != -1) throw new CorruptFileException();
+                tempOut.flush();
+            }
+
+            // O ciphertext da segunda passagem foi autenticado; só agora descriptografa.
+            Cipher cipher = Cipher.getInstance("AES/CBC/PKCS5Padding");
+            cipher.init(Cipher.DECRYPT_MODE, new SecretKeySpec(aesKey, "AES"), new IvParameterSpec(iv));
+            try (FileInputStream tempIn = new FileInputStream(ciphertextTemp)) {
+                int read;
+                while ((read = tempIn.read(buffer)) != -1) {
+                    if (read == 0) continue;
+                    byte[] plain = cipher.update(buffer, 0, read);
+                    if (plain != null) {
+                        try {
+                            if (plain.length > 0) output.write(plain);
+                        } finally {
+                            Arrays.fill(plain, (byte) 0);
+                        }
+                    }
+                    Arrays.fill(buffer, 0, read, (byte) 0);
+                }
+            }
+            byte[] finalPlain = cipher.doFinal();
             try {
-
-                readFully(
-                        verifyInput,
-                        storedHmac
-                );
-
-                calculatedHmac =
-                        mac.doFinal();
-
-                boolean valid =
-                        MessageDigest.isEqual(
-                                calculatedHmac,
-                                storedHmac
-                        );
-
-                if (!valid) {
-                    throw new WrongPasswordException();
-                }
-
+                if (finalPlain != null && finalPlain.length > 0) output.write(finalPlain);
             } finally {
-
-                Arrays.fill(
-                        storedHmac,
-                        (byte) 0
-                );
-
-                if (calculatedHmac != null) {
-                    Arrays.fill(
-                            calculatedHmac,
-                            (byte) 0
-                    );
-                }
+                if (finalPlain != null) Arrays.fill(finalPlain, (byte) 0);
             }
-
-            /*
-             * Segunda passagem:
-             * agora que o HMAC foi validado, fazemos a
-             * descriptografia real.
-             */
-
-            readFully(
-                    decryptInput,
-                    salt
-            );
-
-            readFully(
-                    decryptInput,
-                    iv
-            );
-
-            Cipher cipher =
-                    Cipher.getInstance(
-                            "AES/CBC/PKCS5Padding"
-                    );
-
-            cipher.init(
-                    Cipher.DECRYPT_MODE,
-                    new SecretKeySpec(
-                            aesKey,
-                            "AES"
-                    ),
-                    new IvParameterSpec(
-                            iv
-                    )
-            );
-
-            remaining =
-                    ciphertextLength;
-
-            long processed =
-                    V1_SALT_SIZE
-                            + V1_IV_SIZE;
-
-            buffer =
-                    new byte[BUFFER_SIZE];
-
-            while (remaining > 0) {
-
-                int wanted =
-                        (int) Math.min(
-                                buffer.length,
-                                remaining
-                        );
-
-                int read =
-                        readSome(
-                                decryptInput,
-                                buffer,
-                                0,
-                                wanted
-                        );
-
-                if (read < 0) {
-                    throw new CorruptFileException();
-                }
-
-                if (read == 0) {
-                    continue;
-                }
-
-                byte[] plain =
-                        cipher.update(
-                                buffer,
-                                0,
-                                read
-                        );
-
-                if (plain != null &&
-                        plain.length > 0) {
-
-                    output.write(
-                            plain
-                    );
-
-                    Arrays.fill(
-                            plain,
-                            (byte) 0
-                    );
-                }
-
-                remaining -= read;
-                processed += read;
-
-                if (progress != null) {
-                    progress.onProgress(
-                            processed
-                    );
-                }
-            }
-
-            byte[] finalPlain =
-                    cipher.doFinal();
-
-            if (finalPlain != null &&
-                    finalPlain.length > 0) {
-
-                output.write(
-                        finalPlain
-                );
-
-                Arrays.fill(
-                        finalPlain,
-                        (byte) 0
-                );
-            }
-
             output.flush();
 
         } catch (EOFException e) {
-
             throw new CorruptFileException();
-
+        } catch (BadPaddingException | IllegalBlockSizeException e) {
+            throw new CorruptFileException("Dados V1 inválidos.");
         } finally {
-
-            if (buffer != null) {
-                Arrays.fill(
-                        buffer,
-                        (byte) 0
-                );
+            if (ciphertextTemp != null && ciphertextTemp.exists() && !ciphertextTemp.delete()) {
+                // Não é possível garantir apagamento físico em flash; tentamos apagar o temporário.
+                ciphertextTemp.deleteOnExit();
             }
-
-            Arrays.fill(
-                    salt,
-                    (byte) 0
-            );
-
-            Arrays.fill(
-                    iv,
-                    (byte) 0
-            );
-
-            if (derived != null) {
-                Arrays.fill(
-                        derived,
-                        (byte) 0
-                );
-            }
-
-            if (aesKey != null) {
-                Arrays.fill(
-                        aesKey,
-                        (byte) 0
-                );
-            }
-
-            if (hmacKey != null) {
-                Arrays.fill(
-                        hmacKey,
-                        (byte) 0
-                );
-            }
+            Arrays.fill(buffer, (byte) 0);
+            Arrays.fill(salt, (byte) 0);
+            Arrays.fill(iv, (byte) 0);
+            Arrays.fill(decryptSalt, (byte) 0);
+            Arrays.fill(decryptIv, (byte) 0);
+            Arrays.fill(storedHmac, (byte) 0);
+            if (calculatedHmac != null) Arrays.fill(calculatedHmac, (byte) 0);
+            if (derived != null) Arrays.fill(derived, (byte) 0);
+            if (aesKey != null) Arrays.fill(aesKey, (byte) 0);
+            if (hmacKey != null) Arrays.fill(hmacKey, (byte) 0);
         }
     }
 
@@ -1550,10 +1371,7 @@ public final class CryptoEngine {
                     );
 
             passwordBytes =
-                    new String(password)
-                            .getBytes(
-                                    StandardCharsets.UTF_8
-                            );
+                    passwordToUtf8(password);
 
             key =
                     deriveArgon2id(
@@ -1858,6 +1676,64 @@ public final class CryptoEngine {
     }
 
     /*
+     * Codifica a senha sem criar uma String imutável com o conteúdo secreto.
+     * O buffer interno do encoder é zerado quando é acessível.
+     */
+    private static byte[] passwordToUtf8(char[] password)
+            throws CharacterCodingException {
+        CharsetEncoder encoder = StandardCharsets.UTF_8.newEncoder()
+                .onMalformedInput(CodingErrorAction.REPORT)
+                .onUnmappableCharacter(CodingErrorAction.REPORT);
+        ByteBuffer encoded = encoder.encode(CharBuffer.wrap(password));
+        byte[] result = new byte[encoded.remaining()];
+        encoded.get(result);
+        if (encoded.hasArray()) Arrays.fill(encoded.array(), (byte) 0);
+        return result;
+    }
+
+    /*
+     * Cria temporário com permissões restritas ao proprietário.
+     * Se o ambiente não permitir restringir as permissões, falha fechado.
+     */
+    private static File createPrivateTempFile(
+        String prefix,
+        String suffix,
+        File directory
+) throws IOException {
+
+    if (directory == null
+            || !directory.isDirectory()
+            || !directory.canWrite()) {
+        throw new IOException(
+                "Diretório temporário privado indisponível."
+        );
+    }
+
+    File file = File.createTempFile(
+            prefix,
+            suffix,
+            directory
+    );
+
+    boolean ok = file.setReadable(false, false)
+            && file.setWritable(false, false)
+            && file.setReadable(true, true)
+            && file.setWritable(true, true);
+
+    if (!ok) {
+        if (!file.delete()) {
+            file.deleteOnExit();
+        }
+
+        throw new IOException(
+                "Não foi possível proteger o arquivo temporário."
+        );
+    }
+
+    return file;
+}
+
+    /*
      * ============================================================
      * ARGON2ID
      * ============================================================
@@ -1870,43 +1746,21 @@ public final class CryptoEngine {
             int iterations,
             int parallelism
     ) {
+        Argon2Parameters parameters = new Argon2Parameters.Builder(
+                Argon2Parameters.ARGON2_id)
+                .withVersion(Argon2Parameters.ARGON2_VERSION_13)
+                .withIterations(iterations)
+                .withMemoryAsKB(memoryKib)
+                .withParallelism(parallelism)
+                .withSalt(salt)
+                .build();
 
-        Argon2Parameters.Builder builder =
-                new Argon2Parameters.Builder(
-                        Argon2Parameters.ARGON2_id
-                )
-                        .withVersion(
-                                Argon2Parameters
-                                        .ARGON2_VERSION_13
-                        )
-                        .withIterations(
-                                iterations
-                        )
-                        .withMemoryAsKB(
-                                memoryKib
-                        )
-                        .withParallelism(
-                                parallelism
-                        )
-                        .withSalt(
-                                salt
-                        );
-
-        Argon2BytesGenerator generator =
-                new Argon2BytesGenerator();
-
-        generator.init(
-                builder.build()
-        );
-
-        byte[] output =
-                new byte[V2_KEY_SIZE];
-
-        generator.generateBytes(
-                password,
-                output
-        );
-
+        byte[] output = new byte[V2_KEY_SIZE];
+        synchronized (ARGON2_LOCK) {
+            Argon2BytesGenerator generator = new Argon2BytesGenerator();
+            generator.init(parameters);
+            generator.generateBytes(password, output);
+        }
         return output;
     }
 
