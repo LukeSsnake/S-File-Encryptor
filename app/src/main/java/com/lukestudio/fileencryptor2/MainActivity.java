@@ -37,6 +37,7 @@ import java.util.concurrent.Executors;
 import java.util.zip.ZipEntry;
 import java.util.zip.ZipInputStream;
 import java.util.zip.ZipOutputStream;
+import android.view.WindowManager;
 
 import javax.crypto.Cipher;
 
@@ -78,6 +79,7 @@ public class MainActivity extends FragmentActivity {
     private Button folderButton;
     private Button helpButton;
     private Button infoButton;
+    private Button infoCrypto;
     private Switch biometricSwitch;
     private TextView biometricSettings;
 
@@ -95,6 +97,13 @@ public class MainActivity extends FragmentActivity {
     @Override
     protected void onCreate(Bundle b) {
         super.onCreate(b);
+
+        getWindow().setFlags(
+            WindowManager.LayoutParams.FLAG_SECURE,
+            WindowManager.LayoutParams.FLAG_SECURE
+    );
+
+        cleanTemporaryFiles();
 
         getWindow().setNavigationBarColor(
                 android.graphics.Color.rgb(38, 50, 56)
@@ -120,6 +129,7 @@ public class MainActivity extends FragmentActivity {
         folderButton = findViewById(R.id.folderButton);
         helpButton = findViewById(R.id.helpButton);
         infoButton = findViewById(R.id.infoButton);
+        infoCrypto = findViewById(R.id.infoCrypto);
 
         biometricSwitch = findViewById(R.id.biometricSwitch);
         biometricSettings = findViewById(R.id.biometricSettings);
@@ -140,6 +150,7 @@ public class MainActivity extends FragmentActivity {
         folderButton.setOnClickListener(v -> pickFolder());
         helpButton.setOnClickListener(v -> showHelp());
         infoButton.setOnClickListener(v -> showSupport());
+        infoCrypto.setOnClickListener(v -> showCrypto());
 
         action.setOnClickListener(v -> startWork());
 
@@ -171,6 +182,58 @@ public class MainActivity extends FragmentActivity {
         );
     }
 
+    private void cleanTemporaryFiles() {
+    File cacheDir = getCacheDir();
+    File[] files = cacheDir.listFiles();
+
+    if (files == null) {
+        return;
+    }
+
+    // Considera antigos os temporários com mais de 24 horas.
+    long maxAge = 2L * 60 * 60 * 1000;
+    long now = System.currentTimeMillis();
+
+    for (File file : files) {
+        if (!file.isFile()) {
+            continue;
+        }
+
+        String name = file.getName();
+
+        boolean isTemporary =
+                name.startsWith("sfe-v1-") ||
+                name.startsWith("sfe-v2-") ||
+                name.startsWith("sfe_input_") ||
+                name.startsWith("sfe_zip_") ||
+                name.startsWith("sfe_dec_") ||
+                name.startsWith("sfe_enc_");
+
+        if (!isTemporary) {
+            continue;
+        }
+
+        // Não exclui arquivos recentes.
+        long age = now - file.lastModified();
+
+        if (age < maxAge) {
+            continue;
+        }
+
+        if (file.delete()) {
+            android.util.Log.d(
+                    "SFileEncryptor",
+                    "Arquivo temporário antigo removido."
+            );
+        } else {
+            android.util.Log.w(
+                    "SFileEncryptor",
+                    "Falha ao remover arquivo temporário antigo."
+            );
+        }
+    }
+}
+
     private void showHelp() {
 
         new AlertDialog.Builder(this)
@@ -181,6 +244,47 @@ public class MainActivity extends FragmentActivity {
                         null
                 )
                 .show();
+    }
+
+    private void showCrypto() {
+
+        AlertDialog cryp =
+                new AlertDialog.Builder(this)
+                        .setTitle(
+                                R.string.crypto_title
+                        )
+                        .setMessage(
+                                getString(
+                                        R.string.crypto_message                                  
+                                )
+                        )
+                        .setNegativeButton(
+                                "CÓDIGO FONTE",
+                                (d, which) -> {
+
+                                    try {
+
+                                        Intent in =
+                                                new Intent(
+                                                        Intent.ACTION_VIEW,
+                                                        Uri.parse(
+                                                                "https://github.com/LukeSsnake/S-File-Encryptor"
+                                                        )
+                                                );
+
+                                        startActivity(in);
+
+                                    } catch (Exception g) {}
+                                }
+                        )
+                        .setPositiveButton(
+                        R.string.okay,
+                        null
+                        )
+                        .create();
+
+        cryp.show();
+
     }
 
     private void showSupport() {
@@ -1704,7 +1808,8 @@ if (!encrypted
                                     value,
                                     total,
                                     true
-                            )
+                            ),
+                            getCacheDir()
                     );
                 }
 
