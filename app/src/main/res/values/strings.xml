@@ -43,8 +43,8 @@
     <string name="encrypting">CRIPTOGRAFANDO...</string>
     <string name="decrypting">DESCRIPTOGRAFANDO...</string>
 
-    <string name="encrypted">CRIPTOGRAFADO!</string>
-    <string name="decrypted">DESCRIPTOGRAFADO!</string>
+    <string name="encrypted">\nArquivo criptografado com sucesso.</string>
+    <string name="decrypted">\nArquivo descriptografado com sucesso.</string>
 
     <string name="wrong_password">
         Senha errada ou arquivo alterado!
