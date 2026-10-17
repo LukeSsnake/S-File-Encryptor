@@ -8,48 +8,82 @@
     android:background="#263238">
 
     <!-- Logo + botão Info -->
-    <FrameLayout
-        android:id="@+id/logoContainer"
-        android:layout_width="match_parent"
-        android:layout_height="56dp"
-        android:layout_marginTop="50dp"
-        android:background="#263238">
+    <LinearLayout
+    android:id="@+id/logoContainer"
+    android:layout_width="match_parent"
+    android:layout_height="wrap_content"
+    android:layout_marginTop="50dp"
+    android:orientation="horizontal"
+    android:gravity="center_vertical"
+    android:background="#263238"
+    android:paddingStart="8dp"
+    android:paddingEnd="8dp">
 
-        <Button
-            android:id="@+id/infoCrypto"
-            android:layout_width="44dp"
-            android:layout_height="wrap_content"
-            android:layout_gravity="start|center_vertical"
-            android:text="@string/info_crypto"
-            android:textSize="22sp"
-            android:textColor="#000000"
-            android:minWidth="0dp"
-            android:padding="0dp"
-            android:layout_marginStart="10dp"
-            android:contentDescription="@string/crypto_title" />
+    <ImageView
+        android:id="@+id/appLogo"
+        android:layout_width="40dp"
+        android:layout_height="40dp"
+        android:src="@drawable/app_icon"
+        android:scaleType="centerCrop" />
 
-        <ImageView
-            android:id="@+id/appLogo"
-            android:layout_width="40dp"
-            android:layout_height="40dp"
-            android:layout_gravity="center"
-            android:src="@drawable/app_icon"
-            android:scaleType="centerCrop" />            
+    <TextView
+        android:id="@+id/biometricLabel"
+        android:layout_width="wrap_content"
+        android:layout_height="wrap_content"
+        android:text="@string/biometric"
+        android:textSize="14sp"
+        android:textColor="#FFFFFF"
+        android:paddingStart="6dp"
+        android:paddingEnd="2dp" />
 
-        <Button
-            android:id="@+id/infoButton"
-            android:layout_width="44dp"
-            android:layout_height="wrap_content"
-            android:layout_gravity="end|center_vertical"
-            android:text="@string/info_button"
-            android:textSize="22sp"
-            android:textColor="#000000"
-            android:minWidth="0dp"
-            android:padding="0dp"
-            android:layout_marginEnd="10dp"
-            android:contentDescription="@string/info_title" />
+    <Switch
+        android:id="@+id/biometricSwitch"
+        android:layout_width="wrap_content"
+        android:layout_height="wrap_content"
+        android:contentDescription="@string/biometric" />
 
-    </FrameLayout>
+    <TextView
+        android:id="@+id/biometricSettings"
+        android:layout_width="wrap_content"
+        android:layout_height="wrap_content"
+        android:text="⚙️"
+        android:textSize="22sp"
+        android:textColor="#FFFFFF"
+        android:padding="8dp"
+        android:clickable="true"
+        android:focusable="true"
+        android:enabled="false"
+        android:contentDescription="@string/biometric_settings" />
+
+    <View
+        android:layout_width="0dp"
+        android:layout_height="1dp"
+        android:layout_weight="1" />
+
+    <Button
+        android:id="@+id/infoCrypto"
+        android:layout_width="44dp"
+        android:layout_height="wrap_content"
+        android:text="@string/info_crypto"
+        android:textSize="22sp"
+        android:textColor="#000000"
+        android:minWidth="0dp"
+        android:padding="0dp"
+        android:contentDescription="@string/crypto_title" />
+
+    <Button
+        android:id="@+id/infoButton"
+        android:layout_width="44dp"
+        android:layout_height="wrap_content"
+        android:text="@string/info_button"
+        android:textSize="22sp"
+        android:textColor="#000000"
+        android:minWidth="0dp"
+        android:padding="0dp"
+        android:layout_marginStart="4dp"
+        android:contentDescription="@string/info_title" />
+
+</LinearLayout>
 
     <!-- Biometria -->
     <LinearLayout
@@ -59,35 +93,7 @@
         android:orientation="horizontal"
         android:gravity="center"
         android:background="#263238"
-        android:padding="4dp">
-
-        <TextView
-            android:id="@+id/biometricLabel"
-            android:layout_width="wrap_content"
-            android:layout_height="wrap_content"
-            android:text="@string/biometric"
-            android:textSize="16sp"
-            android:textColor="#FFFFFF"
-            android:padding="8dp" />
-
-        <Switch
-            android:id="@+id/biometricSwitch"
-            android:layout_width="wrap_content"
-            android:layout_height="wrap_content"
-            android:contentDescription="@string/biometric" />
-
-        <TextView
-            android:id="@+id/biometricSettings"
-            android:layout_width="wrap_content"
-            android:layout_height="wrap_content"
-            android:text="⚙️"
-            android:textSize="22sp"
-            android:textColor="#FFFFFF"
-            android:padding="8dp"
-            android:clickable="true"
-            android:focusable="true"
-            android:enabled="false"
-            android:contentDescription="@string/biometric_settings" />
+        android:padding="4dp">        
 
     </LinearLayout>
 
