@@ -37,7 +37,12 @@ import java.util.concurrent.Executors;
 import java.util.zip.ZipEntry;
 import java.util.zip.ZipInputStream;
 import java.util.zip.ZipOutputStream;
-import android.view.WindowManager;
+import java.util.ArrayList;
+import java.util.HashMap;
+import java.util.HashSet;
+import java.util.List;
+import java.util.Map;
+import java.util.Set;
 
 import javax.crypto.Cipher;
 
@@ -64,6 +69,7 @@ public class MainActivity extends FragmentActivity {
     private Uri inputUri;
     private Uri outputUri;
 
+    private boolean outputDocumentCreatedByApp = false;
     private boolean decryptMode;
     private boolean inputIsFolder;
     private int inputMode = MODE_FILE;
@@ -88,8 +94,21 @@ public class MainActivity extends FragmentActivity {
     private long zipTotalBytes;
     private long zipProcessedBytes;
 
+    private long zipActualBytes;
+    private int zipEntryCount;
+
     private long unzipTotalBytes;
     private long unzipProcessedBytes;
+
+    private static final long MAX_ZIP_ENTRY_SIZE =
+        1L * 1024 * 1024 * 1024; // 1 GiB por arquivo
+
+        private static final long MAX_ZIP_TOTAL_SIZE =
+        2L * 1024 * 1024 * 1024; // 2 GiB no total
+
+        private static final int MAX_ZIP_ENTRIES = 10_000;
+        private static final int MAX_ZIP_DEPTH = 20;
+        private static final int MAX_ZIP_PATH_LENGTH = 1_024;
 
     private final ExecutorService executor =
             Executors.newSingleThreadExecutor();
@@ -190,7 +209,7 @@ public class MainActivity extends FragmentActivity {
         return;
     }
 
-    // Considera antigos os temporários com mais de 24 horas.
+    // Considera antigos os temporários com mais de 2 horas.
     long maxAge = 2L * 60 * 60 * 1000;
     long now = System.currentTimeMillis();
 
@@ -552,56 +571,61 @@ public class MainActivity extends FragmentActivity {
                         new BiometricPrompt.AuthenticationCallback() {
 
                             @Override
-                            public void onAuthenticationSucceeded(
-                                    BiometricPrompt.AuthenticationResult result
-                            ) {
+public void onAuthenticationSucceeded(
+        BiometricPrompt.AuthenticationResult result
+) {
+    super.onAuthenticationSucceeded(result);
 
-                                try {
+    try {
+        // Obtém o Cipher validado pela autenticação biométrica.
+        if (result.getCryptoObject() == null
+                || result.getCryptoObject().getCipher() == null) {
+            throw new IllegalStateException(
+                    "Cipher biométrico indisponível."
+            );
+        }
 
-                                    BiometricPasswordStore
-                                            .saveEncryptedPassword(
-                                                    MainActivity.this,
-                                                    cipher,
-                                                    newPassword
-                                            );
+        Cipher authenticatedCipher =
+                result.getCryptoObject().getCipher();
 
-                                    restoringBiometricSwitch = true;
-                                    biometricSwitch.setChecked(true);
-                                    restoringBiometricSwitch = false;
+        // Salva a senha usando o Cipher autenticado.
+        BiometricPasswordStore.saveEncryptedPassword(
+                MainActivity.this,
+                authenticatedCipher,
+                newPassword
+        );
 
-                                    biometricSettings
-                                            .setEnabled(true);
+        // Atualiza o estado do controle biométrico.
+        restoringBiometricSwitch = true;
+        biometricSwitch.setChecked(true);
+        restoringBiometricSwitch = false;
 
-                                    password.setVisibility(
-                                            View.GONE
-                                    );
+        biometricSettings.setEnabled(true);
 
-                                    toast(
-                                            R.string.biometric_enabled
-                                    );
+        // Oculta o campo de senha.
+        password.setVisibility(View.GONE);
 
-                                } catch (Exception e) {
+        // Informa que a biometria foi ativada.
+        toast(R.string.biometric_enabled);
 
-                                    restoringBiometricSwitch = true;
-                                    biometricSwitch.setChecked(false);
-                                    restoringBiometricSwitch = false;
+    } catch (Exception e) {
 
-                                    password.setVisibility(
-                                            View.VISIBLE
-                                    );
+        // Restaura o estado visual em caso de erro.
+        restoringBiometricSwitch = true;
+        biometricSwitch.setChecked(false);
+        restoringBiometricSwitch = false;
 
-                                    toast(
-                                            R.string.biometric_setup_error
-                                    );
+        biometricSettings.setEnabled(false);
 
-                                } finally {
+        password.setVisibility(View.VISIBLE);
 
-                                    Arrays.fill(
-                                            newPassword,
-                                            '\0'
-                                    );
-                                }
-                            }
+        toast(R.string.biometric_setup_error);
+
+    } finally {
+        // Limpa a senha temporária da memória.
+        Arrays.fill(newPassword, '\0');
+    }
+}
 
                             @Override
                             public void onAuthenticationError(
@@ -731,121 +755,112 @@ public class MainActivity extends FragmentActivity {
         );
     }
 
-    private void authenticateForDecryption(
-            Cipher cipher,
-            boolean showPassword,
-            boolean allowManualFallback
-    ) {
+    
+private void authenticateForDecryption(
+        Cipher cipher,
+        boolean showPassword,
+        boolean allowManualFallback
+) {
 
-        BiometricPrompt prompt =
-                new BiometricPrompt(
-                        this,
-                        ContextCompat.getMainExecutor(this),
-                        new BiometricPrompt.AuthenticationCallback() {
+    BiometricPrompt prompt =
+            new BiometricPrompt(
+                    this,
+                    ContextCompat.getMainExecutor(this),
+                    new BiometricPrompt.AuthenticationCallback() {
 
-                            @Override
-                            public void onAuthenticationSucceeded(
-                                    BiometricPrompt.AuthenticationResult result
-                            ) {
+                        @Override
+                        public void onAuthenticationSucceeded(
+                                BiometricPrompt.AuthenticationResult result
+                        ) {
+                            super.onAuthenticationSucceeded(result);
 
-                                char[] stored = null;
+                            char[] stored = null;
 
-                                try {
-
-                                    stored =
-                                            BiometricPasswordStore
-                                                    .decryptPassword(
-                                                            MainActivity.this,
-                                                            cipher
-                                                    );
-
-                                    if (showPassword) {
-
-                                        showStoredPasswordDialog(
-                                                stored
-                                        );
-
-                                    } else {
-
-                                        useBiometricPassword(
-                                                stored
-                                        );
-
-                                        stored = null;
-                                    }
-
-                                } catch (Exception e) {
-
-                                    restoringBiometricSwitch = true;
-                                    biometricSwitch.setChecked(false);
-                                    restoringBiometricSwitch = false;
-
-                                    biometricSettings
-                                            .setEnabled(false);
-
-                                    password.setVisibility(
-                                            View.VISIBLE
+                            try {
+                                // Obtém o Cipher validado pela biometria.
+                                if (result.getCryptoObject() == null
+                                        || result.getCryptoObject().getCipher() == null) {
+                                    throw new IllegalStateException(
+                                            "Cipher biométrico indisponível."
                                     );
-
-                                    BiometricPasswordStore
-                                            .disable(
-                                                    MainActivity.this
-                                            );
-
-                                    toast(
-                                            R.string.biometric_setup_error
-                                    );
-
-                                } finally {
-
-                                    if (stored != null) {
-
-                                        Arrays.fill(
-                                                stored,
-                                                '\0'
-                                        );
-                                    }
                                 }
-                            }
 
-                            @Override
-                            public void onAuthenticationError(
-                                    int errorCode,
-                                    CharSequence errString
-                            ) {
+                                Cipher authenticatedCipher =
+                                        result.getCryptoObject().getCipher();
 
-                                if (allowManualFallback) {
-                                    showManualPasswordFallback();
+                                // Descriptografa a senha salva.
+                                stored =
+                                        BiometricPasswordStore.decryptPassword(
+                                                MainActivity.this,
+                                                authenticatedCipher
+                                        );
+
+                                if (showPassword) {
+
+                                    showStoredPasswordDialog(stored);
+
+                                } else {
+
+                                    useBiometricPassword(stored);
+                                    stored = null;
+                                }
+
+                            } catch (Exception e) {
+
+                                // Não apaga a chave nem a senha salva
+                                // por causa de um erro genérico.
+                                password.setVisibility(View.VISIBLE);
+
+                                toast(
+                                        R.string.biometric_setup_error
+                                );
+
+                            } finally {
+
+                                if (stored != null) {
+                                    Arrays.fill(stored, '\0');
                                 }
                             }
                         }
-                );
 
-        prompt.authenticate(
-                new BiometricPrompt.PromptInfo.Builder()
-                        .setTitle(
-                                getString(
-                                        R.string.biometric_title
-                                )
-                        )
-                        .setSubtitle(
-                                getString(
-                                        R.string.biometric_unlock_subtitle
-                                )
-                        )
-                        .setNegativeButtonText(
-                                allowManualFallback
-                                        ? getString(
-                                                R.string.use_manual_password
-                                        )
-                                        : getString(
-                                                android.R.string.cancel
-                                        )
-                        )
-                        .build(),
-                new BiometricPrompt.CryptoObject(cipher)
-        );
-    }
+                        @Override
+                        public void onAuthenticationError(
+                                int errorCode,
+                                CharSequence errString
+                        ) {
+                            super.onAuthenticationError(
+                                    errorCode,
+                                    errString
+                            );
+
+                            if (allowManualFallback) {
+                                showManualPasswordFallback();
+                            }
+                        }
+                    }
+            );
+
+    prompt.authenticate(
+            new BiometricPrompt.PromptInfo.Builder()
+                    .setTitle(
+                            getString(R.string.biometric_title)
+                    )
+                    .setSubtitle(
+                            getString(R.string.biometric_unlock_subtitle)
+                    )
+                    .setNegativeButtonText(
+                            allowManualFallback
+                                    ? getString(
+                                            R.string.use_manual_password
+                                    )
+                                    : getString(
+                                            android.R.string.cancel
+                                    )
+                    )
+                    .build(),
+            new BiometricPrompt.CryptoObject(cipher)
+    );
+}
 
     private void useBiometricPassword(char[] stored) {
 
@@ -962,76 +977,76 @@ public class MainActivity extends FragmentActivity {
         dialog.show();
     }
 
-    private void authenticateForReplacement(
-            char[] replacement
-    ) {
+    
+private void authenticateForReplacement(
+        char[] replacement
+) {
 
-        final Cipher cipher;
+    final Cipher cipher;
 
-        try {
+    try {
 
-            cipher =
-                    BiometricPasswordStore
-                            .createEncryptionCipher(this);
+        cipher =
+                BiometricPasswordStore
+                        .createEncryptionCipher(this);
 
-        } catch (Exception e) {
+    } catch (Exception e) {
 
-            Arrays.fill(
-                    replacement,
-                    '\0'
-            );
+        Arrays.fill(replacement, '\0');
 
-            toast(
-                    R.string.biometric_setup_error
-            );
+        toast(
+                R.string.biometric_setup_error
+        );
 
-            return;
-        }
+        return;
+    }
 
-        BiometricPrompt prompt =
-                new BiometricPrompt(
-                        this,
-                        ContextCompat.getMainExecutor(this),
-                        new BiometricPrompt.AuthenticationCallback() {
+    BiometricPrompt prompt =
+            new BiometricPrompt(
+                    this,
+                    ContextCompat.getMainExecutor(this),
+                    new BiometricPrompt.AuthenticationCallback() {
 
-                            @Override
-                            public void onAuthenticationSucceeded(
-                                    BiometricPrompt.AuthenticationResult result
-                            ) {
+                        @Override
+                        public void onAuthenticationSucceeded(
+                                BiometricPrompt.AuthenticationResult result
+                        ) {
+                            super.onAuthenticationSucceeded(result);
 
-                                try {
+                            try {
 
-                                    BiometricPasswordStore
-                                            .saveEncryptedPassword(
-                                                    MainActivity.this,
-                                                    cipher,
-                                                    replacement
-                                            );
-
-                                    toast(
-                                            R.string.password_changed
-                                    );
-
-                                } catch (Exception e) {
-
-                                    toast(
-                                            R.string.biometric_setup_error
-                                    );
-
-                                } finally {
-
-                                    Arrays.fill(
-                                            replacement,
-                                            '\0'
+                                // Obtém o Cipher validado pela biometria.
+                                if (result.getCryptoObject() == null
+                                        || result.getCryptoObject().getCipher() == null) {
+                                    throw new IllegalStateException(
+                                            "Cipher biométrico indisponível."
                                     );
                                 }
-                            }
 
-                            @Override
-                            public void onAuthenticationError(
-                                    int errorCode,
-                                    CharSequence errString
-                            ) {
+                                Cipher authenticatedCipher =
+                                        result.getCryptoObject().getCipher();
+
+                                // Salva a nova senha com o Cipher autenticado.
+                                BiometricPasswordStore
+                                        .saveEncryptedPassword(
+                                                MainActivity.this,
+                                                authenticatedCipher,
+                                                replacement
+                                        );
+
+                                toast(
+                                        R.string.password_changed
+                                );
+
+                            } catch (Exception e) {
+
+                                // Não desativa nem apaga a configuração
+                                // biométrica por um erro genérico.
+                                toast(
+                                        R.string.biometric_setup_error
+                                );
+
+                            } finally {
 
                                 Arrays.fill(
                                         replacement,
@@ -1039,29 +1054,46 @@ public class MainActivity extends FragmentActivity {
                                 );
                             }
                         }
-                );
 
-        prompt.authenticate(
-                new BiometricPrompt.PromptInfo.Builder()
-                        .setTitle(
-                                getString(
-                                        R.string.biometric_title
-                                )
-                        )
-                        .setSubtitle(
-                                getString(
-                                        R.string.biometric_change_subtitle
-                                )
-                        )
-                        .setNegativeButtonText(
-                                getString(
-                                        android.R.string.cancel
-                                )
-                        )
-                        .build(),
-                new BiometricPrompt.CryptoObject(cipher)
-        );
-    }
+                        @Override
+                        public void onAuthenticationError(
+                                int errorCode,
+                                CharSequence errString
+                        ) {
+                            super.onAuthenticationError(
+                                    errorCode,
+                                    errString
+                            );
+
+                            Arrays.fill(
+                                    replacement,
+                                    '\0'
+                            );
+                        }
+                    }
+            );
+
+    prompt.authenticate(
+            new BiometricPrompt.PromptInfo.Builder()
+                    .setTitle(
+                            getString(
+                                    R.string.biometric_title
+                            )
+                    )
+                    .setSubtitle(
+                            getString(
+                                    R.string.biometric_change_subtitle
+                            )
+                    )
+                    .setNegativeButtonText(
+                            getString(
+                                    android.R.string.cancel
+                            )
+                    )
+                    .build(),
+            new BiometricPrompt.CryptoObject(cipher)
+    );
+}
 
     /* =========================================================
        SELEÇÃO DE ARQUIVO / PASTA
@@ -1346,6 +1378,7 @@ public class MainActivity extends FragmentActivity {
         if (requestCode == CREATE_OUTPUT) {
 
             outputUri = data.getData();
+            outputDocumentCreatedByApp = true;
 
             persistWritePermission(
                     outputUri,
@@ -1360,6 +1393,7 @@ public class MainActivity extends FragmentActivity {
         if (requestCode == PICK_OUTPUT_FOLDER) {
 
             outputUri = data.getData();
+            outputDocumentCreatedByApp = false;
 
             persistTreePermission(
                     outputUri,
@@ -1724,20 +1758,26 @@ if (!encrypted
                         );
 
                 zipTotalBytes = 0;
-                zipProcessedBytes = 0;
+zipProcessedBytes = 0;
+zipActualBytes = 0;
+zipEntryCount = 0;
 
-                calculateZipTotal(
-                        inputUri,
-                        treeDocumentId(inputUri)
-                );
+calculateZipTotal(
+        inputUri,
+        treeDocumentId(inputUri),
+        ""
+);
 
-                updateZipProgress(0);
+// A contagem do pré-cálculo não deve ser somada
+// novamente à contagem durante a compactação.
+zipEntryCount = 0;
 
-                zipTree(
-                        inputUri,
-                        tempZip
-                );
+updateZipProgress(0);
 
+zipTree(
+        inputUri,
+        tempZip
+);
                 updateZipProgress(100);
 
                 copyFile(
@@ -1879,6 +1919,8 @@ if (!encrypted
             deleteQuietly(tempZip);
             deleteQuietly(tempOutput);
 
+            outputDocumentCreatedByApp = false;
+
             runOnUiThread(() -> {
 
                 setBusy(false);
@@ -1887,11 +1929,23 @@ if (!encrypted
                         WindowManager.LayoutParams.FLAG_KEEP_SCREEN_ON
                 );
 
-                toast(
-                        decrypt
-                                ? R.string.decrypted
-                                : R.string.encrypted
-                );
+                new AlertDialog.Builder(MainActivity.this)
+        .setTitle(
+                decrypt
+                        ? "🔓 DESCRIPTOGRAFADO!"
+                        : "🔒 CRIPTOGRAFADO!"
+        )
+        .setMessage(
+                decrypt
+                        ? R.string.decrypted
+                        : R.string.encrypted
+        )
+        .setCancelable(false)
+        .setPositiveButton(
+                android.R.string.ok,
+                (dialog, which) -> dialog.dismiss()
+        )
+        .show();
             });
 
         } catch (
@@ -1903,7 +1957,7 @@ if (!encrypted
                     tempZip,
                     tempOutput
             );
-
+            
             deleteOutputQuietly();
 
             fail(
@@ -1919,30 +1973,34 @@ if (!encrypted
                     tempZip,
                     tempOutput
             );
-
+            
             deleteOutputQuietly();
 
             fail(
                     R.string.corrupt_file
             );
 
-        } catch (Exception e) {
+        
+} catch (Exception e) {
 
-            cleanup(
-                    tempInput,
-                    tempZip,
-                    tempOutput
-            );
+    cleanup(
+            tempInput,
+            tempZip,
+            tempOutput
+    );
 
-            deleteOutputQuietly();
+    deleteOutputQuietly();
 
-            fail(
-                    decrypt
-                            ? R.string.error_decrypt
-                            : R.string.error_encrypt
-            );
+    String errorMessage =
+            e.getClass().getSimpleName()
+                    + ": "
+                    + e.getMessage();
 
-        } finally {
+    fail(
+            errorMessage
+    );
+
+} finally {
 
             Arrays.fill(
                     pass,
@@ -2048,83 +2106,128 @@ if (!encrypted
        ========================================================= */
 
     private void calculateZipTotal(
-            Uri treeUri,
-            String parentDocumentId
-    ) throws Exception {
+        Uri treeUri,
+        String parentDocumentId,
+        String relativePath
+) throws Exception {
 
-        Uri childrenUri =
-                DocumentsContract
-                        .buildChildDocumentsUriUsingTree(
-                                treeUri,
-                                parentDocumentId
-                        );
+    Uri childrenUri =
+            DocumentsContract.buildChildDocumentsUriUsingTree(
+                    treeUri,
+                    parentDocumentId
+            );
 
-        String[] projection = {
-                DocumentsContract.Document.COLUMN_DOCUMENT_ID,
-                DocumentsContract.Document.COLUMN_MIME_TYPE,
-                DocumentsContract.Document.COLUMN_SIZE
-        };
+    String[] projection = {
+            DocumentsContract.Document.COLUMN_DOCUMENT_ID,
+            DocumentsContract.Document.COLUMN_DISPLAY_NAME,
+            DocumentsContract.Document.COLUMN_MIME_TYPE,
+            DocumentsContract.Document.COLUMN_SIZE
+    };
 
-        try (
-                Cursor c =
-                        getContentResolver()
-                                .query(
-                                        childrenUri,
-                                        projection,
-                                        null,
-                                        null,
-                                        null
-                                )
-        ) {
+    try (Cursor c = getContentResolver().query(
+            childrenUri,
+            projection,
+            null,
+            null,
+            null
+    )) {
 
-            if (c == null) {
+        if (c == null) {
+            throw new Exception(
+                    "Não foi possível ler a pasta."
+            );
+        }
 
+        while (c.moveToNext()) {
+
+    String id = c.getString(0);
+    String childName = c.getString(1);
+    String mime = c.getString(2);
+
+    Uri childUri =
+            DocumentsContract.buildDocumentUriUsingTree(
+                    treeUri,
+                    id
+            );
+
+    // Ignora o arquivo de saída antes de contar a entrada.
+    if (isOutputUri(childUri)) {
+        continue;
+    }
+
+    zipEntryCount++;
+
+    if (zipEntryCount > MAX_ZIP_ENTRIES) {
+        throw new Exception(
+                "A pasta excede o limite de "
+                        + MAX_ZIP_ENTRIES
+                        + " entradas."
+        );
+    }
+
+            if (childName == null
+                    || childName.isEmpty()
+                    || childName.contains("/")
+                    || childName.contains("\\")) {
                 throw new Exception(
-                        "Não foi possível ler a pasta."
+                        "A pasta contém um nome de arquivo inválido."
                 );
             }
 
-            while (c.moveToNext()) {
+            String path = relativePath.isEmpty()
+                    ? childName
+                    : relativePath + "/" + childName;
 
-                String id =
-                        c.getString(0);
+            boolean directory = isDirectoryMime(mime);
 
-                String mime =
-                        c.getString(1);
+            validateZipEntryPath(path, directory);            
 
-                if (isDirectoryMime(mime)) {
+            if (isOutputUri(childUri)) {
+                zipEntryCount--;
+                continue;
+            }
 
-                    calculateZipTotal(
-                            treeUri,
-                            id
-                    );
+            if (directory) {
 
-                } else {
+                calculateZipTotal(
+                        treeUri,
+                        id,
+                        path
+                );
 
-                    Uri childUri =
-                            DocumentsContract
-                                    .buildDocumentUriUsingTree(
-                                            treeUri,
-                                            id
-                                    );
+            } else {
 
-                    if (isOutputUri(childUri)) {
-                        continue;
-                    }
+                long size = 0;
 
-                    long size = 0;
-
-                    if (!c.isNull(2)) {
-                        size = c.getLong(2);
-                    }
-
-                    if (size > 0) {
-                        zipTotalBytes += size;
-                    }
+                if (!c.isNull(3)) {
+                    size = c.getLong(3);
                 }
+
+                // Tamanho desconhecido é validado durante
+                // a leitura real do arquivo.
+                if (size < 0) {
+                    size = 0;
+                }
+
+                if (size > MAX_ZIP_ENTRY_SIZE) {
+                    throw new Exception(
+                            "O arquivo "
+                                    + childName
+                                    + " excede o limite de 1 GiB."
+                    );
+                }
+
+                if (size > MAX_ZIP_TOTAL_SIZE - zipTotalBytes) {
+                    throw new Exception(
+                            "A pasta excede o limite total de 2 GiB."
+                    );
+                }
+
+                zipTotalBytes += size;
             }
         }
     }
+}
 
     private boolean isDirectoryMime(
             String mime
@@ -2206,32 +2309,47 @@ if (!encrypted
 
             while (c.moveToNext()) {
 
-                String id =
-                        c.getString(0);
+                String id = c.getString(0);
+String childName = c.getString(1);
+String mime = c.getString(2);
 
-                String childName =
-                        c.getString(1);
+if (childName == null
+        || childName.isEmpty()
+        || childName.contains("/")
+        || childName.contains("\\")) {
 
-                String mime =
-                        c.getString(2);
+    throw new Exception(
+            "A pasta contém um nome de arquivo inválido."
+    );
+}
 
-                String path =
-                        relativePath.isEmpty()
-                                ? childName
-                                : relativePath
-                                        + "/"
-                                        + childName;
+String path = relativePath.isEmpty()
+        ? childName
+        : relativePath + "/" + childName;
 
-                Uri childUri =
-                        DocumentsContract
-                                .buildDocumentUriUsingTree(
-                                        treeUri,
-                                        id
-                                );
+Uri childUri =
+        DocumentsContract.buildDocumentUriUsingTree(
+                treeUri,
+                id
+        );
 
-                if (isOutputUri(childUri)) {
-                    continue;
-                }
+if (isOutputUri(childUri)) {
+    continue;
+}
+
+boolean directory = isDirectoryMime(mime);
+
+validateZipEntryPath(path, directory);
+
+zipEntryCount++;
+
+if (zipEntryCount > MAX_ZIP_ENTRIES) {
+    throw new Exception(
+            "A pasta excede o limite de "
+                    + MAX_ZIP_ENTRIES
+                    + " entradas."
+    );
+}
 
                 if (isDirectoryMime(mime)) {
 
@@ -2259,6 +2377,7 @@ if (!encrypted
                             new ZipEntry(path);
 
                     zos.putNextEntry(entry);
+                    long entryBytes = 0;
 
                     try (
                             InputStream in =
@@ -2281,21 +2400,30 @@ if (!encrypted
 
                         int n;
 
-                        while (
-                                (n = in.read(buffer))
-                                        != -1
-                        ) {
+                        while ((n = in.read(buffer)) != -1) {
 
-                            zos.write(
-                                    buffer,
-                                    0,
-                                    n
-                            );
+    if (n > MAX_ZIP_ENTRY_SIZE - entryBytes) {
+        throw new Exception(
+                "O arquivo "
+                        + childName
+                        + " excede o limite de 1 GiB."
+        );
+    }
 
-                            zipProcessedBytes += n;
+    if (n > MAX_ZIP_TOTAL_SIZE - zipActualBytes) {
+        throw new Exception(
+                "A compactação excede o limite total de 2 GiB."
+        );
+    }
 
-                            updateZipProgressFromBytes();
-                        }
+    zos.write(buffer, 0, n);
+
+    entryBytes += n;
+    zipActualBytes += n;
+    zipProcessedBytes += n;
+
+    updateZipProgressFromBytes();
+}
                     }
 
                     zos.closeEntry();
@@ -2372,201 +2500,405 @@ if (!encrypted
        CÁLCULO DA DESCOMPACTAÇÃO
        ========================================================= */
 
-    private long calculateUnzipTotal(
-            File zipFile
-    ) throws Exception {
+    
 
-        long total = 0;
+private long calculateUnzipTotal(
+        File zipFile
+) throws Exception {
 
-        try (
-                ZipFile zip =
-                        new ZipFile(zipFile)
-        ) {
+    long total = 0;
+    int entryCount = 0;
 
-            java.util.Enumeration<? extends ZipEntry> entries =
-                    zip.entries();
+    try (ZipFile zip = new ZipFile(zipFile)) {
 
-            while (entries.hasMoreElements()) {
+        java.util.Enumeration<? extends ZipEntry> entries =
+                zip.entries();
 
-                ZipEntry entry =
-                        entries.nextElement();
+        while (entries.hasMoreElements()) {
 
-                if (!entry.isDirectory()) {
+            ZipEntry entry = entries.nextElement();
+            entryCount++;
 
-                    long size =
-                            entry.getSize();
+            if (entryCount > MAX_ZIP_ENTRIES) {
+                throw new Exception(
+                        "O ZIP excede o limite de "
+                                + MAX_ZIP_ENTRIES
+                                + " entradas."
+                );
+            }
 
-                    if (size > 0) {
-                        total += size;
-                    }
+            String entryName = entry.getName();
+
+            // Rejeita barras invertidas no nome original.
+            if (entryName == null
+                    || entryName.isEmpty()
+                    || entryName.indexOf('\\') >= 0
+                    || !isSafeZipPath(entryName)) {
+
+                throw new Exception(
+                        "O ZIP contém um caminho inválido ou não seguro."
+                );
+            }
+
+            String path = entryName;
+
+            while (path.endsWith("/")) {
+                path = path.substring(0, path.length() - 1);
+            }
+
+            if (path.isEmpty()
+                    || path.length() > MAX_ZIP_PATH_LENGTH) {
+
+                throw new Exception(
+                        "O ZIP contém um caminho vazio ou muito longo."
+                );
+            }
+
+            int slashCount = 0;
+
+            for (int i = 0; i < path.length(); i++) {
+                if (path.charAt(i) == '/') {
+                    slashCount++;
                 }
             }
-        }
 
-        return total;
+            int depth = slashCount + 1;
+
+            if (depth > MAX_ZIP_DEPTH) {
+                throw new Exception(
+                        "O ZIP excede o limite de "
+                                + MAX_ZIP_DEPTH
+                                + " níveis."
+                );
+            }
+
+            if (entry.isDirectory()) {
+                continue;
+            }
+
+            long size = entry.getSize();
+
+            // O tamanho real também deve ser limitado
+            // durante a extração.
+            if (size < 0) {
+                continue;
+            }
+
+            if (size > MAX_ZIP_ENTRY_SIZE) {
+                throw new Exception(
+                        "O arquivo "
+                                + path
+                                + " excede o limite de 1 GiB."
+                );
+            }
+
+            // Evita overflow durante a soma.
+            if (size > MAX_ZIP_TOTAL_SIZE - total) {
+                throw new Exception(
+                        "O ZIP excede o limite total de 2 GiB."
+                );
+            }
+
+            total += size;
+        }
     }
+
+    return total;
+}
+
 
     /* =========================================================
        DESCOMPACTAÇÃO DA PASTA
        ========================================================= */
 
-    private void unzipToTree(
-            File zipFile,
-            Uri destinationTree
-    ) throws Exception {
+    
+private void unzipToTree(
+        File zipFile,
+        Uri destinationTree
+) throws Exception {
 
-        String originalName =
-                name(inputUri);
+    String originalName = name(inputUri);
+    String suffix = "_pasta.aes";
 
-        String folderName =
-                originalName.substring(
-                        0,
-                        originalName.length()
-                                - "_pasta.aes".length()
+    if (originalName == null || !originalName.endsWith(suffix)) {
+        throw new Exception("Nome do arquivo inválido.");
+    }
+
+    String folderName = originalName.substring(
+            0,
+            originalName.length() - suffix.length()
+    );
+
+    if (folderName.isEmpty()) {
+        throw new Exception("Nome da pasta inválido.");
+    }
+
+    // Registra exclusivamente os documentos criados nesta extração.
+    java.util.List<Uri> createdUris = new java.util.ArrayList<>();
+    java.util.Map<String, Uri> directories = new java.util.HashMap<>();
+
+    // Entradas explícitas do ZIP: impede nomes repetidos.
+    java.util.Set<String> seenEntries = new java.util.HashSet<>();
+
+    // true = diretório; false = arquivo.
+    // Também registra diretórios implícitos.
+    java.util.Map<String, Boolean> entryTypes =
+            new java.util.HashMap<>();
+
+    Uri outputFolder = createDirectory(destinationTree, folderName);
+
+    if (outputFolder == null) {
+        throw new Exception(
+                "Não foi possível criar a pasta de destino."
+        );
+    }
+
+    createdUris.add(outputFolder);
+    directories.put("", outputFolder);
+
+    long totalExtracted = 0;
+    int entryCount = 0;
+
+    try (
+            InputStream fis = new FileInputStream(zipFile);
+            ZipInputStream zis = new ZipInputStream(fis)
+    ) {
+
+        ZipEntry entry;
+        byte[] buffer = new byte[8192];
+
+        while ((entry = zis.getNextEntry()) != null) {
+
+            entryCount++;
+
+            if (entryCount > MAX_ZIP_ENTRIES) {
+                throw new Exception(
+                        "O ZIP excede o limite de "
+                                + MAX_ZIP_ENTRIES + " entradas."
+                );
+            }
+
+            
+String entryName = entry.getName();
+
+// Rejeita barras invertidas antes de qualquer normalização.
+if (entryName == null
+        || entryName.isEmpty()
+        || entryName.indexOf('\\') >= 0
+        || !isSafeZipPath(entryName)) {
+
+    throw new Exception(
+            "O ZIP contém um caminho inválido ou não seguro."
+    );
+}
+
+            boolean isDirectory = entry.isDirectory();
+
+            // Normaliza o caminho removendo barras finais.
+            String path = entryName;
+
+            while (path.endsWith("/")) {
+                path = path.substring(0, path.length() - 1);
+            }
+
+            if (path.isEmpty()) {
+                throw new Exception(
+                        "O ZIP contém um caminho vazio."
+                );
+            }
+
+            // Limite de comprimento.
+            if (path.length() > MAX_ZIP_PATH_LENGTH) {
+                throw new Exception(
+                        "O ZIP contém um caminho muito longo."
+                );
+            }
+
+            // Limite de profundidade.
+            int slashCount = 0;
+
+            for (int i = 0; i < path.length(); i++) {
+                if (path.charAt(i) == '/') {
+                    slashCount++;
+                }
+            }
+
+            int depth = slashCount + 1;
+
+            if (depth > MAX_ZIP_DEPTH) {
+                throw new Exception(
+                        "O ZIP excede o limite de "
+                                + MAX_ZIP_DEPTH
+                                + " níveis de pastas."
+                );
+            }
+
+            // Impede entradas explícitas repetidas.
+            if (!seenEntries.add(path)) {
+                throw new Exception(
+                        "O ZIP contém caminhos duplicados."
+                );
+            }
+
+            /*
+             * Registra os diretórios ancestrais.
+             * Um caminho que já seja arquivo não pode ser diretório.
+             */
+            int slash = path.indexOf('/');
+
+            while (slash >= 0) {
+
+                String parentPath = path.substring(0, slash);
+                Boolean parentType = entryTypes.get(parentPath);
+
+                if (Boolean.FALSE.equals(parentType)) {
+                    throw new Exception(
+                            "O ZIP contém conflito entre arquivo e pasta."
+                    );
+                }
+
+                entryTypes.put(parentPath, true);
+
+                slash = path.indexOf('/', slash + 1);
+            }
+
+            // Verifica conflito entre o caminho atual e entradas anteriores.
+            Boolean existingType = entryTypes.get(path);
+
+            if (isDirectory) {
+
+                if (Boolean.FALSE.equals(existingType)) {
+                    throw new Exception(
+                            "O ZIP contém conflito entre arquivo e pasta."
+                    );
+                }
+
+                // Pode já existir como diretório implícito.
+                entryTypes.put(path, true);
+
+            } else {
+
+                if (existingType != null) {
+                    throw new Exception(
+                            "O ZIP contém conflito entre arquivo e pasta."
+                    );
+                }
+
+                entryTypes.put(path, false);
+            }
+
+            if (isDirectory) {
+
+                createZipDirectories(
+                        path,
+                        outputFolder,
+                        directories,
+                        createdUris
                 );
 
-        Uri outputFolder =
-                createDirectory(
-                        destinationTree,
-                        folderName
-                );
+            } else {
 
-        if (outputFolder == null) {
+                int lastSlash = path.lastIndexOf('/');
 
-            throw new Exception(
-                    "Não foi possível criar a pasta de destino."
-            );
+                String parentPath = lastSlash >= 0
+                        ? path.substring(0, lastSlash)
+                        : "";
+
+                Uri parent = parentPath.isEmpty()
+                        ? outputFolder
+                        : createZipDirectories(
+                                parentPath,
+                                outputFolder,
+                                directories,
+                                createdUris
+                        );
+
+                String fileName = lastSlash >= 0
+                        ? path.substring(lastSlash + 1)
+                        : path;
+
+                if (fileName.isEmpty()) {
+                    throw new Exception(
+                            "Nome de arquivo inválido."
+                    );
+                }
+
+                Uri fileUri = createFile(parent, fileName);
+
+                if (fileUri == null) {
+                    throw new Exception(
+                            "Não foi possível criar " + fileName
+                    );
+                }
+
+                // Registra antes de começar a gravar.
+                createdUris.add(fileUri);
+
+                long entryExtracted = 0;
+
+                try (
+                        OutputStream out =
+                                getContentResolver().openOutputStream(fileUri)
+                ) {
+
+                    if (out == null) {
+                        throw new Exception(
+                                "Não foi possível escrever " + fileName
+                        );
+                    }
+
+                    int n;
+
+                    while ((n = zis.read(buffer)) != -1) {
+
+                        // Protege contra limites excedidos e overflow.
+                        if (n > MAX_ZIP_ENTRY_SIZE - entryExtracted) {
+                            throw new Exception(
+                                    "O arquivo " + fileName
+                                            + " excede o limite de 1 GiB."
+                            );
+                        }
+
+                        if (n > MAX_ZIP_TOTAL_SIZE - totalExtracted) {
+                            throw new Exception(
+                                    "A extração excede o limite total de 2 GiB."
+                            );
+                        }
+
+                        out.write(buffer, 0, n);
+
+                        entryExtracted += n;
+                        totalExtracted += n;
+
+                        unzipProcessedBytes += n;
+                        updateUnzipProgressFromBytes();
+                    }
+
+                    out.flush();
+                }
+            }
+
+            zis.closeEntry();
         }
 
-        try (
-                InputStream fis =
-                        new FileInputStream(
-                                zipFile
-                        );
+    } catch (Exception e) {
 
-                ZipInputStream zis =
-                        new ZipInputStream(fis)
-        ) {
-
-            ZipEntry entry;
-
-            byte[] buffer =
-                    new byte[8192];
-
-            while (
-                    (entry = zis.getNextEntry())
-                            != null
-            ) {
-
-                String entryName =
-                        entry.getName();
-
-                if (!isSafeZipPath(entryName)) {
-
-                    throw new Exception(
-                            "Arquivo ZIP inválido."
-                    );
-                }
-
-                if (entry.isDirectory()) {
-
-                    createDirectories(
-                            outputFolder,
-                            entryName
-                    );
-
-                } else {
-
-                    int slash =
-                            entryName.lastIndexOf('/');
-
-                    String parentPath =
-                            slash >= 0
-                                    ? entryName.substring(
-                                            0,
-                                            slash
-                                    )
-                                    : "";
-
-                    Uri parent =
-                            parentPath.isEmpty()
-                                    ? outputFolder
-                                    : createDirectories(
-                                            outputFolder,
-                                            parentPath
-                                    );
-
-                    if (parent == null) {
-
-                        throw new Exception(
-                                "Não foi possível criar "
-                                        + entryName
-                        );
-                    }
-
-                    String fileName =
-                            slash >= 0
-                                    ? entryName.substring(
-                                            slash + 1
-                                    )
-                                    : entryName;
-
-                    Uri fileUri =
-                            createFile(
-                                    parent,
-                                    fileName
-                            );
-
-                    if (fileUri == null) {
-
-                        throw new Exception(
-                                "Não foi possível criar "
-                                        + fileName
-                        );
-                    }
-
-                    try (
-                            OutputStream out =
-                                    getContentResolver()
-                                            .openOutputStream(
-                                                    fileUri
-                                            )
-                    ) {
-
-                        if (out == null) {
-
-                            throw new Exception(
-                                    "Não foi possível escrever "
-                                            + fileName
-                            );
-                        }
-
-                        int n;
-
-                        while (
-                                (n = zis.read(buffer))
-                                        != -1
-                        ) {
-
-                            out.write(
-                                    buffer,
-                                    0,
-                                    n
-                            );
-
-                            unzipProcessedBytes += n;
-
-                            updateUnzipProgressFromBytes();
-                        }
-
-                        out.flush();
-                    }
-                }
-
-                zis.closeEntry();
+        // Exclui apenas os documentos criados nesta operação.
+        // A ordem inversa remove arquivos antes das pastas.
+        for (int i = createdUris.size() - 1; i >= 0; i--) {
+            try {
+                DocumentsContract.deleteDocument(
+                        getContentResolver(),
+                        createdUris.get(i)
+                );
+            } catch (Exception ignored) {
+                // Alguns provedores podem impedir a exclusão.
             }
         }
+
+        throw e;
     }
+}
 
     private void updateUnzipProgressFromBytes() {
 
@@ -2589,27 +2921,111 @@ if (!encrypted
         updateUnzipProgress(value);
     }
 
-    private boolean isSafeZipPath(
-            String path
-    ) {
+    private void validateZipEntryPath(
+        String path,
+        boolean directory
+) throws Exception {
 
-        if (path == null ||
-                path.isEmpty()) {
+    if (path == null
+            || path.isEmpty()
+            || path.length() > MAX_ZIP_PATH_LENGTH
+            || !isSafeZipPath(path)) {
+
+        throw new Exception(
+                "O caminho excede os limites permitidos "
+                        + "ou é inválido."
+        );
+    }
+
+    String normalized = path.replace('\\', '/');
+    String[] segments = normalized.split("/");
+
+    for (String segment : segments) {
+        if (segment.isEmpty()
+                || ".".equals(segment)
+                || "..".equals(segment)) {
+
+            throw new Exception(
+                    "A pasta contém um caminho inválido."
+            );
+        }
+    }
+
+    int depth = segments.length;
+
+    if (depth > MAX_ZIP_DEPTH) {
+        throw new Exception(
+                "A pasta excede o limite de "
+                        + MAX_ZIP_DEPTH
+                        + " níveis."
+        );
+    }
+}
+
+    
+private boolean isSafeZipPath(String path) {
+
+    if (path == null || path.isEmpty()) {
+        return false;
+    }
+
+    // Rejeita caminhos absolutos e barras invertidas.
+    if (path.startsWith("/")
+            || path.indexOf('\\') >= 0) {
+        return false;
+    }
+
+    // Rejeita caminhos de unidade do Windows, como C:arquivo
+    // e C:/arquivo.
+    if (path.matches("^[a-zA-Z]:.*")) {
+        return false;
+    }
+
+    // Rejeita caracteres de controle, incluindo NUL.
+    for (int i = 0; i < path.length(); i++) {
+        char ch = path.charAt(i);
+
+        if (ch < 0x20 || ch == 0x7F) {
+            return false;
+        }
+    }
+
+    // Permite uma única barra final para diretórios.
+    String normalized = path;
+
+    if (normalized.endsWith("/")) {
+        normalized = normalized.substring(
+                0,
+                normalized.length() - 1
+        );
+    }
+
+    if (normalized.isEmpty()) {
+        return false;
+    }
+
+    // Verifica todos os segmentos individualmente.
+    String[] segments = normalized.split("/", -1);
+
+    for (String segment : segments) {
+
+        if (segment.isEmpty()
+                || ".".equals(segment)
+                || "..".equals(segment)) {
             return false;
         }
 
-        String normalized =
-                path.replace(
-                        '\\',
-                        '/'
-                );
-
-        return !normalized.startsWith("/")
-                && !normalized.contains("../")
-                && !normalized.equals("..")
-                && !normalized.contains("/..")
-                && !normalized.contains(":/");
+        // Rejeita nomes ambíguos ou incompatíveis
+        // com sistemas de arquivos Windows.
+        if (segment.indexOf(':') >= 0
+                || segment.endsWith(".")
+                || segment.endsWith(" ")) {
+            return false;
+        }
     }
+
+    return true;
+}
 
     /* =========================================================
        DOCUMENT PROVIDER
@@ -3201,21 +3617,36 @@ if (!encrypted
         });
     }
 
-    private void fail(
-            int res
-    ) {
+    
+private void fail(int res) {
+    fail(getString(res));
+}
 
-        runOnUiThread(() -> {
+private void fail(String message) {
+    runOnUiThread(() -> {
+        setBusy(false);
 
-            setBusy(false);
+        getWindow().clearFlags(
+                WindowManager.LayoutParams.FLAG_KEEP_SCREEN_ON
+        );
 
-            getWindow().clearFlags(
-                    WindowManager.LayoutParams.FLAG_KEEP_SCREEN_ON
-            );
+        String errorMessage = message;
 
-            toast(res);
-        });
-    }
+        if (errorMessage == null || errorMessage.trim().isEmpty()) {
+            errorMessage = "Ocorreu um erro inesperado.";
+        }
+
+        new AlertDialog.Builder(MainActivity.this)
+                .setTitle("‼️ ERRO!")
+                .setMessage(errorMessage)
+                .setCancelable(false)
+                .setPositiveButton(
+                        android.R.string.ok,
+                        (dialog, which) -> dialog.dismiss()
+                )
+                .show();
+    });
+}
 
     private void clearPendingPassword() {
 
@@ -3234,25 +3665,27 @@ if (!encrypted
 
     private void deleteOutputQuietly() {
 
-        if (outputUri == null) {
-            return;
-        }
-
-        try {
-
-            if (!DocumentsContract
-                    .isTreeUri(outputUri)) {
-
-                DocumentsContract
-                        .deleteDocument(
-                                getContentResolver(),
-                                outputUri
-                        );
-            }
-
-        } catch (Exception ignored) {
-        }
+    if (!outputDocumentCreatedByApp ||
+            outputUri == null) {
+        return;
     }
+
+    Uri target = outputUri;
+
+    // Impede uma segunda tentativa de excluir o mesmo documento.
+    outputDocumentCreatedByApp = false;
+
+    try {
+        if (!DocumentsContract.isTreeUri(target)) {
+            DocumentsContract.deleteDocument(
+                    getContentResolver(),
+                    target
+            );
+        }
+    } catch (Exception ignored) {
+        // A exclusão é uma tentativa de limpeza.
+    }
+}
 
     private void deleteQuietly(
             File f
@@ -3277,6 +3710,60 @@ if (!encrypted
                 Toast.LENGTH_LONG
         ).show();
     }
+        
+private Uri createZipDirectories(
+        String relativePath,
+        Uri rootFolder,
+        java.util.Map<String, Uri> directories,
+        java.util.List<Uri> createdUris
+) throws Exception {
+
+    Uri current = rootFolder;
+    StringBuilder currentPath = new StringBuilder();
+
+    for (String segment : relativePath.split("/")) {
+
+        if (segment.isEmpty()
+                || ".".equals(segment)
+                || "..".equals(segment)) {
+            throw new Exception("Caminho de pasta inválido.");
+        }
+
+        if (currentPath.length() > 0) {
+            currentPath.append('/');
+        }
+
+        currentPath.append(segment);
+
+        String path = currentPath.toString();
+        Uri existing = directories.get(path);
+
+        if (existing != null) {
+            current = existing;
+            continue;
+        }
+
+        Uri created = DocumentsContract.createDocument(
+                getContentResolver(),
+                current,
+                DocumentsContract.Document.MIME_TYPE_DIR,
+                segment
+        );
+
+        if (created == null) {
+            throw new Exception(
+                    "Não foi possível criar a pasta " + segment
+            );
+        }
+
+        createdUris.add(created);
+        directories.put(path, created);
+        current = created;
+    }
+
+    return current;
+}
+
 
     @Override
     protected void onDestroy() {
