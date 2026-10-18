@@ -29,6 +29,7 @@ import androidx.fragment.app.FragmentActivity;
 import java.io.File;
 import java.io.FileInputStream;
 import java.io.FileOutputStream;
+import java.io.IOException;
 import java.io.InputStream;
 import java.io.OutputStream;
 import java.util.Arrays;
@@ -64,7 +65,9 @@ public class MainActivity extends FragmentActivity {
      * menores para preservar compatibilidade com arquivos
      * antigos.
      */
-    private static final int MIN_PASSWORD_LENGTH = 6;
+    private static final int MIN_PASSWORD_LENGTH = 12;
+    // Limite de cópia de entrada para impedir consumo ilimitado de cache/disco.
+    private static final long MAX_INPUT_BYTES = 8L * 1024L * 1024L * 1024L;
 
     private Uri inputUri;
     private Uri outputUri;
@@ -649,26 +652,24 @@ public void onAuthenticationSucceeded(
                         }
                 );
 
-        prompt.authenticate(
-                new BiometricPrompt.PromptInfo.Builder()
-                        .setTitle(
-                                getString(
-                                        R.string.biometric_title
-                                )
-                        )
-                        .setSubtitle(
-                                getString(
-                                        R.string.biometric_register_subtitle
-                                )
-                        )
-                        .setNegativeButtonText(
-                                getString(
-                                        android.R.string.cancel
-                                )
-                        )
-                        .build(),
-                new BiometricPrompt.CryptoObject(cipher)
-        );
+        try {
+            prompt.authenticate(
+                    new BiometricPrompt.PromptInfo.Builder()
+                            .setTitle(getString(R.string.biometric_title))
+                            .setSubtitle(getString(R.string.biometric_register_subtitle))
+                            .setNegativeButtonText(getString(android.R.string.cancel))
+                            .build(),
+                    new BiometricPrompt.CryptoObject(cipher)
+            );
+        } catch (RuntimeException e) {
+            Arrays.fill(newPassword, '\0');
+            restoringBiometricSwitch = true;
+            biometricSwitch.setChecked(BiometricPasswordStore.isEnabled(this));
+            restoringBiometricSwitch = false;
+            biometricSettings.setEnabled(BiometricPasswordStore.isEnabled(this));
+            password.setVisibility(View.VISIBLE);
+            toast(R.string.biometric_setup_error);
+        }
     }
 
     private void disableBiometric() {
@@ -688,23 +689,21 @@ public void onAuthenticationSucceeded(
                         R.string.confirm,
                         (dialog, which) -> {
 
+                            boolean disabled = BiometricPasswordStore.disable(this);
+                            boolean stillEnabled = BiometricPasswordStore.isEnabled(this);
+
                             restoringBiometricSwitch = true;
-                            biometricSwitch.setChecked(false);
+                            biometricSwitch.setChecked(stillEnabled);
                             restoringBiometricSwitch = false;
 
                             password.setVisibility(
-                                    View.VISIBLE
+                                    stillEnabled ? View.GONE : View.VISIBLE
                             );
+                            biometricSettings.setEnabled(stillEnabled);
 
-                            biometricSettings.setEnabled(false);
-
-                            BiometricPasswordStore.disable(
-                                    this
-                            );
-
-                            toast(
-                                    R.string.biometric_disabled
-                            );
+                            toast(disabled
+                                    ? R.string.biometric_disabled
+                                    : R.string.biometric_setup_error);
                         }
                 )
                 .show();
@@ -733,17 +732,15 @@ public void onAuthenticationSucceeded(
 
         } catch (Exception e) {
 
+            boolean stillEnabled = BiometricPasswordStore.isEnabled(this);
             restoringBiometricSwitch = true;
-            biometricSwitch.setChecked(false);
+            biometricSwitch.setChecked(stillEnabled);
             restoringBiometricSwitch = false;
 
+            biometricSettings.setEnabled(stillEnabled);
             password.setVisibility(View.VISIBLE);
 
-            BiometricPasswordStore.disable(this);
-
-            toast(
-                    R.string.biometric_setup_error
-            );
+            toast(R.string.biometric_setup_error);
 
             return;
         }
@@ -840,26 +837,25 @@ private void authenticateForDecryption(
                     }
             );
 
-    prompt.authenticate(
-            new BiometricPrompt.PromptInfo.Builder()
-                    .setTitle(
-                            getString(R.string.biometric_title)
-                    )
-                    .setSubtitle(
-                            getString(R.string.biometric_unlock_subtitle)
-                    )
-                    .setNegativeButtonText(
-                            allowManualFallback
-                                    ? getString(
-                                            R.string.use_manual_password
-                                    )
-                                    : getString(
-                                            android.R.string.cancel
-                                    )
-                    )
-                    .build(),
-            new BiometricPrompt.CryptoObject(cipher)
-    );
+    try {
+        prompt.authenticate(
+                new BiometricPrompt.PromptInfo.Builder()
+                        .setTitle(getString(R.string.biometric_title))
+                        .setSubtitle(getString(R.string.biometric_unlock_subtitle))
+                        .setNegativeButtonText(
+                                allowManualFallback
+                                        ? getString(R.string.use_manual_password)
+                                        : getString(android.R.string.cancel))
+                        .build(),
+                new BiometricPrompt.CryptoObject(cipher)
+        );
+    } catch (RuntimeException e) {
+        if (allowManualFallback) {
+            showManualPasswordFallback();
+        } else {
+            toast(R.string.biometric_setup_error);
+        }
+    }
 }
 
     private void useBiometricPassword(char[] stored) {
@@ -1073,26 +1069,19 @@ private void authenticateForReplacement(
                     }
             );
 
-    prompt.authenticate(
-            new BiometricPrompt.PromptInfo.Builder()
-                    .setTitle(
-                            getString(
-                                    R.string.biometric_title
-                            )
-                    )
-                    .setSubtitle(
-                            getString(
-                                    R.string.biometric_change_subtitle
-                            )
-                    )
-                    .setNegativeButtonText(
-                            getString(
-                                    android.R.string.cancel
-                            )
-                    )
-                    .build(),
-            new BiometricPrompt.CryptoObject(cipher)
-    );
+    try {
+        prompt.authenticate(
+                new BiometricPrompt.PromptInfo.Builder()
+                        .setTitle(getString(R.string.biometric_title))
+                        .setSubtitle(getString(R.string.biometric_change_subtitle))
+                        .setNegativeButtonText(getString(android.R.string.cancel))
+                        .build(),
+                new BiometricPrompt.CryptoObject(cipher)
+        );
+    } catch (RuntimeException e) {
+        Arrays.fill(replacement, '\0');
+        toast(R.string.biometric_setup_error);
+    }
 }
 
     /* =========================================================
@@ -1562,7 +1551,7 @@ private void authenticateForReplacement(
         }
 
         /*
-         * A senha mínima de 6 caracteres é exigida
+         * A senha mínima de 12 caracteres é exigida
          * somente para novas criptografias.
          *
          * Na descriptografia, senhas antigas menores
@@ -1592,31 +1581,26 @@ private void authenticateForReplacement(
 
         final Cipher cipher;
 
-        try {
+        
+try {
 
-            cipher =
-                    BiometricPasswordStore
-                            .createDecryptionCipher(this);
-
-        } catch (Exception e) {
-
-            restoringBiometricSwitch = true;
-            biometricSwitch.setChecked(false);
-            restoringBiometricSwitch = false;
-
-            password.setVisibility(
-                    View.VISIBLE
-            );
-
+    cipher =
             BiometricPasswordStore
-                    .disable(this);
+                    .createDecryptionCipher(this);
 
-            toast(
-                    R.string.biometric_setup_error
-            );
+} catch (Exception e) {
 
-            return;
-        }
+    // Mantém a configuração biométrica salva.
+    password.setVisibility(View.VISIBLE);
+
+    toast(
+            R.string.biometric_setup_error
+    );
+
+    showManualPasswordFallback();
+
+    return;
+}
 
         authenticateForDecryption(
                 cipher,
@@ -1690,24 +1674,16 @@ private void authenticateForReplacement(
                         AlertDialog.BUTTON_POSITIVE
                 ).setOnClickListener(v -> {
 
-                    String inputName =
-        name(inputUri).toLowerCase();
+                    // Mantém a mesma política de senha usada pelo fluxo normal:
+                    // novas criptografias exigem MIN_PASSWORD_LENGTH; descriptografia
+                    // aceita senhas antigas mais curtas para preservar compatibilidade.
+                    if (!decryptMode
+                            && field.getText().length() < MIN_PASSWORD_LENGTH) {
 
-boolean encrypted =
-        inputName.endsWith(".aes")
-                || inputName.endsWith("_pasta.aes");
-
-if (!encrypted
-        && field.getText().length() < 6) {
-
-    field.requestFocus();
-
-    toast(
-            R.string.short_password
-    );
-
-    return;
-}
+                        field.requestFocus();
+                        toast(R.string.short_password);
+                        return;
+                    }
 
                     clearPendingPassword();
 
@@ -1958,10 +1934,13 @@ zipTree(
                     tempOutput
             );
             
-            deleteOutputQuietly();
+            boolean outputCleaned = deleteOutputQuietly();
 
             fail(
-                    R.string.wrong_password
+                    outputCleaned
+                            ? getString(R.string.wrong_password)
+                            : getString(R.string.wrong_password)
+                                    + "\n\nNão foi possível remover o arquivo de saída incompleto. Verifique e exclua-o manualmente no local escolhido."
             );
 
         } catch (
@@ -1974,10 +1953,13 @@ zipTree(
                     tempOutput
             );
             
-            deleteOutputQuietly();
+            boolean outputCleaned = deleteOutputQuietly();
 
             fail(
-                    R.string.corrupt_file
+                    outputCleaned
+                            ? getString(R.string.corrupt_file)
+                            : getString(R.string.corrupt_file)
+                                    + "\n\nNão foi possível remover o arquivo de saída incompleto. Verifique e exclua-o manualmente no local escolhido."
             );
 
         
@@ -1989,23 +1971,21 @@ zipTree(
             tempOutput
     );
 
-    deleteOutputQuietly();
+    boolean outputCleaned = deleteOutputQuietly();
 
-    String errorMessage =
-            e.getClass().getSimpleName()
-                    + ": "
-                    + e.getMessage();
-
-    fail(
-            errorMessage
-    );
+    // Não exibe mensagens de exceção/caminhos internos na interface.
+    String errorMessage = "Não foi possível concluir a operação. Verifique a senha, o arquivo e o espaço disponível.";
+    if (!outputCleaned) {
+        errorMessage += "\n\nNão foi possível remover o arquivo de saída incompleto. Verifique e exclua-o manualmente no local escolhido.";
+    }
+    fail(errorMessage);
 
 } finally {
-
-            Arrays.fill(
-                    pass,
-                    '\0'
-            );
+            // Limpeza incondicional: também ocorre se uma etapa lançar exceção.
+            deleteQuietly(tempInput);
+            deleteQuietly(tempZip);
+            deleteQuietly(tempOutput);
+            Arrays.fill(pass, '\0');
         }
     }
 
@@ -2181,11 +2161,6 @@ zipTree(
             boolean directory = isDirectoryMime(mime);
 
             validateZipEntryPath(path, directory);            
-
-            if (isOutputUri(childUri)) {
-                zipEntryCount--;
-                continue;
-            }
 
             if (directory) {
 
@@ -3286,99 +3261,84 @@ private boolean isSafeZipPath(String path) {
                 );
             }
 
-            byte[] buffer =
-                    new byte[8192];
+            byte[] buffer = new byte[8192];
+            long copied = 0;
+            try {
+                int n;
+                while ((n = in.read(buffer)) != -1) {
+                    if (n == 0) continue;
+                    if (copied > MAX_INPUT_BYTES - n) {
+                        throw new IOException("O arquivo excede o limite permitido.");
+                    }
+                    out.write(buffer, 0, n);
+                    copied += n;
+                    Arrays.fill(buffer, 0, n, (byte) 0);
+                }
+                out.flush();
+            } finally {
+                Arrays.fill(buffer, (byte) 0);
+            }
+        }
+    }
 
+    
+private void copyFile(
+        File source,
+        File destination
+) throws Exception {
+
+    byte[] buffer = new byte[8192];
+
+    try {
+        try (
+                InputStream in = new FileInputStream(source);
+                OutputStream out = new FileOutputStream(
+                        destination,
+                        false
+                )
+        ) {
             int n;
 
-            while (
-                    (n = in.read(buffer))
-                            != -1
-            ) {
+            while ((n = in.read(buffer)) != -1) {
+                if (n == 0) {
+                    continue;
+                }
 
-                out.write(
-                        buffer,
-                        0,
-                        n
-                );
+                out.write(buffer, 0, n);
             }
 
             out.flush();
         }
+    } finally {
+        Arrays.fill(buffer, (byte) 0);
+    }
+}
+
+
+    
+
+private void copyToOutput(
+        File source,
+        Uri destination,
+        boolean decrypting
+) throws Exception {
+
+    if (source == null || destination == null) {
+        throw new Exception("Destino inválido.");
     }
 
-    private void copyFile(
-            File source,
-            File destination
-    ) throws Exception {
+    long total = source.length();
+    long done = 0;
 
+    byte[] buffer = new byte[8192];
+
+    try {
         try (
-                InputStream in =
-                        new FileInputStream(source);
-
-                OutputStream out =
-                        new FileOutputStream(
-                                destination,
-                                false
-                        )
+                InputStream in = new FileInputStream(source);
+                OutputStream out = getContentResolver()
+                        .openOutputStream(destination)
         ) {
-
-            byte[] buffer =
-                    new byte[8192];
-
-            int n;
-
-            while (
-                    (n = in.read(buffer))
-                            != -1
-            ) {
-
-                out.write(
-                        buffer,
-                        0,
-                        n
-                );
-            }
-
-            out.flush();
-        }
-    }
-
-    private void copyToOutput(
-            File source,
-            Uri destination,
-            boolean decrypting
-    ) throws Exception {
-
-        if (source == null ||
-                destination == null) {
-
-            throw new Exception(
-                    "Destino inválido."
-            );
-        }
-
-        long total =
-                source.length();
-
-        long done = 0;
-
-        byte[] buffer =
-                new byte[8192];
-
-        try (
-                InputStream in =
-                        new FileInputStream(source);
-
-                OutputStream out =
-                        getContentResolver()
-                                .openOutputStream(
-                                        destination
-                                )
-        ) {
-
             if (out == null) {
-
                 throw new Exception(
                         "Não foi possível abrir o destino."
                 );
@@ -3386,21 +3346,15 @@ private boolean isSafeZipPath(String path) {
 
             int n;
 
-            while (
-                    (n = in.read(buffer))
-                            != -1
-            ) {
+            while ((n = in.read(buffer)) != -1) {
+                if (n == 0) {
+                    continue;
+                }
 
-                out.write(
-                        buffer,
-                        0,
-                        n
-                );
-
+                out.write(buffer, 0, n);
                 done += n;
 
                 if (total > 0) {
-
                     updateCryptoProgress(
                             done,
                             total,
@@ -3411,7 +3365,12 @@ private boolean isSafeZipPath(String path) {
 
             out.flush();
         }
+    } finally {
+        Arrays.fill(buffer, (byte) 0);
     }
+}
+
+
 
     /* =========================================================
        NOMES
@@ -3663,29 +3622,36 @@ private void fail(String message) {
         password.getText().clear();
     }
 
-    private void deleteOutputQuietly() {
+    /**
+     * Tenta remover somente o documento que esta operação criou.
+     * Retorna false se não for possível confirmar a exclusão, para que a
+     * interface avise o usuário sobre um possível arquivo parcial residual.
+     */
+    private boolean deleteOutputQuietly() {
 
-    if (!outputDocumentCreatedByApp ||
-            outputUri == null) {
-        return;
-    }
+        if (!outputDocumentCreatedByApp) {
+            return true;
+        }
 
-    Uri target = outputUri;
+        Uri target = outputUri;
+        if (target == null || DocumentsContract.isTreeUri(target)) {
+            return false;
+        }
 
-    // Impede uma segunda tentativa de excluir o mesmo documento.
-    outputDocumentCreatedByApp = false;
-
-    try {
-        if (!DocumentsContract.isTreeUri(target)) {
-            DocumentsContract.deleteDocument(
+        try {
+            boolean deleted = DocumentsContract.deleteDocument(
                     getContentResolver(),
                     target
             );
+            if (deleted) {
+                outputDocumentCreatedByApp = false;
+            }
+            return deleted;
+        } catch (Exception ignored) {
+            // Mantém a flag para não declarar a limpeza como concluída.
+            return false;
         }
-    } catch (Exception ignored) {
-        // A exclusão é uma tentativa de limpeza.
     }
-}
 
     private void deleteQuietly(
             File f
