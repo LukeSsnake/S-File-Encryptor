@@ -145,19 +145,19 @@ public final class CryptoEngine {
 
     // Mantido no limite do formato anterior para preservar arquivos V2 já existentes.
     private static final int ARGON2_MAX_MEMORY_KIB =
-            256 * 1024;
+            128 * 1024;
 
     private static final int ARGON2_MIN_ITERATIONS =
             1;
 
     private static final int ARGON2_MAX_ITERATIONS =
-            10;
+            6;
 
     private static final int ARGON2_MIN_PARALLELISM =
             1;
 
     private static final int ARGON2_MAX_PARALLELISM =
-            4;
+            2;
 
     /*
      * Buffer usado durante operações de arquivo.
@@ -449,6 +449,8 @@ public final class CryptoEngine {
      * V1 -> PBKDF2 + AES-256-CBC + HMAC-SHA256
      */
 
+
+
     public static void decrypt(
             InputStream verifyInput,
             InputStream decryptInput,
@@ -458,14 +460,6 @@ public final class CryptoEngine {
             Progress progress,
             File tempDirectory
     ) throws Exception {
-
-        if (tempDirectory == null
-                || !tempDirectory.isDirectory()
-                || !tempDirectory.canWrite()) {
-            throw new IOException(
-            "Diretório temporário privado indisponível."
-            );
-        }
 
         if (verifyInput == null ||
                 decryptInput == null ||
@@ -1249,15 +1243,22 @@ public final class CryptoEngine {
      * Mantém suporte para operações em memória.
      */
 
+    // API de conveniência em memória: limita o consumo de RAM. Para arquivos
+    // maiores, use a API de descriptografia por streams.
+    private static final int MAX_IN_MEMORY_DECRYPT_BYTES = 16 * 1024 * 1024;
+
     public static byte[] decryptBytes(
             byte[] encrypted,
             char[] password
     ) throws Exception {
 
-        if (encrypted == null ||
-                password == null) {
-
-            throw new IllegalArgumentException();
+        if (encrypted == null || password == null) {
+            throw new IllegalArgumentException("Dados cifrados e senha são obrigatórios.");
+        }
+        if (encrypted.length > MAX_IN_MEMORY_DECRYPT_BYTES) {
+            throw new IllegalArgumentException(
+                    "Arquivo grande demais para descriptografia em memória. Use a API por streams."
+            );
         }
 
         if (hasV2Magic(encrypted)) {
@@ -1696,42 +1697,27 @@ public final class CryptoEngine {
      * Se o ambiente não permitir restringir as permissões, falha fechado.
      */
     private static File createPrivateTempFile(
-        String prefix,
-        String suffix,
-        File directory
-) throws IOException {
-
-    if (directory == null
-            || !directory.isDirectory()
-            || !directory.canWrite()) {
-        throw new IOException(
-                "Diretório temporário privado indisponível."
-        );
-    }
-
-    File file = File.createTempFile(
-            prefix,
-            suffix,
-            directory
-    );
-
-    boolean ok = file.setReadable(false, false)
-            && file.setWritable(false, false)
-            && file.setReadable(true, true)
-            && file.setWritable(true, true);
-
-    if (!ok) {
-        if (!file.delete()) {
-            file.deleteOnExit();
+            String prefix,
+            String suffix,
+            File directory
+    ) throws IOException {
+        if (directory == null) {
+            throw new IOException("Diretório temporário indisponível.");
         }
-
-        throw new IOException(
-                "Não foi possível proteger o arquivo temporário."
-        );
+        if (!directory.isDirectory() && !directory.mkdirs()) {
+            throw new IOException("Não foi possível preparar o diretório temporário.");
+        }
+        File file = File.createTempFile(prefix, suffix, directory);
+        boolean ok = file.setReadable(false, false)
+                && file.setWritable(false, false)
+                && file.setReadable(true, true)
+                && file.setWritable(true, true);
+        if (!ok) {
+            file.delete();
+            throw new IOException("Não foi possível proteger o arquivo temporário.");
+        }
+        return file;
     }
-
-    return file;
-}
 
     /*
      * ============================================================
@@ -1923,21 +1909,16 @@ public final class CryptoEngine {
      * ============================================================
      */
 
-    private static boolean hasV2Magic(
-            byte[] data
-    ) {
-
-        return data != null &&
-                data.length >=
-                        V2_MAGIC.length &&
-                Arrays.equals(
-                        Arrays.copyOfRange(
-                                data,
-                                0,
-                                V2_MAGIC.length
-                        ),
-                        V2_MAGIC
-                );
+    private static boolean hasV2Magic(byte[] data) {
+        if (data == null || data.length < V2_MAGIC.length) {
+            return false;
+        }
+        for (int i = 0; i < V2_MAGIC.length; i++) {
+            if (data[i] != V2_MAGIC[i]) {
+                return false;
+            }
+        }
+        return true;
     }
 
     /*
@@ -1974,12 +1955,12 @@ public final class CryptoEngine {
 
         while (position < end) {
 
-            int n =
-                    in.read(
-                            buffer,
-                            position,
-                            end - position
-                    );
+            int n = readSome(
+                    in,
+                    buffer,
+                    position,
+                    end - position
+            );
 
             if (n < 0) {
                 throw new EOFException();
@@ -1999,12 +1980,18 @@ public final class CryptoEngine {
             int offset,
             int length
     ) throws IOException {
-
-        return in.read(
-                buffer,
-                offset,
-                length
-        );
+        int read = in.read(buffer, offset, length);
+        if (read != 0 || length == 0) {
+            return read;
+        }
+        // Defensive fallback: prevents endless loops with unusual InputStreams
+        // that return 0 even though a positive number of bytes was requested.
+        int one = in.read();
+        if (one < 0) {
+            return -1;
+        }
+        buffer[offset] = (byte) one;
+        return 1;
     }
 
     /*
