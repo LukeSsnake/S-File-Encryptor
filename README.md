@@ -66,10 +66,6 @@ To build the application from the command line:
 
     ./gradlew assembleRelease
 
-## Source Status
-
-This repository contains a reconstructed and maintained implementation of S File Encryptor. It is not claimed to be byte-for-byte identical to the original private development project.
-
 ## License
 
 MIT. See [LICENSE](LICENSE).
