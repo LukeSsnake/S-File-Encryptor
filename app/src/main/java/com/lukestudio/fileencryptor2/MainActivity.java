@@ -1,5 +1,6 @@
 package com.lukestudio.fileencryptor2;
 
+import java.nio.CharBuffer;
 import java.util.zip.ZipFile;
 import android.app.AlertDialog;
 import android.content.ClipData;
@@ -256,6 +257,21 @@ public class MainActivity extends FragmentActivity {
     }
 }
 
+    private char[] copyPassword(EditText field) {
+    android.text.Editable editable = field.getText();
+
+    char[] copy = new char[editable.length()];
+
+    editable.getChars(
+            0,
+            editable.length(),
+            copy,
+            0
+    );
+
+    return copy;
+}
+
     private void showHelp() {
 
         new AlertDialog.Builder(this)
@@ -508,10 +524,7 @@ public class MainActivity extends FragmentActivity {
                         return;
                     }
 
-                    char[] newPassword =
-                            field.getText()
-                                    .toString()
-                                    .toCharArray();
+                    char[] newPassword = copyPassword(field);
 
                     dialog.dismiss();
 
@@ -885,7 +898,7 @@ private void authenticateForDecryption(
 
         field.setSingleLine(true);
         field.setInputType(InputType.TYPE_CLASS_TEXT);
-        field.setText(new String(stored));
+        field.setText(CharBuffer.wrap(stored));
         field.setSelection(field.length());
 
         LinearLayout box = new LinearLayout(this);
@@ -945,10 +958,7 @@ private void authenticateForDecryption(
                         return;
                     }
 
-                    char[] replacement =
-                            field.getText()
-                                    .toString()
-                                    .toCharArray();
+                    char[] replacement = copyPassword(field);
 
                     dialog.dismiss();
 
@@ -1569,10 +1579,7 @@ private void authenticateForReplacement(
             return;
         }
 
-        pendingPassword =
-                password.getText()
-                        .toString()
-                        .toCharArray();
+        pendingPassword = copyPassword(password);
 
         pickOutput();
     }
@@ -1687,10 +1694,7 @@ try {
 
                     clearPendingPassword();
 
-                    pendingPassword =
-                            field.getText()
-                                    .toString()
-                                    .toCharArray();
+                    pendingPassword = copyPassword(field);
 
                     dialog.dismiss();
 
