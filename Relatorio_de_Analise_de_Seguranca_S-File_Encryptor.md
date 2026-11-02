@@ -1,483 +1,614 @@
-# Relatório de Análise de Segurança - S-File Encryptor
+Relatório de Análise de Segurança — S-File Encryptor
+Tipo de análise: Análise estática de código-fonte
+Projeto: S-File Encryptor
+Versão analisada: 2.x
+Plataforma: Android (Java)
+Data da análise: Novembro de 2025
+Arquivos avaliados: MainActivity.java, CryptoEngine.java e BiometricPasswordStore.java
+Responsável pela análise: IA Assistente de Código
+1. Resumo Executivo
 
-## Informações do Projeto
-| Campo | Valor |
-|-------|-------|
-| **Aplicativo** | S-File Encryptor |
-| **Versão Analisada** | 2.x |
-| **Plataforma** | Android (Java) |
-| **Data da Análise** | Novembro 2025 |
-| **Arquivos Avaliados** | 3 (MainActivity.java, CryptoEngine.java, BiometricPasswordStore.java) |
-| **Analista** | IA Assistente de Código |
+Este documento apresenta uma avaliação das implementações de segurança do S-File Encryptor, considerando os três arquivos-fonte disponibilizados para análise.
 
----
+A avaliação contempla mecanismos criptográficos, gerenciamento de senhas e chaves, autenticação biométrica, manipulação de arquivos, proteção contra entradas maliciosas e práticas gerais de segurança no Android.
 
-## 📊 Resumo Executivo
+Indicadores da análise
+Indicador	Resultado
+Vulnerabilidades críticas identificadas	0
+Boas práticas identificadas	15+
+Observações de melhoria	4
+Classificação preliminar	Favorável
+Veredito preliminar
 
-```card-row
-[
-  { "type": "metric", "title": "Pontos Críticos", "value": "0", "delta": "-", "direction": "down" },
-  { "type": "metric", "title": "Boas Práticas", "value": "15+", "delta": "+", "direction": "up" },
-  { "type": "metric", "title": "Observações Moderadas", "value": "4", "delta": "", "direction": "flat" },
-  { "type": "metric", "title": "Status Geral", "value": "Apto Produção", "delta": "✅", "direction": "up" }
-]
-```
+Não foram identificadas vulnerabilidades críticas nos trechos analisados.
 
-### Veredito Final
+O aplicativo apresenta uma arquitetura de segurança consistente, com destaque para a utilização de Argon2id, AES-256-GCM, Android Keystore e mecanismos de proteção contra manipulação de arquivos.
 
-> **Nenhuma vulnerabilidade crítica identificada.** O aplicativo demonstra maturidade excepcional em segurança criptográfica para software open-source amador. A implementação do V2 utiliza padrões state-of-the-art (Argon2id + AES-256-GCM) e a higiene de memória é exemplar. Apenas melhorias opcionais foram sugeridas para endurecimento adicional.
+A implementação do formato V2 apresenta escolhas criptográficas modernas e boas práticas de gerenciamento de memória.
 
----
+Entretanto, esta avaliação não representa uma certificação de segurança nem comprova a ausência de vulnerabilidades. Testes dinâmicos, análise das dependências, revisão do fluxo completo de execução e auditoria independente são necessários para uma conclusão definitiva sobre a segurança do aplicativo.
 
-## 🏗️ Arquitetura do Sistema
+2. Arquitetura do Sistema
+2.1 Componentes principais
 
-### Componentes Principais
+O aplicativo apresenta três componentes principais:
 
-```card
-{
-  "type": "summary",
-  "title": "Três Camadas de Segurança",
-  "body": "O app possui três módulos interdependentes: (1) MainActivity - camada de UI e gerenciamento de fluxo, (2) CryptoEngine - núcleo criptográfico com dois formatos (V1 legado e V2 moderno), (3) BiometricPasswordStore - proteção biométrica via Android Keystore. Todas as comunicações entre camadas seguem princípios de defesa em profundidade.",
-  "severity": "info"
-}
-```
+Componente	Responsabilidade
+MainActivity	Interface do usuário e gerenciamento do fluxo de operações.
+CryptoEngine	Implementação dos mecanismos criptográficos e gerenciamento dos formatos V1 e V2.
+BiometricPasswordStore	Armazenamento protegido de credenciais e integração com o Android Keystore.
 
-### Fluxo de Dados
+A separação dessas responsabilidades contribui para a organização do código e permite aplicar diferentes mecanismos de proteção em cada camada.
 
-```
-┌─────────────────┐
-│   UI Layer      │
-│ (MainActivity)  │
-└────────┬────────┘
-         │ Senha/Biometria
-         ▼
-┌─────────────────┐
-│ Auth Layer      │
-│(BiometricStore) │──→ Android Keystore
-└────────┬────────┘
-         │ Senha Descriptografada
-         ▼
-┌─────────────────┐
-│ Crypto Layer    │
-│ (CryptoEngine)  │──→ Arquivo Criptografado
-└─────────────────┘
-```
+2.2 Fluxo de dados
+text
+┌─────────────────────┐
+│      UI Layer       │
+│    MainActivity     │
+└──────────┬──────────┘
+           │
+           │ Senha / Biometria
+           ▼
+┌─────────────────────┐
+│     Auth Layer      │
+│ BiometricPassword   │
+│       Store         │
+└──────────┬──────────┘
+           │
+           │ Credencial recuperada
+           ▼
+┌─────────────────────┐
+│    Crypto Layer     │
+│    CryptoEngine     │
+└──────────┬──────────┘
+           │
+           ▼
+┌─────────────────────┐
+│ Arquivo criptografado│
+└─────────────────────┘
 
----
+3. Pontos Fortes Identificados
+3.1 Criptografia V2
 
-## ✅ Pontos Fortes Identificados
+O formato V2 utiliza mecanismos criptográficos modernos:
 
-### 1. Criptografia V2 - Estado da Arte
+Componente	Implementação	Avaliação
+KDF	Argon2id	Boa resistência a ataques de tentativa de senha.
+Memória Argon2	64 MiB	Custo computacional e de memória relevante.
+Iterações	3	Parâmetro configurado no formato analisado.
+Paralelismo	1 lane	Configuração conservadora.
+Cifra	AES-256-GCM	Criptografia autenticada (AEAD).
+Tag de autenticação	128 bits	Integridade e autenticidade dos dados.
+Salt	16 bytes aleatórios	Reduz reutilização de material derivado.
+Nonce	12 bytes	Tamanho recomendado para GCM.
+AAD	Header autenticado	Protege a integridade dos metadados.
 
-| Componente | Implementação | Avaliação |
-|------------|---------------|-----------|
-| **KDF** | Argon2id, 64 MiB, 3 iterações, 1 lane | ✅ Acima do mínimo OWASP |
-| **Cifra** | AES-256-GCM, tag de 128 bits | ✅ AEAD moderno |
-| **Salt** | 16 bytes, `SecureRandom` | ✅ Único por arquivo |
-| **Nonce** | 12 bytes aleatório | ✅ Seguro (salt novo ≠ nonce colisão) |
-| **AAD** | Header de 48 bytes autenticado | ✅ Impede manipulação |
+Análise técnica:
 
-**Por que é importante:** O uso de Argon2id (vencedor do Password Hashing Competition 2015) com parâmetros conservadores oferece resistência superior contra ataques de GPU/ASIC comparado a PBKDF2 tradicional.
+Argon2id combina características das variantes Argon2i e Argon2d, oferecendo resistência a diferentes classes de ataques contra senhas.
 
-### 2. Higiene de Memória Consistente
+A utilização de AES-256-GCM permite combinar confidencialidade e autenticação em uma única operação criptográfica.
 
-```java
-// Padrão aplicado em todos os módulos:
-Arrays.fill(passwordBytes, '\0');
+A segurança efetiva depende da correta implementação, da geração de parâmetros, da validação dos metadados e da garantia de que nonces não sejam reutilizados com a mesma chave.
+
+3.2 Gerenciamento e Higienização de Memória
+
+Foi identificada a utilização de Arrays.fill() para limpar buffers que podem conter dados sensíveis.
+
+Exemplo:
+
+java
+Arrays.fill(passwordBytes, (byte) 0);
 Arrays.fill(buffer, (byte) 0);
 Arrays.fill(salt, (byte) 0);
 Arrays.fill(nonce, (byte) 0);
 Arrays.fill(key, (byte) 0);
-```
 
-**Análise:** Senhas nunca são convertidas para `String` imutável (Java String é imutável e vive no heap sem controle de lifecycle). Buffers são zerados imediatamente após uso em blocos `finally`. Este é um padrão que muitos apps comerciais não implementam.
 
-### 3. Proteção de Tela Completa
+Análise técnica:
 
-```java
+A limpeza explícita de arrays reduz o tempo durante o qual informações sensíveis permanecem disponíveis na memória.
+
+Outro ponto positivo é a preferência por arrays de bytes em vez de objetos String para o tratamento de senhas.
+
+Entretanto, a limpeza de memória em Java não oferece garantia absoluta de eliminação de todas as cópias dos dados, devido ao gerenciamento automático de memória e às possíveis otimizações da JVM.
+
+3.3 Proteção Contra Captura de Tela
+
+Foi identificada a utilização de FLAG_SECURE:
+
+java
 getWindow().setFlags(
     WindowManager.LayoutParams.FLAG_SECURE,
     WindowManager.LayoutParams.FLAG_SECURE
 );
-```
 
-**Efeito:** Previne screenshots, screen recording e gravação de tela em todo o app. Essencial para apps que manipulam credenciais sensíveis.
 
-### 4. Validations de Path Traversal (Zip Slip)
+Benefícios:
 
-```java
+Restringe capturas de tela convencionais.
+Impede a inclusão da janela em determinadas gravações de tela.
+Reduz a exposição visual de informações sensíveis.
+
+A proteção depende do comportamento do sistema operacional e não impede todos os métodos possíveis de captura de informações.
+
+3.4 Proteção Contra Path Traversal (Zip Slip)
+
+Foi identificada uma rotina de validação dos caminhos presentes em arquivos compactados.
+
+Exemplo simplificado:
+
+java
 private boolean isSafeZipPath(String path) {
-    if (path.startsWith("/") || path.indexOf('\\') >= 0) return false;
-    if (segment.equals("..") || segment.equals(".")) return false;
-    if (matches("^[a-zA-Z]:.*")) return false; // Windows drive
-    // Verifica caracteres de controle
-    for (char ch : path) if (ch < 0x20 || ch == 0x7F) return false;
+    if (path.startsWith("/") || path.indexOf('\\') >= 0) {
+        return false;
+    }
+
+    // Validação dos segmentos do caminho.
+    // Rejeição de segmentos "." e "..".
+    // Rejeição de caminhos absolutos.
+    // Rejeição de caracteres de controle.
+
+    return true;
 }
-```
 
-**Risco Mitigado:** Ataque Zip Slip clássico onde um arquivo malicioso `../../../etc/passwd` poderia sobrescrever arquivos arbitrários do sistema. Sua implementação rejeita explicitamente todos os vetores conhecidos.
 
-### 5. Autenticação Biométrica Segura
+Análise técnica:
 
-```java
+A validação busca impedir que entradas maliciosas de arquivos ZIP utilizem caminhos relativos para acessar diretórios fora do destino autorizado.
+
+Esse mecanismo é relevante para mitigar ataques conhecidos como Zip Slip.
+
+A segurança depende também da normalização dos caminhos e da validação do destino final após a resolução do caminho.
+
+3.5 Autenticação Biométrica
+
+Foram identificadas as seguintes configurações:
+
+java
 .setUserAuthenticationRequired(true)
-.setUserAuthenticationParameters(0, AUTH_BIOMETRIC_STRONG)
+.setUserAuthenticationParameters(
+    0,
+    AUTH_BIOMETRIC_STRONG
+)
 .setInvalidatedByBiometricEnrollment(true)
-```
 
-**Proteções Ativas:**
-- Chave nunca sai do Secure Element (Keystore)
-- Cada uso exige autenticação biométrica (timeout = 0)
-- Remoção de impressões digitais invalida a chave automaticamente
-- Uso de `WeakHashMap` para garantir consumo único dos Cipher objects
 
-### 6. Anti-DoS por Recursos Excessivos
+Proteções oferecidas:
 
-| Recurso | Limite Aplicado |
-|---------|-----------------|
-| Tamanho arquivo ZIP | 2 GB total, 1 GB por entrada |
-| Número de entradas | 10.000 arquivos/pastas |
-| Profundidade de pastas | 20 níveis |
-| Memória Argon2 | 8-128 MiB (limitado no header V2) |
-| Iterações Argon2 | 1-6 (validado no header) |
+Exigência de autenticação para utilização da chave.
+Integração com o Android Keystore.
+Restrição ao uso de biometria forte.
+Possibilidade de invalidação da chave após alterações no cadastro biométrico.
 
-**Importância:** Um atacante não pode forçar o app a consumir gigabytes de RAM ou travar o dispositivo com arquivos maliciosos.
+A implementação utiliza mecanismos nativos do Android para controlar o acesso às operações criptográficas.
 
-### 7. Encrypt-then-MAC (V1 Legacy)
+A proteção efetiva depende do hardware, da versão do Android e da configuração do dispositivo.
 
-Para o formato V1 antigo:
-- HMAC-SHA256 cobre `salt + IV + ciphertext` (a ordem correta)
-- Comparação em tempo constante (`MessageDigest.isEqual()`)
-- Duas passadas: primeiro autentica, depois descriptografa
+3.6 Limites Contra Consumo Excessivo de Recursos
 
-### 8. Autenticação Antes da Escrita (V2)
+Foram identificados limites para operações envolvendo arquivos e parâmetros criptográficos.
 
-```java
-// Arquivo temporário primeiro:
-File tempFile = createPrivateTempFile("sfe-v2-", ".tmp", tempDirectory);
+Recurso	Limite identificado
+Tamanho total do ZIP	2 GB
+Tamanho por entrada	1 GB
+Quantidade de entradas	10.000
+Profundidade de diretórios	20 níveis
+Memória Argon2	8–128 MiB
+Iterações Argon2	1–6
 
-// Só após doFinal() validar o GCM tag:
+Análise técnica:
+
+A imposição de limites reduz o risco de consumo excessivo de memória, processamento e armazenamento durante a manipulação de arquivos.
+
+Essas restrições também contribuem para a mitigação de ataques de negação de serviço baseados em arquivos malformados ou excessivamente grandes.
+
+3.7 Integridade Criptográfica no Formato V1
+
+O formato legado V1 utiliza mecanismos de autenticação baseados em HMAC-SHA256.
+
+Foram identificadas as seguintes características:
+
+Autenticação dos dados criptografados.
+Comparação de MAC utilizando MessageDigest.isEqual().
+Verificação de integridade antes da descriptografia.
+Separação entre autenticação e recuperação dos dados.
+
+Essa abordagem é importante para evitar que dados modificados sejam processados como arquivos válidos.
+
+3.8 Proteção Contra Escrita de Dados Não Autenticados no V2
+
+Foi identificada a utilização de arquivos temporários durante o processamento de dados protegidos por AES-GCM.
+
+Fluxo simplificado:
+
+java
+File tempFile = createPrivateTempFile(
+    "sfe-v2-",
+    ".tmp",
+    tempDirectory
+);
+
+// Processamento criptográfico.
+
+// A autenticação é confirmada após doFinal().
+
+// Somente então os dados são encaminhados
+// ao destino definitivo.
+
 copyToOutput(tempFile, outputUri);
 
-// Then delete temp:
+// Remoção do arquivo temporário.
 tempFile.delete();
-```
 
-**Por que importa:** AES-GCM só revela autenticidade no final (`doFinal()`). Escrever diretamente ao destino final entregaria plaintext corrompido/não-autenticado ao usuário. Seu código mitiga isso corretamente.
 
-### 9. Scoped Storage Correto
+Análise técnica:
 
-- Uso de `ACTION_OPEN_DOCUMENT_TREE` em vez de permissões `READ_EXTERNAL_STORAGE`
-- `takePersistableUriPermission()` para manter acesso sem permissão runtime
-- Sem acesso a armazenamento global do sistema
+O AES-GCM confirma a autenticidade do conteúdo durante a finalização da operação criptográfica.
 
-**Benefício:** Menor superfície de ataque, compliance com Android 10+, funciona em sandbox do app.
+O uso de um arquivo temporário evita disponibilizar diretamente no destino final dados cuja autenticidade ainda não foi confirmada.
 
-### 10. Tratamento Robusto de Exceções
+Também é importante garantir que arquivos temporários sejam removidos mesmo em situações de exceção ou interrupção inesperada.
 
-```java
+3.9 Utilização do Scoped Storage
+
+Foram identificadas práticas alinhadas ao modelo moderno de armazenamento do Android:
+
+Utilização de ACTION_OPEN_DOCUMENT_TREE.
+Uso de takePersistableUriPermission().
+Redução da necessidade de permissões amplas de armazenamento.
+Utilização do Storage Access Framework.
+
+Essas práticas reduzem a superfície de acesso ao armazenamento e favorecem o isolamento entre aplicativos.
+
+3.10 Tratamento de Exceções
+
+Foi identificada uma separação entre diferentes tipos de erros:
+
+java
 catch (WrongPasswordException e) {
     cleanup(tempInput, tempZip, tempOutput);
     deleteOutputQuietly();
     fail(R.string.wrong_password);
+
 } catch (CorruptFileException e) {
-    // Mesmo tratamento rigoroso
+    // Tratamento de arquivo corrompido.
+
 } catch (Exception e) {
-    // Mensagem genérica (não vaza detalhes internos)
+    // Tratamento genérico.
 }
-```
 
-**Boa prática:** Nunca exponha stack traces ou detalhes técnicos na UI. Mantém informações sensíveis dentro do app.
 
----
+Análise técnica:
 
-## ⚠️ Observações Moderadas
+A utilização de mensagens genéricas na interface reduz a exposição de detalhes internos da implementação.
 
-### 1. PBKDF2 com 100k Itéracoes no Formato V1 (Legado)
+A diferenciação de exceções também facilita o tratamento de erros e a manutenção do código.
 
-```java
-// CryptoEngine.java - Linha ~V1
+4. Observações e Oportunidades de Melhoria
+
+As observações a seguir representam oportunidades de endurecimento da segurança. Não devem ser interpretadas automaticamente como vulnerabilidades exploráveis.
+
+4.1 PBKDF2 com 100.000 Iterações no Formato V1
+
+Trecho identificado:
+
+java
 private static final int V1_ITERATIONS = 100_000;
-```
 
-**Contexto:** OWASP recomenda ≥600.000 iterações para PBKDF2-HMAC-SHA256 em 2025.
 
-**Impacto:** Baixo. O V1 é somente-descriptografia para compatibilidade com arquivos antigos. O formato V2 já usa Argon2id com parâmetros superiores.
+Contexto:
 
-**Recomendação:** Considerar mostrar aviso ao usuário ao abrir arquivo V1: *"Formato antigo detectado. Recomenda-se recriptografar em V2 para máxima segurança."*
+O parâmetro de 100.000 iterações é inferior às recomendações atuais da OWASP para PBKDF2-HMAC-SHA256, que indicam valores significativamente maiores.
 
-### 2. Root/Jailbreak Detection Ausente
+Impacto: Baixo, considerando que o formato V1 é destinado à compatibilidade com arquivos antigos e não à geração de novos arquivos.
 
-**Cenário de Risco:** Em dispositivo com root:
-- Keylogger no nível de sistema pode capturar senhas digitadas
-- Apps maliciosos podem acessar SharedPreferences do app
-- Framework de hook (Xposed/Frida) pode interceptar chamadas
+Recomendação:
 
-**Mitigação Existente:** Android Keystore ancora as chaves biométricas no hardware (TPM/TEE), oferecendo alguma resistência mesmo em dispositivos rootados.
+Manter o suporte de leitura do formato V1 e incentivar a migração para o formato V2.
 
-**Recomendação (Opcional):** Implementar detecção básica de root no startup:
+Sugestão de mensagem:
 
-```java
-private boolean isDeviceSecure() {
-    String[] paths = {"/system/bin/su", "/system/xbin/su", "/sbin/su"};
-    for (String p : paths) if (new File(p).exists()) return false;
-    return !Debug.isDebuggerConnected();
-}
-```
+Formato legado detectado. Para utilizar os mecanismos criptográficos mais recentes, recomenda-se recriptografar este arquivo utilizando o formato V2.
+4.2 Ausência de Detecção de Root
 
-### 3. Assinatura Digital do APK Não Verificada
+Cenário de risco:
 
-**Cenário de Risco:** APK modificado (reassinado com chave diferente) pode:
-- Exfiltrar senhas para servidor remoto
-- Alterar comportamento da criptografia
-- Inserir keylogger na UI
+Dispositivos com acesso root podem apresentar maior exposição a:
 
-**Mitigação Existente:** Google Play Protect fornece verificação básica. Assinatura do app garante integridade no lado cliente mas não é verificada runtime.
+Instrumentação de processos.
+Interceptação de chamadas.
+Manipulação de dados em memória.
+Modificação do ambiente de execução.
 
-**Recomendação (Opcional):** Adicionar verificação de hash de assinatura no `onCreate()`:
+Mitigação existente:
 
-```java
-PackageInfo info = getPackageManager().getPackageInfo(
-    getPackageName(), PackageManager.GET_SIGNING_CERTIFICATES);
-String hash = sha256(info.signingInfo.getApkContentsSigners()[0]);
-if (!hash.equals(EXPECTED_HASH)) { /* abort */ }
-```
+O Android Keystore pode oferecer proteção adicional por meio de TEE ou StrongBox, quando disponíveis e corretamente configurados.
 
-### 4. Sem Detecção de Emulador/Emulação
-
-**Contexto:** Emuladores são frequentemente usados para:
-- Engenharia reversa automatizada
-- Testes de malware em sandbox
-- Farm de dispositivos para ataques em escala
-
-**Impacto:** Baixo para uso pessoal. Relevante se você planeja distribuição comercial.
-
-**Recomendação (Opcional):** Adicionar verificação simples:
+Recomendação:
 
-```java
-private boolean isEmulator() {
-    return Build.FINGERPRINT.startsWith("generic")
-        || Build.MODEL.contains("Emulator")
-        || Build.HARDWARE.contains("goldfish");
-}
-```
-
----
-
-## 📋 Checklist de Boas Práticas
-
-### Criptografia
-
-| Item | Status | Observação |
-|------|--------|------------|
-| Algoritmo moderno (AES-GCM ou ChaCha20) | ✅ | AES-256-GCM |
-| KDF resistente a GPU (Argon2/bcrypt) | ✅ | Argon2id |
-| Salt aleatório por operação | ✅ | 16 bytes SecureRandom |
-| Nonce/IV único por operação | ✅ | 12 bytes Random |
-| Autenticação de mensagem (MAC/AAD) | ✅ | GCM tag + AAD header |
-| Modo CBC apenas se necessário | ⚠️ | V1 legacy usa CBC |
-| Tamper-evident format | ✅ | V2 header inclui magic bytes |
-
-### Gerenciamento de Senha
-
-| Item | Status | Observação |
-|------|--------|------------|
-| Zeroar memória após uso | ✅ | Arrays.fill() sistemático |
-| Nunca criar String de senha | ✅ | UTF-8 encode direto |
-| Armazenamento persistente seguro | ✅ | Android Keystore |
-| Timeout automático | ❌ | Opcional |
-| Minima complexidade exigida | ✅ | 12 caracteres |
-
-### Controle de Acesso
-
-| Item | Status | Observação |
-|------|--------|------------|
-| Autenticação biométrica | ✅ | BiometricPrompt + CryptoObject |
-| Fallback manual | ✅ | Permitido quando biometria falha |
-| FLAG_SECURE anti-screenshot | ✅ | Ativado |
-| Detecção de root | ❌ | Opcional |
-| Verificação de assinatura APK | ❌ | Opcional |
-
-### Manipulação de Arquivos
-
-| Item | Status | Observação |
-|------|--------|------------|
-| Proteção Zip Slip | ✅ | isSafeZipPath() robusta |
-| Limites anti-DoS | ✅ | Tamanho, entries, depth |
-| Arquivos temporários privados | ✅ | createPrivateTempFile() |
-| Scoped Storage | ✅ | Storage Access Framework |
-| Limpeza pós-operacao | ✅ | cleanTemporaryFiles() |
-
-### UI/UX
-
-| Item | Status | Observação |
-|------|--------|------------|
-| Feedback visual durante operação | ✅ | ProgressBar |
-| Mensagens de erro não reveladoras | ✅ | Texto genérico em prod |
-| Não exibir stack trace | ✅ | try/catch global |
-| Logout automático | ❌ | Opcional |
-
----
-
-## 🔧 Recomendações de Endurecimento
-
-### Immediatas (Prioridade Alta)
-
-```markdown
-☑️ Criptografia moderna (V2) — JA IMPLEMENTADO
-☑️ KDF resistente a GPU (Argon2id) — JA IMPLEMENTADO
-☑️ AEAD com autenticação integrada — JA IMPLEMENTADO
-☑️ Chaves não-exportáveis (Keystore) — JA IMPLEMENTADO
-☑️ Senhas zeradas após uso — JA IMPLEMENTADO
-☑️ Proteção contra path traversal — JA IMPLEMENTADO
-☑️ Limites anti-DoS implementados — JA IMPLEMENTADO
-☑️ Arquivos temporários privados — JA IMPLEMENTADO
-☑️ Autenticação biométrica por uso — JA IMPLEMENTADO
-```
-
-### Futuras (Prioridade Média/Opcional)
-
-```markdown
-□ Root detection básico no startup
-□ Verificação de assinatura APK runtime
-□ Timeout automático após inatividade (30-60s)
-□ Alerta ao usuário sobre formato V1 legado
-□ Perfil Argon2 'leve' para dispositivos com pouca RAM (32 MiB)
-□ Detecção de emulador (opcional)
-□ Obfuscation com R8 ativado em builds release
-□ Documentação pública do formato V2 (interoperabilidade)
-```
-
----
-
-## 🎯 Comparativo com Apps Comerciais
-
-| Característica | S-File Encryptor | Apps Gratuitos Comuns | Apps Pagos Premium |
-|----------------|------------------|----------------------|-------------------|
-| KDF | Argon2id | PBKDF2 10k iterações | Argon2/bcrypt |
-| Cifra | AES-256-GCM | AES-128-CBC | AES-256-GCM |
-| Salt | 16 bytes random | Muitas vezes fixo | 16-32 bytes random |
-| Autenticação | AAD GCM | MAC separado (muitas vezes errado) | AEAD |
-| Memória | Zeroação manual | Raramente zerada | Variável |
-| Biometria | Android Keystore | SharedPreferences | Android Keystore |
-| Scoped Storage | Sim | Frequentemente permissões globais | Sim |
-| Fonte aberta | Sim | Fechada | Fechada |
-
-**Conclusão:** Seu app iguala ou supera a maioria dos aplicativos premium em critérios técnicos de segurança criptográfica.
-
----
-
-## 📝 Notas Técnicas Complementares
-
-### Sobre o Formato V2
-
-```
-Header V2 (48 bytes):
-0..3    Magic     "SFE2"           → Identificador único
-4       Version   2                → Compatibilidade futura
-5       KDF       1 (Argon2id)     → Extensível para novos KDFs
-6       Cipher    1 (AES-256-GCM)  → Extensível para novas cifras
-7       Reserved  0                → Para futuras expansões
-8..11   Memory    uint32 (KiB)     → Parâmetros Argon2
-12..15  Iterations uint32          → Parâmetros Argon2
-16..19  Parallelism uint32         → Parâmetros Argon2
-20..35  Salt      16 bytes         → Seed única
-36..47  Nonce     12 bytes         → Unique per-file
-
-Conteúdo:
-Ciphertext + GCM Tag (16 bytes implícito no final)
-```
-
-**Extensibilidade:** O header foi projetado com campos reservados e identificadores numéricos, permitindo adicionar novas cifras/KDFs no futuro sem quebrar compatibilidade.
-
-### Sobre a Integração Biométrica
-
-```java
-// Fluxo de cadastro:
-1. Usuario seleciona "habilitar biometria"
-2. App chama BiometricPrompt para autenticação inicial
-3. Senha digitada é cifrada com cipher gerado pela Keystore
-4. Cipher cifrado + IV são salvos em SharedPreferences
-5. Chave biométrica permanece no Secure Element
-
-// Fluxo de uso:
-1. App cria DecryptionCipher usando chave Keystore
-2. Usuário autentica com biometria
-3. Android entrega Cipher autenticado ao app
-4. Cipher decifra senha salva em SharedPreferences
-5. Senha descriptografada usada instantaneamente
-6. Buffers zerados imediatamente
-```
-
-**Segurança:** A senha nunca é armazenada em texto claro, nem em SharedPreferences, nem no storage. A chave de criptografia nunca deixa o hardware seguro.
-
-### Sobre Performance Estimada
-
-| Operação | Dispositivo Médio (4 GB RAM) | Dispositivo Fraco (2 GB RAM) |
-|----------|------------------------------|------------------------------|
-| Derivação Argon2id (64 MiB) | 300-500 ms | 800-1500 ms |
-| Criptografia 100 MB | 1-2 s | 3-5 s |
-| Descriptografia 100 MB | 1-2 s | 3-5 s |
-| Cadastro biométrico | 200 ms | 400 ms |
-
-**Nota:** Se notar lentidão em dispositivos fracos, considere reduzir para 32 MiB × 4 iterações (custo similar, menos RAM).
-
----
-
-## 🚨 Vetores de Ataque Analisados e Neutralizados
-
-| Vetor | Status | Mecanismo de Defesa |
-|-------|--------|---------------------|
-| Brute-force offline | Neutralizado | Argon2id 64 MiB × custo computacional alto |
-| Brute-force online | Neutralizado | Rate-limit implícito do Argon2 (~1 tent/s) |
-| Side-channel timing | Mitigado | Comparação tempo-constante, buffer allocation constante |
-| Memory scraping | Neutralizado | Zeroação sistemática, sem String de senhas |
-| Key extraction | Neutralizado | Chaves no Android Keystore (non-exportable) |
-| Replay attack | Neutralizado | Salt único por arquivo, nonce único |
-| Zip Slip | Neutralizado | Validação estrita de caminhos |
-| DoS por arquivo grande | Neutralizado | Limites hard-coded (2 GB, 10k entries) |
-| Heap inspection | Mitigado | Zeroação, minimização de lifetime |
-| Biometric bypass | Neutralizado | UserAuthenticationRequired=true |
-| Keystore cloning | Neutralizado | Chave vinculada ao dispositivo específico |
-
----
-
-## 📞 Conclusão da Análise
-
-### Classificação Final
-
-| Categoria | Nota (1-10) | Comentários |
-|-----------|-------------|-------------|
-| Criptografia | 9.5 | Argon2id + AES-256-GCM, só perde 0.5 por não ter opção de ajuste de parâmetros |
-| Gerenciamento de Chaves | 9.0 | Keystore perfeito, falta apenas root detection |
-| Higiene de Memória | 10.0 | Exemplar, raro até em apps empresariais |
-| UX de Segurança | 8.5 | Bom, poderia adicionar timeout automático |
-| Defesas de Ambiente | 6.0 | Sem root detector/tamper check (opcionais mas recomendados) |
-| **Média Geral** | **8.6** | **Acima da média de apps comerciais** |
-
-### Veredito
-
-```card
-{
-  "type": "summary",
-  "title": "Apto para Produção",
-  "body": "O S-File Encryptor atende aos padrões de segurança recomendados para aplicativos que manipulam dados sensíveis. Nenhuma vulnerabilidade crítica ou explorável foi identificada nas três classes analisadas. Melhorias sugeridas são de nível 'endurecimento' opcional, não correções obrigatórias. O aplicativo pode ser publicado em lojas (Play Store, F-Droid) com confiança na sua base de segurança.",
-  "severity": "info"
-}
-```
-
----
-
-## 📚 Referências Utilizadas
-
-1. OWASP Cryptographic Storage Cheat Sheet (2024)
-2. OWASP Authentication Cheat Sheet (2024)
-3. NIST SP 800-132 (PBKDF2 Recommendations)
-4. IETF RFC 9106 (Argon2 Specification)
-5. Android Security Best Practices (2025)
-6. Bouncy Castle Documentation (Crypto Library)
-7. Android Keystore Architecture Guide
-
----
-
-*Relatório gerado automaticamente via análise estática de código. Esta avaliação não substitui auditoria profissional terceirizada para ambientes de alta sensibilidade.*
+Considerar mecanismos de avaliação da integridade do dispositivo, principalmente caso o aplicativo seja direcionado a ambientes corporativos ou de maior sensibilidade.
+
+É importante observar que a detecção de root pode ser contornada e não deve ser considerada uma garantia de segurança.
+
+4.3 Ausência de Verificação de Integridade da Assinatura em Runtime
+
+Cenário de risco:
+
+Uma versão modificada do aplicativo pode apresentar alterações no comportamento esperado, incluindo:
+
+Modificações no fluxo de autenticação.
+Alterações no processamento criptográfico.
+Inclusão de funcionalidades não autorizadas.
+
+Mitigação existente:
+
+A assinatura digital do APK permite verificar a identidade do signatário e a integridade do pacote instalado.
+
+Recomendação:
+
+Avaliar mecanismos de verificação de integridade da aplicação, especialmente em distribuições fora das lojas oficiais.
+
+A verificação local de assinatura deve ser considerada uma camada adicional, não uma defesa definitiva contra adulteração.
+
+4.4 Ausência de Detecção de Emulador
+
+Contexto:
+
+Emuladores podem ser utilizados em atividades de engenharia reversa, testes automatizados e análise de aplicações.
+
+Impacto: Baixo para utilização pessoal.
+
+Recomendação:
+
+Considerar a identificação do ambiente de execução caso exista uma necessidade específica de restringir operações sensíveis em determinados ambientes.
+
+A execução em emuladores não representa, por si só, uma condição insegura.
+
+5. Checklist de Boas Práticas
+5.1 Criptografia
+Item	Status	Observação
+Algoritmo moderno	Implementado	AES-256-GCM
+KDF resistente a ataques de GPU	Implementado	Argon2id
+Salt aleatório	Implementado	16 bytes
+Nonce de tamanho adequado	Implementado	12 bytes
+Autenticação de dados	Implementado	GCM Tag e AAD
+Compatibilidade com formato legado	Implementado	V1
+Proteção contra manipulação do header	Implementado	Autenticação AAD no V2
+5.2 Gerenciamento de Senhas
+Item	Status	Observação
+Limpeza de memória	Implementado	Arrays.fill()
+Evitar objetos String para senhas	Implementado	Preferência por arrays de bytes
+Armazenamento protegido	Implementado	Android Keystore
+Timeout automático	A avaliar	Melhoria opcional
+Política de complexidade	Implementado	Mínimo informado de 12 caracteres
+5.3 Controle de Acesso
+Item	Status	Observação
+Autenticação biométrica	Implementado	BiometricPrompt
+Integração com CryptoObject	Implementado	Conforme análise
+Proteção contra screenshots	Implementado	FLAG_SECURE
+Detecção de root	Não implementado	Opcional
+Verificação de assinatura em runtime	Não implementado	Opcional
+5.4 Manipulação de Arquivos
+Item	Status	Observação
+Proteção Zip Slip	Implementado	Validação de caminhos
+Limites de recursos	Implementado	Tamanho, quantidade e profundidade
+Arquivos temporários privados	Implementado	Conforme análise
+Scoped Storage	Implementado	Storage Access Framework
+Limpeza de temporários	Implementado	Rotinas de limpeza
+5.5 Interface e Experiência de Uso
+Item	Status	Observação
+Feedback durante operações	Implementado	ProgressBar
+Mensagens de erro genéricas	Implementado	Conforme análise
+Tratamento de exceções	Implementado	Blocos try/catch
+Logout ou bloqueio por inatividade	A avaliar	Melhoria opcional
+6. Recomendações de Endurecimento
+6.1 Melhorias já contempladas na implementação
+Criptografia moderna no formato V2.
+Utilização de Argon2id.
+Criptografia autenticada AES-256-GCM.
+Integração com Android Keystore.
+Limpeza explícita de buffers sensíveis.
+Validação de caminhos de arquivos compactados.
+Limites para consumo de recursos.
+Utilização de arquivos temporários privados.
+Autenticação biométrica.
+6.2 Melhorias futuras
+Avaliar mecanismos de integridade do dispositivo.
+Avaliar verificação de assinatura do aplicativo.
+Implementar bloqueio automático após período de inatividade.
+Informar usuários sobre arquivos no formato V1.
+Avaliar parâmetros Argon2 para dispositivos com pouca memória.
+Considerar detecção de emuladores conforme o modelo de distribuição.
+Avaliar ativação e configuração do R8 em builds de produção.
+Publicar documentação técnica do formato V2.
+Adicionar testes automatizados de criptografia e integridade.
+Realizar testes com arquivos malformados e entradas adversariais.
+7. Comparativo Técnico
+
+A tabela abaixo apresenta uma comparação qualitativa entre características de segurança encontradas em diferentes categorias de aplicativos.
+
+Os valores representam referências gerais de implementação, não resultados de uma pesquisa estatística sobre produtos comerciais específicos.
+
+Característica	S-File Encryptor	Implementações básicas	Implementações avançadas
+KDF	Argon2id	PBKDF2 com parâmetros variáveis	Argon2id ou equivalente
+Cifra	AES-256-GCM	AES-CBC ou outras	AES-GCM ou equivalente
+Salt	16 bytes aleatórios	Variável	Aleatório
+Autenticação	GCM Tag + AAD	Variável	AEAD
+Higiene de memória	Limpeza explícita	Variável	Variável
+Biometria	Android Keystore	Variável	Android Keystore
+Scoped Storage	Sim	Variável	Sim
+Código-fonte aberto	Sim	Variável	Variável
+
+Conclusão comparativa:
+
+O S-File Encryptor apresenta escolhas técnicas compatíveis com implementações modernas de armazenamento criptografado.
+
+Entretanto, não é possível afirmar superioridade sobre aplicativos comerciais sem avaliações equivalentes, testes independentes e análise de suas implementações internas.
+
+8. Notas Técnicas Complementares
+8.1 Estrutura do Formato V2
+
+O formato V2 utiliza um header de 48 bytes.
+
+Offset	Tamanho	Campo	Descrição
+0–3	4 bytes	Magic	Identificador SFE2
+4	1 byte	Version	Versão do formato
+5	1 byte	KDF	Identificador do Argon2id
+6	1 byte	Cipher	Identificador do AES-256-GCM
+7	1 byte	Reserved	Reservado para expansão
+8–11	4 bytes	Memory	Parâmetro de memória em KiB
+12–15	4 bytes	Iterations	Quantidade de iterações
+16–19	4 bytes	Parallelism	Paralelismo
+20–35	16 bytes	Salt	Salt aleatório
+36–47	12 bytes	Nonce	Nonce do AES-GCM
+
+Após o header:
+
+text
+┌──────────────────────────────┐
+│        Header V2             │
+│          48 bytes            │
+├──────────────────────────────┤
+│                              │
+│        Ciphertext            │
+│                              │
+├──────────────────────────────┤
+│        GCM Authentication    │
+│           Tag                │
+│          16 bytes            │
+└──────────────────────────────┘
+
+
+Extensibilidade:
+
+A utilização de identificadores para KDF e cifra permite planejar futuras versões do formato sem depender exclusivamente dos parâmetros atuais.
+
+É importante manter validações rigorosas dos identificadores e dos parâmetros recebidos antes de iniciar operações criptográficas.
+
+8.2 Integração Biométrica
+
+O fluxo identificado pode ser resumido da seguinte forma.
+
+Cadastro:
+
+O usuário seleciona a opção de habilitar autenticação biométrica.
+O aplicativo solicita autenticação inicial.
+Uma chave protegida pelo Android Keystore é utilizada para criptografar a senha.
+O conteúdo criptografado e os metadados necessários são armazenados em SharedPreferences.
+A chave privada permanece sob controle do Android Keystore.
+
+Utilização:
+
+O aplicativo solicita uma operação de descriptografia utilizando a chave protegida.
+O usuário realiza a autenticação biométrica.
+O Android autoriza a utilização do objeto criptográfico.
+A senha armazenada é recuperada em formato descriptografado.
+A credencial é utilizada na operação solicitada.
+Os buffers utilizados são limpos após o processamento.
+
+Observação de segurança:
+
+O armazenamento da senha criptografada em SharedPreferences não equivale ao armazenamento em texto claro.
+
+Entretanto, a proteção depende da configuração correta do Keystore, das políticas de autenticação e do tratamento dos dados em memória.
+
+8.3 Considerações de Performance
+
+As estimativas abaixo são referências indicativas, não resultados de benchmarks executados durante esta análise.
+
+Operação	Dispositivo intermediário (4 GB RAM)	Dispositivo básico (2 GB RAM)
+Argon2id (64 MiB)	300–500 ms	800–1500 ms
+Criptografia de 100 MB	1–2 s	3–5 s
+Descriptografia de 100 MB	1–2 s	3–5 s
+Cadastro biométrico	200 ms	400 ms
+
+O desempenho real depende do processador, da memória disponível, da implementação da biblioteca criptográfica, da velocidade do armazenamento e das condições do sistema operacional.
+
+Recomenda-se realizar benchmarks em dispositivos reais antes de modificar os parâmetros criptográficos.
+
+9. Vetores de Ataque e Mecanismos de Proteção
+
+A tabela apresenta os vetores considerados durante a análise e os mecanismos de defesa identificados.
+
+Vetor	Avaliação	Mecanismo identificado
+Brute-force offline	Mitigado	Argon2id com custo de memória e processamento
+Brute-force online	Não avaliado integralmente	Depende de controles adicionais de autenticação
+Timing attacks	Parcialmente mitigado	Comparação de MAC em tempo constante
+Memory scraping	Mitigado parcialmente	Limpeza de buffers e redução do tempo de exposição
+Extração de chaves	Mitigado	Android Keystore e chaves não exportáveis, conforme configuração
+Reutilização de nonce	Dependente da implementação	Geração de nonce aleatório
+Zip Slip	Mitigado	Validação de caminhos
+DoS por arquivos grandes	Mitigado	Limites de tamanho e quantidade
+Inspeção de heap	Mitigado parcialmente	Limpeza de memória
+Bypass biométrico	Mitigado	Autenticação exigida pelo Keystore
+Clonagem de Keystore	Mitigado	Proteção vinculada ao dispositivo e ao hardware, quando disponível
+
+Nota: Mitigação não significa eliminação absoluta do risco. A eficácia de cada mecanismo precisa ser confirmada por testes específicos.
+
+10. Classificação Final
+
+As notas representam uma avaliação qualitativa baseada exclusivamente nos componentes disponibilizados.
+
+Categoria	Nota	Comentário
+Criptografia	9,5/10	Utilização de Argon2id e AES-256-GCM
+Gerenciamento de chaves	9,0/10	Integração com Android Keystore
+Higiene de memória	10,0/10	Limpeza explícita de buffers
+UX de segurança	8,5/10	Possibilidade de melhorias no bloqueio por inatividade
+Defesas de ambiente	6,0/10	Ausência de mecanismos adicionais de integridade
+Média geral	8,6/10	Avaliação qualitativa favorável
+Veredito
+
+O S-File Encryptor apresenta uma base técnica consistente de segurança para um aplicativo de criptografia de arquivos.
+
+Os principais destaques são:
+
+Utilização de algoritmos criptográficos modernos.
+Derivação de chaves com Argon2id.
+Criptografia autenticada com AES-256-GCM.
+Integração com Android Keystore.
+Cuidados com o ciclo de vida de dados sensíveis em memória.
+Validação de arquivos e caminhos.
+Limites para consumo de recursos.
+
+Não foram identificadas vulnerabilidades críticas nos arquivos disponibilizados para análise.
+
+As melhorias sugeridas estão relacionadas principalmente ao endurecimento do ambiente de execução, à integridade da aplicação e à experiência de segurança.
+
+Classificação preliminar: favorável, condicionada à realização de testes complementares.
+
+11. Referências Técnicas
+OWASP Cryptographic Storage Cheat Sheet
+OWASP Password Storage Cheat Sheet
+OWASP Authentication Cheat Sheet
+NIST SP 800-132 — Password-Based Key Derivation
+RFC 9106 — Argon2 Memory-Hard Function
+Android Security Best Practices
+Android Keystore System
+Bouncy Castle Documentation
+12. Limitações da Análise
+
+Este relatório foi elaborado com base na análise estática de três arquivos Java:
+
+MainActivity.java
+CryptoEngine.java
+BiometricPasswordStore.java
+
+Não foram realizados, no escopo desta avaliação:
+
+Testes dinâmicos em dispositivos Android.
+Testes de penetração.
+Análise de bibliotecas e dependências de terceiros.
+Auditoria completa do manifesto Android.
+Análise de configurações de build e assinatura.
+Testes automatizados de criptografia.
+Verificação independente de todas as alegações de segurança.
+Auditoria formal do formato de arquivos.
+
+Consequentemente, os resultados não devem ser interpretados como garantia de ausência de vulnerabilidades.
+
+Uma auditoria profissional independente é recomendada antes da utilização do aplicativo em ambientes de alta sensibilidade.
+
+Relatório gerado com auxílio de IA, com base na análise estática do código-fonte disponibilizado. As conclusões refletem o escopo e as informações disponíveis no momento da avaliação.
+
+Última revisão editorial: Novembro de 2026.
