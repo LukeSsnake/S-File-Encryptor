@@ -68,7 +68,7 @@ To build the application from the command line:
 
 ## Security Report
 
-[Relatorio](Relatorio_S-File_Encryptor)
+See [Relatorio](https://github.com/LukeSsnake/S-File-Encryptor/blob/main/Relatorio_S-File_Encryptor.md)
 
 ## License
 
