@@ -66,6 +66,10 @@ To build the application from the command line:
 
     ./gradlew assembleRelease
 
+## Security Report
+
+[Relatorio](Relatorio_S-File_Encryptor)
+
 ## License
 
 MIT. See [LICENSE](LICENSE).
