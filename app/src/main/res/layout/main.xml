@@ -85,15 +85,56 @@
 
 </LinearLayout>
 
-    <!-- Biometria -->
+    <!-- Exclusão -->
     <LinearLayout
         android:id="@+id/biometricContainer"
         android:layout_width="match_parent"
         android:layout_height="wrap_content"
+        android:layout_marginTop="15dp"
         android:orientation="horizontal"
-        android:gravity="center"
+        android:gravity="center_vertical|end"
         android:background="#263238"
-        android:padding="4dp">        
+        android:paddingStart="8dp"
+        android:paddingEnd="8dp">  
+
+        <Button
+        android:id="@+id/deleteButton"
+        android:layout_width="44dp"
+        android:layout_height="wrap_content"
+        android:text="@string/del_button"
+        android:textSize="22sp"
+        android:textColor="#000000"
+        android:minWidth="0dp"
+        android:padding="0dp"
+        android:layout_marginStart="4dp"
+        android:contentDescription="@string/del_title" />     
+
+    </LinearLayout>
+
+    <!-- Metadado -->
+    <LinearLayout
+        android:id="@+id/metadadoContainer"
+        android:layout_width="match_parent"
+        android:layout_height="wrap_content"
+        android:layout_marginTop="5dp"
+        android:orientation="horizontal"
+        android:gravity="center_vertical|end"
+        android:background="#263238"
+        android:paddingStart="8dp"
+        android:paddingEnd="8dp">  
+
+        <Button
+        android:id="@+id/metaButton"
+        android:layout_width="44dp"
+        android:layout_height="wrap_content"
+        android:layout_gravity="end|center_vertical"
+        android:text="@string/meta_button"
+        android:textSize="18sp"
+        android:textColor="#000000"
+        android:minWidth="0dp"
+        android:padding="4dp"
+        android:layout_marginStart="4dp"
+        android:contentDescription="@string/meta_title" />     
 
     </LinearLayout>
 
@@ -133,20 +174,7 @@
                     android:textColor="#546E7A"
                     android:padding="8dp"
                     android:maxLines="2"
-                    android:ellipsize="middle" />
-
-                <Button
-                    android:id="@+id/metaButton"
-                    android:layout_width="44dp"
-                    android:layout_height="wrap_content"
-                    android:layout_gravity="end|center_vertical"
-                    android:text="@string/meta_button"
-                    android:textSize="18sp"
-                    android:textColor="#000000"
-                    android:minWidth="0dp"
-                    android:padding="4dp"
-                    android:layout_marginStart="4dp"
-                    android:contentDescription="@string/meta_title" /> 
+                    android:ellipsize="middle" />                 
 
             </FrameLayout>       
 
