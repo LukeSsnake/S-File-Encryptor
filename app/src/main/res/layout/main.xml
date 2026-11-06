@@ -118,16 +118,37 @@
             android:layout_marginBottom="15dp"
             android:elevation="10dp">
 
-            <TextView
-                android:id="@+id/fileName"
-                android:layout_width="wrap_content"
-                android:layout_height="wrap_content"
-                android:text="@string/no_file"
-                android:textSize="16sp"
-                android:textColor="#546E7A"
-                android:padding="8dp"
-                android:maxLines="2"
-                android:ellipsize="middle" />
+
+            <FrameLayout
+                android:layout_width="match_parent"
+                android:layout_height="wrap_content">
+
+                <TextView
+                    android:id="@+id/fileName"
+                    android:layout_width="wrap_content"
+                    android:layout_height="wrap_content"
+                    android:layout_gravity="center"
+                    android:text="@string/no_file"
+                    android:textSize="16sp"
+                    android:textColor="#546E7A"
+                    android:padding="8dp"
+                    android:maxLines="2"
+                    android:ellipsize="middle" />
+
+                <Button
+                    android:id="@+id/metaButton"
+                    android:layout_width="44dp"
+                    android:layout_height="wrap_content"
+                    android:layout_gravity="end|center_vertical"
+                    android:text="@string/meta_button"
+                    android:textSize="18sp"
+                    android:textColor="#000000"
+                    android:minWidth="0dp"
+                    android:padding="4dp"
+                    android:layout_marginStart="4dp"
+                    android:contentDescription="@string/meta_title" /> 
+
+            </FrameLayout>       
 
             <LinearLayout
                 android:layout_width="wrap_content"
