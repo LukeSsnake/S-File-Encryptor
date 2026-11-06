@@ -45,6 +45,7 @@ import java.util.HashSet;
 import java.util.List;
 import java.util.Map;
 import java.util.Set;
+import com.tom_roush.pdfbox.android.PDFBoxResourceLoader;
 
 import javax.crypto.Cipher;
 
@@ -57,6 +58,11 @@ public class MainActivity extends FragmentActivity {
 
     private static final int MODE_FILE = 0;
     private static final int MODE_FOLDER = 1;
+
+    private static final int CREATE_METADATA_OUTPUT = 14;
+    private File metadataTempFile;
+    private String metadataOutputName;
+    private boolean metadataCleaningInProgress = false;
 
     /*
      * Tamanho mínimo exigido para novas senhas.
@@ -90,6 +96,7 @@ public class MainActivity extends FragmentActivity {
     private Button helpButton;
     private Button infoButton;
     private Button infoCrypto;
+    private Button metaButton;
     private Switch biometricSwitch;
     private TextView biometricSettings;
 
@@ -126,6 +133,8 @@ public class MainActivity extends FragmentActivity {
             WindowManager.LayoutParams.FLAG_SECURE
     );
 
+        PDFBoxResourceLoader.init(getApplicationContext());
+
         cleanTemporaryFiles();
 
         getWindow().setNavigationBarColor(
@@ -153,9 +162,12 @@ public class MainActivity extends FragmentActivity {
         helpButton = findViewById(R.id.helpButton);
         infoButton = findViewById(R.id.infoButton);
         infoCrypto = findViewById(R.id.infoCrypto);
+        metaButton = findViewById(R.id.metaButton);
 
         biometricSwitch = findViewById(R.id.biometricSwitch);
         biometricSettings = findViewById(R.id.biometricSettings);
+
+        metaButton.setVisibility(View.GONE);
 
         boolean biometricEnabled =
                 BiometricPasswordStore.isEnabled(this);
@@ -174,6 +186,7 @@ public class MainActivity extends FragmentActivity {
         helpButton.setOnClickListener(v -> showHelp());
         infoButton.setOnClickListener(v -> showSupport());
         infoCrypto.setOnClickListener(v -> showCrypto());
+        metaButton.setOnClickListener(v -> showMeta());
 
         action.setOnClickListener(v -> startWork());
 
@@ -230,7 +243,9 @@ public class MainActivity extends FragmentActivity {
                 name.startsWith("sfe_input_") ||
                 name.startsWith("sfe_zip_") ||
                 name.startsWith("sfe_dec_") ||
-                name.startsWith("sfe_enc_");
+                name.startsWith("sfe_enc_") ||
+                name.startsWith("sfe_meta_in_") ||
+                name.startsWith("sfe_meta_out_");
 
         if (!isTemporary) {
             continue;
@@ -282,6 +297,32 @@ public class MainActivity extends FragmentActivity {
                         null
                 )
                 .show();
+    }
+
+    private void showMeta() {
+
+        AlertDialog met =
+                new AlertDialog.Builder(this)
+                        .setTitle(
+                                R.string.meta_title
+                        )
+                        .setMessage(
+                                getString(
+                                        R.string.meta_message                                  
+                                )
+                        )
+                        .setNegativeButton(
+                                R.string.meta_cancel,
+                                null
+                                )
+                        .setPositiveButton(
+                        "REMOVER METADADOS",
+                        (d, which) -> startMetadataCleaning()
+                        )
+                        .create();
+
+        met.show();
+
     }
 
     private void showCrypto() {
@@ -1100,6 +1141,10 @@ private void authenticateForReplacement(
 
     private void pickFile() {
 
+        if (metadataCleaningInProgress) {
+                return;
+        }
+
         Intent i =
                 new Intent(
                         Intent.ACTION_OPEN_DOCUMENT
@@ -1120,9 +1165,14 @@ private void authenticateForReplacement(
                 i,
                 PICK_FILE
         );
+       
     }
 
     private void pickFolder() {
+
+        if (metadataCleaningInProgress) {
+                return;
+        }
 
         Intent i =
                 new Intent(
@@ -1190,7 +1240,7 @@ private void authenticateForReplacement(
 
             } else if (
                     inputName
-                            .toLowerCase()
+                            .toLowerCase(java.util.Locale.ROOT)
                             .endsWith(".aes")
             ) {
 
@@ -1214,7 +1264,7 @@ private void authenticateForReplacement(
 
             } else if (
                     inputName
-                            .toLowerCase()
+                            .toLowerCase(java.util.Locale.ROOT)
                             .endsWith(".aes")
             ) {
 
@@ -1297,6 +1347,36 @@ private void authenticateForReplacement(
                 data
         );
 
+        if (requestCode == CREATE_METADATA_OUTPUT) {
+
+    if (resultCode != RESULT_OK
+            || data == null
+            || data.getData() == null) {
+
+        deleteQuietly(metadataTempFile);
+
+        metadataTempFile = null;
+        metadataOutputName = null;
+        metadataCleaningInProgress = false;
+
+        setBusy(false);
+
+        getWindow().clearFlags(
+                WindowManager.LayoutParams.FLAG_KEEP_SCREEN_ON
+        );
+
+        return;
+    }
+
+    Uri destination = data.getData();
+
+    persistWritePermission(destination, data);
+
+    saveMetadataOutput(destination);
+
+    return;
+}
+
         if (
                 resultCode != RESULT_OK ||
                 data == null ||
@@ -1332,10 +1412,13 @@ private void authenticateForReplacement(
                     selectedName
             );
 
-            decryptMode =
-                    selectedName
-                            .toLowerCase()
+            decryptMode = selectedName
+                            .toLowerCase(java.util.Locale.ROOT)
                             .endsWith(".aes");
+
+        metaButton.setVisibility(
+        decryptMode ? View.GONE : View.VISIBLE
+);
 
             action.setText(
                     decryptMode
@@ -1347,6 +1430,8 @@ private void authenticateForReplacement(
         }
 
         if (requestCode == PICK_FOLDER) {
+
+            metaButton.setVisibility(View.GONE);
 
             inputUri = data.getData();
 
@@ -1481,6 +1566,304 @@ private void authenticateForReplacement(
         }
     }
 
+    
+private void startMetadataCleaning() {
+
+    if (inputUri == null || inputIsFolder || decryptMode) {
+        fail("Selecione um arquivo válido para remover os metadados.");
+        return;
+    }
+
+    if (metadataCleaningInProgress) {
+        return;
+    }
+
+    metadataCleaningInProgress = true;
+
+    final Uri sourceUri = inputUri;
+    final String originalName = name(sourceUri);
+
+    // Identifica vídeos pelo formato da extensão.
+    String lowerName = originalName == null
+            ? ""
+            : originalName.toLowerCase(java.util.Locale.ROOT);
+
+    final boolean isVideo =
+            lowerName.endsWith(".mp4")
+            || lowerName.endsWith(".m4v")
+            || lowerName.endsWith(".3gp");
+
+    setBusy(true);
+
+    getWindow().addFlags(
+            WindowManager.LayoutParams.FLAG_KEEP_SCREEN_ON
+    );
+
+    executor.execute(() -> {
+
+        File inputTemp = null;
+        File cleanedTemp = null;
+
+        try {
+
+            inputTemp = File.createTempFile(
+                    "sfe_meta_in_",
+                    ".tmp",
+                    getCacheDir()
+            );
+
+            cleanedTemp = File.createTempFile(
+                    "sfe_meta_out_",
+                    ".tmp",
+                    getCacheDir()
+            );
+
+            // Copia o original para o cache privado.
+            copyUriToFile(
+                    sourceUri,
+                    inputTemp
+            );
+
+            // Encaminha para o limpador correto.
+            if (isVideo) {
+
+                VideoMetadataCleaner.clean(
+                        MainActivity.this,
+                        inputTemp,
+                        cleanedTemp
+                );
+
+            } else {
+
+                MetadataCleaner.clean(
+                        inputTemp,
+                        cleanedTemp
+                );
+            }
+
+            if (!cleanedTemp.isFile()
+                    || cleanedTemp.length() <= 0) {
+
+                throw new IOException(
+                        "Não foi possível validar o arquivo limpo."
+                );
+            }
+
+            final File result = cleanedTemp;
+            cleanedTemp = null;
+
+            runOnUiThread(() -> {
+
+                metadataTempFile = result;
+
+                metadataOutputName =
+                        "no-mtd_" + originalName;
+
+                setBusy(false);
+
+                getWindow().clearFlags(
+                        WindowManager.LayoutParams.FLAG_KEEP_SCREEN_ON
+                );
+
+                pickMetadataOutput();
+
+            });
+
+        } catch (Exception e) {
+
+            runOnUiThread(() -> {
+
+                setBusy(false);
+
+                getWindow().clearFlags(
+                        WindowManager.LayoutParams.FLAG_KEEP_SCREEN_ON
+                );
+
+                deleteQuietly(metadataTempFile);
+
+                metadataTempFile = null;
+                metadataOutputName = null;
+                metadataCleaningInProgress = false;
+
+                String errorMessage = e.getMessage();
+
+                if (errorMessage == null || errorMessage.isEmpty()) {
+                    errorMessage = e.getClass().getSimpleName();
+                }
+
+                new AlertDialog.Builder(MainActivity.this)
+                        .setTitle("Não foi possível limpar")
+                        .setMessage(
+                                "Não foi possível remover os metadados deste arquivo.\n\n"
+                                + errorMessage
+                        )
+                        .setPositiveButton(
+                                android.R.string.ok,
+                                null
+                        )
+                        .show();
+            });
+
+        } finally {
+
+            deleteQuietly(inputTemp);
+            deleteQuietly(cleanedTemp);
+        }
+    });
+}
+
+private void pickMetadataOutput() {
+
+    try {
+
+        Intent intent = new Intent(
+                Intent.ACTION_CREATE_DOCUMENT
+        );
+
+        intent.setType("application/octet-stream");
+
+        intent.addCategory(
+                Intent.CATEGORY_OPENABLE
+        );
+
+        intent.putExtra(
+                Intent.EXTRA_TITLE,
+                metadataOutputName
+        );
+
+        intent.addFlags(
+                Intent.FLAG_GRANT_WRITE_URI_PERMISSION |
+                Intent.FLAG_GRANT_READ_URI_PERMISSION
+        );
+
+        startActivityForResult(
+                intent,
+                CREATE_METADATA_OUTPUT
+        );
+
+    } catch (Exception e) {
+
+        deleteQuietly(metadataTempFile);
+
+        metadataTempFile = null;
+        metadataOutputName = null;
+        metadataCleaningInProgress = false;
+
+        setBusy(false);
+
+        getWindow().clearFlags(
+                WindowManager.LayoutParams.FLAG_KEEP_SCREEN_ON
+        );
+
+        fail(
+                "Não foi possível abrir o seletor de destino."
+        );
+    }
+}
+
+private void saveMetadataOutput(Uri destination) {
+
+    final File source = metadataTempFile;
+
+    if (destination == null
+            || source == null
+            || !source.isFile()) {
+
+        deleteQuietly(source);
+
+        metadataTempFile = null;
+        metadataOutputName = null;
+        metadataCleaningInProgress = false;
+
+        fail("Arquivo temporário ou destino indisponível.");
+        return;
+    }
+
+    setBusy(true);
+
+    getWindow().addFlags(
+            WindowManager.LayoutParams.FLAG_KEEP_SCREEN_ON
+    );
+
+    executor.execute(() -> {
+
+        boolean saved = false;
+        boolean partialDeleted = true;
+
+        try {
+
+            copyToOutput(
+                    source,
+                    destination,
+                    false
+            );
+
+            saved = true;
+
+        } catch (Exception e) {
+
+            try {
+
+                partialDeleted =
+                        DocumentsContract.deleteDocument(
+                                getContentResolver(),
+                                destination
+                        );
+
+            } catch (Exception ignored) {
+
+                partialDeleted = false;
+            }
+
+        } finally {
+
+            deleteQuietly(source);
+
+            metadataTempFile = null;
+            metadataOutputName = null;
+        }
+
+        final boolean success = saved;
+        final boolean outputCleaned = partialDeleted;
+
+        runOnUiThread(() -> {
+
+            metadataCleaningInProgress = false;
+
+            setBusy(false);
+
+            getWindow().clearFlags(
+                    WindowManager.LayoutParams.FLAG_KEEP_SCREEN_ON
+            );
+
+            if (success) {
+
+                new AlertDialog.Builder(MainActivity.this)
+                        .setTitle("METADADOS REMOVIDOS!")
+                        .setMessage(
+                                "Arquivo salvo com sucesso."
+                        )
+                        .setPositiveButton(
+                                android.R.string.ok,
+                                null
+                        )
+                        .show();
+
+            } else {
+
+                String message =
+                        "Não foi possível salvar o arquivo limpo.";
+
+                if (!outputCleaned) {
+                    message += "\n\nNão foi possível excluir o arquivo incompleto. Verifique o destino e remova-o manualmente.";
+                }
+
+                fail(message);
+            }
+        });
+    });
+}
+
     private void startPendingWork() {
 
         final char[] pass =
@@ -1526,6 +1909,10 @@ private void authenticateForReplacement(
        ========================================================= */
 
     private void startWork() {
+
+        if (metadataCleaningInProgress) {
+           return;
+        }
 
         if (inputUri == null) {
 
@@ -3494,7 +3881,7 @@ private void copyToOutput(
     ) {
 
         return value != null &&
-                value.toLowerCase()
+                value.toLowerCase(java.util.Locale.ROOT)
                         .endsWith(
                                 "_pasta.aes"
                         );
@@ -3551,6 +3938,9 @@ private void copyToOutput(
             fileButton.setEnabled(!busy);
             folderButton.setEnabled(!busy);
             helpButton.setEnabled(!busy);
+            infoButton.setEnabled(!busy);
+            infoCrypto.setEnabled(!busy);
+            metaButton.setEnabled(!busy);
 
             /*
              * O botão de informações permanece disponível
