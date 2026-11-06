@@ -274,4 +274,26 @@
         Cancelar
     </string>
 
+    <!-- =====================================================
+                          Delete
+         ===================================================== -->
+    
+    <string name="del_button">🗑️</string>
+
+    <string name="d_title">
+        Del
+    </string>
+
+    <string name="del_title">
+        🗑️ EXCLUSÃO SEGURA
+    </string>
+
+    <string name="deletee">
+        DESTRUIR!
+    </string>
+
+    <string name="del_cancel">
+        Cancelar
+    </string>
+
 </resources>
