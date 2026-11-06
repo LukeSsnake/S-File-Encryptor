@@ -11,13 +11,14 @@ import java.util.zip.CRC32;
 import java.io.RandomAccessFile;
 import java.io.ByteArrayInputStream;
 import java.io.ByteArrayOutputStream;
-import java.nio.charset.StandardCharsets;
 import java.util.HashSet;
 import java.util.Set;
 import java.util.zip.ZipEntry;
+import java.util.zip.ZipException;
 import java.util.zip.ZipInputStream;
 import java.util.zip.ZipOutputStream;
 
+import javax.xml.parsers.DocumentBuilder;
 import javax.xml.parsers.DocumentBuilderFactory;
 import javax.xml.transform.OutputKeys;
 import javax.xml.transform.Transformer;
@@ -27,6 +28,9 @@ import javax.xml.transform.stream.StreamResult;
 import org.w3c.dom.Document;
 import org.w3c.dom.Element;
 import org.w3c.dom.Node;
+import org.xml.sax.EntityResolver;
+import org.xml.sax.InputSource;
+import org.xml.sax.SAXException;
 import com.tom_roush.pdfbox.pdmodel.PDDocument;
 import com.tom_roush.pdfbox.pdmodel.PDDocumentInformation;
 import com.tom_roush.pdfbox.io.MemoryUsageSetting;
@@ -46,7 +50,7 @@ public final class MetadataCleaner {
     private MetadataCleaner() {
     }
 
-    public static void clean(            
+    public static void clean(
             File input,
             File output
     ) throws IOException {
@@ -277,34 +281,289 @@ public final class MetadataCleaner {
                         || marker == 0xFE; // COM
 
                 if (!remove) {
+
                     out.write(0xFF);
                     out.write(marker);
                     out.write(lengthHigh);
                     out.write(lengthLow);
-                }
 
-                int remaining = length - 2;
+                    copySegmentData(in, out, length - 2);
 
-                while (remaining > 0) {
+                } else if (marker == 0xE1) {
 
-                    int value = in.read();
+                    // Lê o payload para decidir se é EXIF.
+                    // Mesmo descartado, pode conter a
+                    // orientação que precisa ser preservada.
+                    int payloadSize = length - 2;
 
-                    if (value == -1) {
-                        throw new IOException("JPEG truncado.");
+                    byte[] payload = new byte[payloadSize];
+
+                    readSegmentFully(in, payload);
+
+                    int orientation =
+                            extractJpegOrientation(payload);
+
+                    if (orientation > 1 && orientation <= 8) {
+
+                        // Regrava uma APP1 mínima contendo
+                        // apenas o campo Orientation.
+                        // O campo de comprimento do segmento
+                        // inclui os próprios 2 bytes dele.
+                        byte[] minimal =
+                                buildMinimalExifSegment(
+                                        orientation
+                                );
+
+                        int segmentLength =
+                                minimal.length + 2;
+
+                        out.write(0xFF);
+                        out.write(0xE1);
+                        out.write(
+                                (segmentLength >>> 8) & 0xFF
+                        );
+                        out.write(segmentLength & 0xFF);
+                        out.write(minimal);
                     }
 
-                    if (!remove) {
-                        out.write(value);
-                    }
+                    // Qualquer outro conteúdo do APP1
+                    // (EXIF completo, XMP, etc.) é descartado.
 
-                    remaining--;
+                } else {
+
+                    // APP13 ou COM: apenas descarta o payload.
+                    copySegmentData(in, null, length - 2);
                 }
 
                 if (marker == 0xDA) {
                     copyEntropyData(in, out);
                 }
             }
-            
+
+        }
+    }
+
+    /**
+     * Extrai o valor do campo Orientation (tag 0x0112)
+     * de um payload APP1 EXIF. Retorna 0 se não
+     * encontrar ou se a estrutura for inválida.
+     */
+    private static int extractJpegOrientation(
+            byte[] payload
+    ) {
+
+        if (payload.length < 14) {
+            return 0;
+        }
+
+        // O payload deve começar com "Exif\0\0".
+        if (payload[0] != 'E' || payload[1] != 'x'
+                || payload[2] != 'i' || payload[3] != 'f'
+                || payload[4] != 0 || payload[5] != 0) {
+            return 0;
+        }
+
+        int tiff = 6;
+
+        boolean littleEndian;
+
+        if (payload[tiff] == 'I'
+                && payload[tiff + 1] == 'I') {
+            littleEndian = true;
+        } else if (payload[tiff] == 'M'
+                && payload[tiff + 1] == 'M') {
+            littleEndian = false;
+        } else {
+            return 0;
+        }
+
+        if (readU16(payload, tiff + 2, littleEndian)
+                != 0x2A) {
+            return 0;
+        }
+
+        long ifdOffset =
+                readU32(payload, tiff + 4, littleEndian);
+
+        if (ifdOffset <= 0
+                || ifdOffset > payload.length - tiff) {
+            return 0;
+        }
+
+        int ifd = tiff + (int) ifdOffset;
+
+        if (ifd + 2 > payload.length) {
+            return 0;
+        }
+
+        int entryCount =
+                readU16(payload, ifd, littleEndian);
+
+        if (ifd + 2 + entryCount * 12
+                > payload.length) {
+            return 0;
+        }
+
+        for (int i = 0; i < entryCount; i++) {
+
+            int entry = ifd + 2 + i * 12;
+
+            int tag =
+                    readU16(payload, entry, littleEndian);
+
+            if (tag != 0x0112) {
+                continue;
+            }
+
+            int type =
+                    readU16(payload, entry + 2, littleEndian);
+
+            long count =
+                    readU32(payload, entry + 4, littleEndian);
+
+            if (type != 3 || count < 1) {
+                return 0;
+            }
+
+            // Um SHORT cabe no próprio campo de valor.
+            if (count == 1) {
+                return readU16(
+                        payload,
+                        entry + 8,
+                        littleEndian
+                );
+            }
+
+            // Vários valores: o campo aponta para
+            // o offset real dentro do TIFF.
+            long valueOffset =
+                    readU32(payload, entry + 8, littleEndian);
+
+            if (valueOffset <= 0
+                    || valueOffset > payload.length - tiff - 2) {
+                return 0;
+            }
+
+            int valuePos =
+                    tiff + (int) valueOffset;
+
+            if (valuePos + 2 > payload.length) {
+                return 0;
+            }
+
+            return readU16(
+                    payload,
+                    valuePos,
+                    littleEndian
+            );
+        }
+
+        return 0;
+    }
+
+    /**
+     * Constrói um segmento APP1 EXIF mínimo
+     * contendo somente o campo Orientation.
+     */
+    private static byte[] buildMinimalExifSegment(
+            int orientation
+    ) {
+
+        // "Exif\0\0" + TIFF (II, 0x2A, IFD0 @ 8)
+        // + IFD0 com 1 entrada (Orientation, SHORT)
+        // + próximo IFD = 0.
+        return new byte[] {
+                'E', 'x', 'i', 'f', 0, 0,
+                'I', 'I',
+                0x2A, 0x00,
+                0x08, 0x00, 0x00, 0x00,
+                0x01, 0x00,             // 1 entrada
+                0x12, 0x01,             // tag 0x0112
+                0x03, 0x00,             // tipo SHORT
+                0x01, 0x00, 0x00, 0x00, // count 1
+                (byte) orientation, 0x00,
+                0x00, 0x00,             // valor + preenchimento
+                0x00, 0x00, 0x00, 0x00  // próximo IFD: nenhum
+        };
+    }
+
+    private static int readU16(
+            byte[] data,
+            int offset,
+            boolean littleEndian
+    ) {
+
+        int b1 = data[offset] & 0xFF;
+        int b2 = data[offset + 1] & 0xFF;
+
+        return littleEndian
+                ? (b2 << 8) | b1
+                : (b1 << 8) | b2;
+    }
+
+    private static long readU32(
+            byte[] data,
+            int offset,
+            boolean littleEndian
+    ) {
+
+        long b1 = data[offset] & 0xFFL;
+        long b2 = data[offset + 1] & 0xFFL;
+        long b3 = data[offset + 2] & 0xFFL;
+        long b4 = data[offset + 3] & 0xFFL;
+
+        return littleEndian
+                ? (b4 << 24) | (b3 << 16) | (b2 << 8) | b1
+                : (b1 << 24) | (b2 << 16) | (b3 << 8) | b4;
+    }
+
+    private static void readSegmentFully(
+            PushbackInputStream in,
+            byte[] buffer
+    ) throws IOException {
+
+        int offset = 0;
+
+        while (offset < buffer.length) {
+
+            int count = in.read(
+                    buffer,
+                    offset,
+                    buffer.length - offset
+            );
+
+            if (count == -1) {
+                throw new IOException("JPEG truncado.");
+            }
+
+            offset += count;
+        }
+    }
+
+    private static void copySegmentData(
+            PushbackInputStream in,
+            BufferedOutputStream out,
+            int length
+    ) throws IOException {
+
+        byte[] buffer = new byte[8192];
+
+        while (length > 0) {
+
+            int requested =
+                    Math.min(buffer.length, length);
+
+            int count = in.read(buffer, 0, requested);
+
+            if (count == -1) {
+                throw new IOException("JPEG truncado.");
+            }
+
+            if (out != null) {
+                out.write(buffer, 0, count);
+            }
+
+            length -= count;
         }
     }
 
@@ -1294,6 +1553,9 @@ private static void cleanPdf(
 private static int detectOpenXmlFormat(File file)
         throws IOException {
 
+    // Um arquivo que não é um ZIP válido não é
+    // um pacote OpenXML; a mensagem de erro
+    // adequada vem do chamador.
     try (ZipFile zip = new ZipFile(file)) {
 
         // Um pacote Office precisa ter este arquivo.
@@ -1331,6 +1593,9 @@ private static int detectOpenXmlFormat(File file)
             return PPTX;
         }
 
+        return 0;
+
+    } catch (ZipException e) {
         return 0;
     }
 }
@@ -1405,7 +1670,12 @@ private static void cleanOpenXml(
                 );
             }
 
-            if (metadataFiles.contains(name)) {
+            // Remove os docProps de metadados e também
+            // qualquer thumbnail embutido no pacote.
+            boolean isThumbnail =
+                    name.startsWith("docProps/thumbnail");
+
+            if (metadataFiles.contains(name) || isThumbnail) {
 
                 // Descarta o conteúdo, mas lê até o final
                 // para permitir a verificação do CRC.
@@ -1636,19 +1906,24 @@ private static byte[] cleanContentTypes(
 
         Node root = document.getDocumentElement();
 
-        removeNodesWithPartName(
+        removeNodesWithPartNamePrefix(
                 root,
                 "/docProps/core.xml"
         );
 
-        removeNodesWithPartName(
+        removeNodesWithPartNamePrefix(
                 root,
                 "/docProps/app.xml"
         );
 
-        removeNodesWithPartName(
+        removeNodesWithPartNamePrefix(
                 root,
                 "/docProps/custom.xml"
+        );
+
+        removeNodesWithPartNamePrefix(
+                root,
+                "/docProps/thumbnail"
         );
 
         return writeXml(document);
@@ -1695,7 +1970,10 @@ private static byte[] cleanRootRelationships(
 
                 if ("docProps/core.xml".equals(target)
                         || "docProps/app.xml".equals(target)
-                        || "docProps/custom.xml".equals(target)) {
+                        || "docProps/custom.xml".equals(target)
+                        || (target != null
+                        && target.contains(
+                        "docProps/thumbnail"))) {
 
                     root.removeChild(child);
                 }
@@ -1715,9 +1993,9 @@ private static byte[] cleanRootRelationships(
     }
 }
 
-private static void removeNodesWithPartName(
+private static void removeNodesWithPartNamePrefix(
         Node root,
-        String partName
+        String partNamePrefix
 ) {
 
     Node child = root.getFirstChild();
@@ -1736,7 +2014,8 @@ private static void removeNodesWithPartName(
                             "PartName"
                     );
 
-            if (partName.equals(value)) {
+            if (value != null
+                    && value.startsWith(partNamePrefix)) {
                 root.removeChild(child);
             }
         }
@@ -1752,13 +2031,20 @@ private static Document parseXml(
     DocumentBuilderFactory factory =
             DocumentBuilderFactory.newInstance();
 
+    // As features de segurança abaixo são opcionais:
+    // alguns parsers Android podem não suportá-las.
+    // Por isso, cada uma é aplicada em try/catch
+    // próprio, degradando com segurança em vez de
+    // abortar. A garantia universal contra entidades
+    // externas fica no EntityResolver registrado no
+    // DocumentBuilder, que é suportado por qualquer
+    // parser DOM.
     try {
         factory.setFeature(
                 "http://apache.org/xml/features/disallow-doctype-decl",
                 true
         );
     } catch (Exception ignored) {
-        // Alguns parsers Android podem não suportar esta feature.
     }
 
     try {
@@ -1786,19 +2072,45 @@ private static Document parseXml(
     }
 
     try {
-    factory.setXIncludeAware(false);
+        factory.setXIncludeAware(false);
     } catch (UnsupportedOperationException ignored) {
         // Recurso não suportado pelo parser Android.
     }
 
     factory.setExpandEntityReferences(false);
 
-    Document document =
-            factory
-                    .newDocumentBuilder()
-                    .parse(
-                            new ByteArrayInputStream(data)
+    DocumentBuilder builder =
+            factory.newDocumentBuilder();
+
+    // Garantia universal: qualquer tentativa de
+    // resolver uma entidade externa é rejeitada
+    // explicitamente com falha, em vez de receber
+    // conteúdo vazio. Este resolver só é invocado
+    // em documentos com DOCTYPE ou entidades
+    // externas — documentos Office comuns nunca
+    // o acionam, então não há risco de
+    // incompatibilidade. Classe anônima em vez de
+    // lambda, para não depender de desugaring.
+    builder.setEntityResolver(
+            new EntityResolver() {
+
+                @Override
+                public InputSource resolveEntity(
+                        String publicId,
+                        String systemId
+                ) throws SAXException {
+
+                    throw new SAXException(
+                            "Entidade externa não permitida."
                     );
+                }
+            }
+    );
+
+    Document document =
+            builder.parse(
+                    new ByteArrayInputStream(data)
+            );
 
     document.getDocumentElement().normalize();
 
