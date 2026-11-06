@@ -246,4 +246,32 @@
         CÓDIGO FONTE
     </string>
 
+    <!-- =====================================================
+                          Metadados
+         ===================================================== -->
+    
+    <string name="meta_button">📝</string>
+
+    <string name="m_title">
+        Meta
+    </string>
+
+    <string name="meta_title">
+        📝 Remover Metadados
+    </string>
+
+    <string name="meta_message">
+        \n Metadados são informações gravadas num "rótulo" de um arquivo.\n       
+           Esses dados podem deixar um rastro digital, revelando informações sensíveis.\n
+           Removê-los é uma boa prática para privacidade.\n
+    </string>    
+
+    <string name="okayy">
+        REMOVER METADADOS
+    </string>
+
+    <string name="meta_cancel">
+        Cancelar
+    </string>
+
 </resources>
