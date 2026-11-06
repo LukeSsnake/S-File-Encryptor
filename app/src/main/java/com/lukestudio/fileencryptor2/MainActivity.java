@@ -45,6 +45,7 @@ import java.util.HashSet;
 import java.util.List;
 import java.util.Map;
 import java.util.Set;
+import android.widget.CheckBox;
 import com.tom_roush.pdfbox.android.PDFBoxResourceLoader;
 
 import javax.crypto.Cipher;
@@ -97,6 +98,7 @@ public class MainActivity extends FragmentActivity {
     private Button infoButton;
     private Button infoCrypto;
     private Button metaButton;
+    private Button deleteButton;
     private Switch biometricSwitch;
     private TextView biometricSettings;
 
@@ -163,11 +165,13 @@ public class MainActivity extends FragmentActivity {
         infoButton = findViewById(R.id.infoButton);
         infoCrypto = findViewById(R.id.infoCrypto);
         metaButton = findViewById(R.id.metaButton);
+        deleteButton = findViewById(R.id.deleteButton);
 
         biometricSwitch = findViewById(R.id.biometricSwitch);
         biometricSettings = findViewById(R.id.biometricSettings);
 
         metaButton.setVisibility(View.GONE);
+        deleteButton.setVisibility(View.GONE);
 
         boolean biometricEnabled =
                 BiometricPasswordStore.isEnabled(this);
@@ -181,6 +185,8 @@ public class MainActivity extends FragmentActivity {
                         : View.VISIBLE
         );
 
+        handleIncomingIntent(getIntent());
+
         fileButton.setOnClickListener(v -> pickFile());
         folderButton.setOnClickListener(v -> pickFolder());
         helpButton.setOnClickListener(v -> showHelp());
@@ -189,6 +195,10 @@ public class MainActivity extends FragmentActivity {
         metaButton.setOnClickListener(v -> showMeta());
 
         action.setOnClickListener(v -> startWork());
+
+        deleteButton.setOnClickListener(v -> {
+                showSecureDeleteConfirmation();
+        });
 
         biometricSwitch.setOnCheckedChangeListener(
                 (button, checked) -> {
@@ -285,6 +295,142 @@ public class MainActivity extends FragmentActivity {
     );
 
     return copy;
+}
+
+        private void executeSecureOverwrite() {
+
+    if (inputUri == null || inputIsFolder) {
+        Toast.makeText(
+                this,
+                "Selecione um arquivo válido.",
+                Toast.LENGTH_SHORT
+        ).show();
+        return;
+    }
+
+    deleteButton.setEnabled(false);
+
+    Uri targetUri = inputUri;
+
+    executor.execute(() -> {
+
+        SecureDeleteManager.Result overwriteResult =
+                SecureDeleteManager.overwriteFile(
+                        getApplicationContext(),
+                        targetUri
+                );
+
+        SecureDeleteManager.Result finalResult;
+
+        if (overwriteResult.status == SecureDeleteManager.Status.SUCCESS) {
+
+            finalResult = SecureDeleteManager.deleteFile(
+                    getApplicationContext(),
+                    targetUri
+            );
+
+        } else {
+
+            finalResult = overwriteResult;
+        }
+
+        runOnUiThread(() -> {
+
+            deleteButton.setEnabled(true);
+
+            String title;
+            String message;
+
+            if (overwriteResult.status != SecureDeleteManager.Status.SUCCESS) {
+
+                title = "Sobrescrita não concluída";
+
+                message = overwriteResult.message
+                        + "\n\nO arquivo não foi excluído.";
+
+            } else if (finalResult.status == SecureDeleteManager.Status.SUCCESS) {
+
+                title = "Operação concluída";
+
+                message = overwriteResult.message
+                        + "\n\n"
+                        + finalResult.message
+                        + "\n\nBytes sobrescritos: "
+                        + overwriteResult.bytesOverwritten;
+
+                if (targetUri.equals(inputUri)) {
+                        inputUri = null;
+
+                        fileName.setText("Nenhum arquivo selecionado");
+                        metaButton.setVisibility(View.GONE);
+
+                        deleteButton.setVisibility(View.GONE);
+                }
+
+            } else {
+
+                title = "Arquivo não excluído";
+
+                message = "A sobrescrita foi concluída, mas a exclusão falhou.\n\n"
+                        + finalResult.message
+                        + "\n\nBytes sobrescritos: "
+                        + overwriteResult.bytesOverwritten;
+            }
+
+            new AlertDialog.Builder(MainActivity.this)
+                    .setTitle(title)
+                    .setMessage(message)
+                    .setPositiveButton("OK", null)
+                    .show();
+        });
+    });
+}
+
+        private void showSecureDeleteConfirmation() {
+
+    LinearLayout layout = new LinearLayout(this);
+    layout.setOrientation(LinearLayout.VERTICAL);
+
+    int padding = (int) (20 * getResources().getDisplayMetrics().density);
+
+    layout.setPadding(padding, padding, padding, 0);
+
+    TextView message = new TextView(this);
+    message.setText(
+            "Esta operação tentará sobrescrever os dados do arquivo " +
+            "antes de excluí-lo.\n\n" +
+            "É uma proteção a mais do que simplesmente excluir do modo convencional. " +
+            "Ainda podem restar resíduos.\n\n"
+    );
+
+    message.setTextSize(16);
+
+    CheckBox checkBox = new CheckBox(this);
+    checkBox.setText("Sim, desejo continuar com a exclusão.");
+
+    layout.addView(message);
+    layout.addView(checkBox);
+
+    AlertDialog dialoguee = new AlertDialog.Builder(this)
+            .setTitle(R.string.del_title)
+            .setView(layout)
+            .setNegativeButton("CANCELAR", null)
+            .setPositiveButton(R.string.deletee, (d, which) -> {
+                executeSecureOverwrite();
+            })
+            .create();
+
+    dialoguee.setOnShowListener(d -> {
+        dialoguee.getButton(AlertDialog.BUTTON_POSITIVE)
+                .setEnabled(false);
+
+        checkBox.setOnCheckedChangeListener((buttonView, isChecked) -> {
+            dialoguee.getButton(AlertDialog.BUTTON_POSITIVE)
+                    .setEnabled(isChecked);
+        });
+    });
+
+    dialoguee.show();
 }
 
     private void showHelp() {
@@ -1157,9 +1303,10 @@ private void authenticateForReplacement(
         );
 
         i.addFlags(
-                Intent.FLAG_GRANT_READ_URI_PERMISSION |
-                Intent.FLAG_GRANT_PERSISTABLE_URI_PERMISSION
-        );
+        Intent.FLAG_GRANT_READ_URI_PERMISSION |
+        Intent.FLAG_GRANT_WRITE_URI_PERMISSION |
+        Intent.FLAG_GRANT_PERSISTABLE_URI_PERMISSION
+);
 
         startActivityForResult(
                 i,
@@ -1405,6 +1552,8 @@ private void authenticateForReplacement(
             inputMode = MODE_FILE;
             inputIsFolder = false;
 
+            deleteButton.setVisibility(View.VISIBLE);
+
             String selectedName =
                     name(inputUri);
 
@@ -1418,7 +1567,11 @@ private void authenticateForReplacement(
 
         metaButton.setVisibility(
         decryptMode ? View.GONE : View.VISIBLE
-);
+        );
+
+        deleteButton.setVisibility(
+        decryptMode ? View.GONE : View.VISIBLE
+        );
 
             action.setText(
                     decryptMode
@@ -1432,6 +1585,7 @@ private void authenticateForReplacement(
         if (requestCode == PICK_FOLDER) {
 
             metaButton.setVisibility(View.GONE);
+            deleteButton.setVisibility(View.GONE);
 
             inputUri = data.getData();
 
@@ -1489,28 +1643,31 @@ private void authenticateForReplacement(
     }
 
     private void persistReadPermission(
-            Uri uri,
-            Intent data
-    ) {
+        Uri uri,
+        Intent data
+) {
 
-        try {
+    try {
 
-            int flags =
-                    data.getFlags()
-                            & Intent.FLAG_GRANT_READ_URI_PERMISSION;
-
-            if (flags != 0) {
-
-                getContentResolver()
-                        .takePersistableUriPermission(
-                                uri,
-                                flags
+        int flags =
+                data.getFlags()
+                        & (
+                                Intent.FLAG_GRANT_READ_URI_PERMISSION |
+                                Intent.FLAG_GRANT_WRITE_URI_PERMISSION
                         );
-            }
 
-        } catch (Exception ignored) {
+        if (flags != 0) {
+
+            getContentResolver()
+                    .takePersistableUriPermission(
+                            uri,
+                            flags
+                    );
         }
+
+    } catch (Exception ignored) {
     }
+}
 
     private void persistWritePermission(
             Uri uri,
@@ -3941,6 +4098,7 @@ private void copyToOutput(
             infoButton.setEnabled(!busy);
             infoCrypto.setEnabled(!busy);
             metaButton.setEnabled(!busy);
+            deleteButton.setEnabled(!busy);
 
             /*
              * O botão de informações permanece disponível
@@ -4124,6 +4282,127 @@ private Uri createZipDirectories(
     return current;
 }
 
+        private String getFileName(Uri uri) {
+    Cursor cursor = getContentResolver().query(
+            uri,
+            new String[]{OpenableColumns.DISPLAY_NAME},
+            null,
+            null,
+            null
+    );
+
+    if (cursor != null) {
+        try {
+            if (cursor.moveToFirst()) {
+                int index = cursor.getColumnIndex(
+                        OpenableColumns.DISPLAY_NAME
+                );
+
+                if (index >= 0) {
+                    return cursor.getString(index);
+                }
+            }
+        } finally {
+            cursor.close();
+        }
+    }
+
+    String path = uri.getLastPathSegment();
+
+    return path != null ? path : "Arquivo selecionado";
+}
+
+        private void handleIncomingIntent(Intent intent) {
+
+    if (intent == null) {
+        return;
+    }
+
+    String intentAction = intent.getAction();
+
+    Uri uri = null;
+
+    // Recebimento pelo menu Compartilhar
+    if (Intent.ACTION_SEND.equals(intentAction)) {
+
+        if (android.os.Build.VERSION.SDK_INT >= 33) {
+
+            uri = intent.getParcelableExtra(
+                    Intent.EXTRA_STREAM,
+                    Uri.class
+            );
+
+        } else {
+
+            uri = intent.getParcelableExtra(
+                    Intent.EXTRA_STREAM
+            );
+        }
+
+        // Compatibilidade com aplicativos que enviam ClipData
+        if (uri == null
+                && intent.getClipData() != null
+                && intent.getClipData().getItemCount() > 0) {
+
+            uri = intent.getClipData()
+                    .getItemAt(0)
+                    .getUri();
+        }
+
+    }
+
+    // Abertura direta pelo gerenciador de arquivos
+    else if (Intent.ACTION_VIEW.equals(intentAction)) {
+
+        uri = intent.getData();
+
+    } else {
+        return;
+    }
+
+    if (uri == null) {
+        return;
+    }
+
+    // Registrar arquivo recebido
+    inputUri = uri;
+
+    inputMode = MODE_FILE;
+    inputIsFolder = false;
+
+    deleteButton.setVisibility(View.GONE);
+
+    // Obter nome do arquivo
+    String selectedName = name(inputUri);
+
+    fileName.setText(selectedName);
+
+    // Identificar se é um arquivo criptografado
+    decryptMode = selectedName
+            .toLowerCase(java.util.Locale.ROOT)
+            .endsWith(".aes");
+
+    // Atualizar botão de metadados
+    metaButton.setVisibility(
+            decryptMode ? View.GONE : View.VISIBLE
+    );
+
+    // Atualizar operação principal
+    action.setText(
+            decryptMode
+                    ? R.string.decrypt
+                    : R.string.encrypt
+    );
+}
+
+        @Override
+protected void onNewIntent(Intent intent) {
+    super.onNewIntent(intent);
+
+    setIntent(intent);
+
+    handleIncomingIntent(intent);
+}
 
     @Override
     protected void onDestroy() {
