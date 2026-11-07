@@ -311,22 +311,74 @@ public class MainActivity extends FragmentActivity {
     );
 
     String reportText =
-            "Arquivo: " + record.fileName
-                    + "\n\nTamanho: " + record.sizeBytes + " bytes"
+            "ID do relatório: " + record.reportId
+
+                    + "\n\nArquivo: " + record.fileName
+
+                    + "\n\nTamanho: "
+                    + record.sizeBytes + " bytes"
+
                     + "\n\nInício: "
-                    + fmt.format(new Date(record.startedAtMillis))
+                    + fmt.format(
+                            new Date(record.startedAtMillis)
+                    )
+
                     + "\n\nTérmino: "
-                    + fmt.format(new Date(record.finishedAtMillis))
-                    + "\n\nMétodo: " + record.method
-                    + "\n\nStatus: " + record.status;
+                    + fmt.format(
+                            new Date(record.finishedAtMillis)
+                    )
+
+                    + "\n\nMétodo: "
+                    + record.method
+
+                    + "\n\nCiclos: "
+                    + record.cycles
+
+                    + "\n\nBytes sobrescritos: "
+                    + record.bytesOverwritten
+
+                    + "\n\nSobrescrita: "
+                    + record.overwriteStatus
+
+                    + "\n\nExclusão: "
+                    + record.deleteStatus
+
+                    + "\n\nResultado geral: "
+                    + record.status
+
+                    + "\n\nFabricante: "
+                    + record.manufacturer
+
+                    + "\n\nModelo: "
+                    + record.deviceModel
+
+                    + "\n\nAndroid: "
+                    + record.androidVersion
+
+                    + "\n\nAPI: "
+                    + record.androidApi
+
+                    + "\n\nBuild ID: "
+                    + record.buildId
+
+                    + "\n\nVersão do aplicativo: "
+                    + record.appVersion;
+
+    if (!record.errorMessage.isEmpty()) {
+
+        reportText +=
+                "\n\nErro: "
+                        + record.errorMessage;
+    }
 
     new AlertDialog.Builder(this)
             .setTitle("🛡️ Relatório de Exclusão")
             .setMessage(reportText)
             .setNeutralButton(
-                "Salvar PDF",
-                (dialog, which) -> requestErasurePdf(record)
-                )
+                    "Salvar PDF",
+                    (dialog, which) ->
+                            requestErasurePdf(record)
+            )
             .setPositiveButton("Fechar", null)
             .setCancelable(false)
             .show();
@@ -416,16 +468,21 @@ public class MainActivity extends FragmentActivity {
 
         long finishedAt = System.currentTimeMillis();
 
-        // Define o resultado registrado.
+        // -----------------------------------------
+        // Resultado geral.
+        // -----------------------------------------
+
         String recordStatus;
         String errorMessage;
 
-        if (overwriteResult.status != SecureDeleteManager.Status.SUCCESS) {
+        if (overwriteResult.status
+                != SecureDeleteManager.Status.SUCCESS) {
 
             recordStatus = "OVERWRITE_FAILED";
             errorMessage = overwriteResult.message;
 
-        } else if (finalResult.status != SecureDeleteManager.Status.SUCCESS) {
+        } else if (finalResult.status
+                != SecureDeleteManager.Status.SUCCESS) {
 
             recordStatus = "DELETE_FAILED";
             errorMessage = finalResult.message;
@@ -436,18 +493,121 @@ public class MainActivity extends FragmentActivity {
             errorMessage = "";
         }
 
+        // -----------------------------------------
+        // Status individuais.
+        // -----------------------------------------
+
+        String overwriteStatus;
+
+        if (overwriteResult.status
+                == SecureDeleteManager.Status.SUCCESS) {
+
+            overwriteStatus = "SUCCESS";
+
+        } else {
+
+            overwriteStatus = "FAILED";
+        }
+
+        String deleteStatus;
+
+        if (overwriteResult.status
+                != SecureDeleteManager.Status.SUCCESS) {
+
+            deleteStatus = "NOT_EXECUTED";
+
+        } else if (finalResult.status
+                == SecureDeleteManager.Status.SUCCESS) {
+
+            deleteStatus = "SUCCESS";
+
+        } else {
+
+            deleteStatus = "FAILED";
+        }
+
+        // -----------------------------------------
+        // Dados do dispositivo.
+        // -----------------------------------------
+
+        String manufacturer =
+                android.os.Build.MANUFACTURER;
+
+        String deviceModel =
+                android.os.Build.MODEL;
+
+        String androidVersion =
+                android.os.Build.VERSION.RELEASE;
+
+        int androidApi =
+                android.os.Build.VERSION.SDK_INT;
+
+        String buildId =
+                android.os.Build.ID;
+
+        String appVersion;
+
+        try {
+
+            appVersion =
+                    getPackageManager()
+                            .getPackageInfo(
+                                    getPackageName(),
+                                    0
+                            )
+                            .versionName;
+
+            if (appVersion == null
+                    || appVersion.isEmpty()) {
+
+                appVersion = "Não registrada";
+            }
+
+        } catch (Exception e) {
+
+            appVersion = "Não registrada";
+        }
+
+        // -----------------------------------------
+        // Tamanho registrado.
+        // -----------------------------------------
+
         long recordedSize = originalSize >= 0
                 ? originalSize
                 : overwriteResult.bytesOverwritten;
 
+        // -----------------------------------------
+        // Cria o registro completo.
+        // -----------------------------------------
+
         ErasureRecord record = new ErasureRecord(
+
+                java.util.UUID.randomUUID().toString(),
+
                 originalName,
                 recordedSize,
+
                 startedAt,
                 finishedAt,
+
                 "Sobrescrita única com dados aleatórios",
+
                 recordStatus,
-                errorMessage
+                errorMessage,
+
+                manufacturer,
+                deviceModel,
+                androidVersion,
+                androidApi,
+                buildId,
+                appVersion,
+
+                1,
+
+                overwriteResult.bytesOverwritten,
+
+                overwriteStatus,
+                deleteStatus
         );
 
         // Salva o registro sem deixar uma falha
@@ -455,12 +615,14 @@ public class MainActivity extends FragmentActivity {
         boolean reportSaved = true;
 
         try {
+
             ErasureReport.append(
                     getApplicationContext(),
                     record
             );
 
         } catch (IOException e) {
+
             reportSaved = false;
         }
 
@@ -473,14 +635,16 @@ public class MainActivity extends FragmentActivity {
             String title;
             String message;
 
-            if (overwriteResult.status != SecureDeleteManager.Status.SUCCESS) {
+            if (overwriteResult.status
+                    != SecureDeleteManager.Status.SUCCESS) {
 
                 title = "Sobrescrita não concluída";
 
                 message = overwriteResult.message
                         + "\n\nO arquivo não foi excluído.";
 
-            } else if (finalResult.status == SecureDeleteManager.Status.SUCCESS) {
+            } else if (finalResult.status
+                    == SecureDeleteManager.Status.SUCCESS) {
 
                 title = "Operação concluída";
 
@@ -491,9 +655,13 @@ public class MainActivity extends FragmentActivity {
                         + overwriteResult.bytesOverwritten;
 
                 if (targetUri.equals(inputUri)) {
+
                     inputUri = null;
 
-                    fileName.setText("Nenhum arquivo selecionado");
+                    fileName.setText(
+                            "Nenhum arquivo selecionado"
+                    );
+
                     metaButton.setVisibility(View.GONE);
 
                     deleteButton.setVisibility(View.GONE);
@@ -503,29 +671,41 @@ public class MainActivity extends FragmentActivity {
 
                 title = "Arquivo não excluído";
 
-                message = "A sobrescrita foi concluída, mas a exclusão falhou.\n\n"
+                message =
+                        "A sobrescrita foi concluída, "
+                        + "mas a exclusão falhou.\n\n"
                         + finalResult.message
                         + "\n\nBytes sobrescritos: "
                         + overwriteResult.bytesOverwritten;
             }
 
             if (!finalReportSaved) {
-                message += "\n\nAviso: não foi possível salvar o registro do relatório.";
+
+                message +=
+                        "\n\nAviso: não foi possível "
+                        + "salvar o registro do relatório.";
             }
 
             AlertDialog.Builder builder =
-                    new AlertDialog.Builder(MainActivity.this)
+                    new AlertDialog.Builder(
+                            MainActivity.this
+                    )
                             .setTitle(title)
                             .setMessage(message)
-                            .setPositiveButton("OK", null)
+                            .setPositiveButton(
+                                    "OK",
+                                    null
+                            )
                             .setCancelable(false);
 
-            // O botão aparece quando a operação foi concluída.
+            // O botão aparece quando a operação
+            // foi concluída com sucesso.
             if (recordStatus.equals("SUCCESS")) {
 
                 builder.setNegativeButton(
                         "Ver Relatório",
-                        (dialog, which) -> showErasureReportDialog(record)
+                        (dialog, which) ->
+                                showErasureReportDialog(record)
                 );
             }
 
@@ -1637,7 +1817,7 @@ private void authenticateForReplacement(
 
     intent.putExtra(
             Intent.EXTRA_TITLE,
-            "Relatorio_Exclusao.pdf"
+            "Relatorio_Exclusao-" + record.reportId + ".pdf"
     );
 
     startActivityForResult(
