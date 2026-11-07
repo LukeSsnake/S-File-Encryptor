@@ -58,6 +58,35 @@ The application does not require network access and has no Google Play Services,
 
 File and folder access is handled through Android's **Storage Access Framework (SAF)**. The application only accesses files and folders explicitly selected by the user.
 
+## File Privacy Tools
+
+In addition to file encryption, S File Encryptor includes tools designed to help users protect their privacy and manage sensitive files.
+
+### Metadata Removal
+
+SFE can remove metadata from supported file formats, helping users reduce the amount of personal and identifying information embedded in their files.
+
+This feature is useful before sharing photos, videos, audio files, documents, and other supported content.
+
+The application processes files locally on the device and allows the user to choose where to save the resulting file.
+
+### Secure File Deletion
+
+SFE includes a file deletion feature that performs an overwrite procedure before deleting the selected file.
+
+The operation includes:
+
+* File overwrite processing
+* Deletion after the overwrite procedure
+* Operation status tracking
+* A unique Report ID for each operation
+* A detailed PDF report containing operation and device information
+* A persistent operation history
+
+The PDF report can be exported through Android's Storage Access Framework (SAF).
+
+These tools provide additional privacy features beyond encryption, helping users manage metadata and sensitive files directly on their Android devices.
+
 ## Building
 
 The project uses the Android Gradle Plugin and the Gradle wrapper included in this repository.
