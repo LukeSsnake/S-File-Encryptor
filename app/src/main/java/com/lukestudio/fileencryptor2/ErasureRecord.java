@@ -27,22 +27,36 @@ import android.graphics.drawable.Drawable;
  * Os campos são públicos e finais para manter o
  * estilo enxuto do projeto.
  */
+
 class ErasureRecord {
+
+    final String reportId;
 
     final String fileName;
     final long sizeBytes;
+
     final long startedAtMillis;
     final long finishedAtMillis;
 
-    /** Descrição do método aplicado. */
     final String method;
-
-    /** "SUCESSO" ou "FALHA". */
     final String status;
-
-    /** Mensagem de erro, ou "" quando não houver. */
     final String errorMessage;
 
+    final String manufacturer;
+    final String deviceModel;
+    final String androidVersion;
+    final int androidApi;
+    final String buildId;
+    final String appVersion;
+
+    final int cycles;
+    final long bytesOverwritten;
+
+    final String overwriteStatus;
+    final String deleteStatus;
+
+    // Construtor antigo: mantém compatibilidade
+    // com os registros e chamadas existentes.
     ErasureRecord(
             String fileName,
             long sizeBytes,
@@ -52,6 +66,52 @@ class ErasureRecord {
             String status,
             String errorMessage
     ) {
+
+        this(
+                java.util.UUID.randomUUID().toString(),
+                fileName,
+                sizeBytes,
+                startedAtMillis,
+                finishedAtMillis,
+                method,
+                status,
+                errorMessage,
+                "Não registrado",
+                "Não registrado",
+                "Não registrado",
+                0,
+                "Não registrado",
+                "Não registrada",
+                1,
+                0,
+                "Não registrado",
+                "Não registrado"
+        );
+    }
+
+    // Construtor completo.
+    ErasureRecord(
+            String reportId,
+            String fileName,
+            long sizeBytes,
+            long startedAtMillis,
+            long finishedAtMillis,
+            String method,
+            String status,
+            String errorMessage,
+            String manufacturer,
+            String deviceModel,
+            String androidVersion,
+            int androidApi,
+            String buildId,
+            String appVersion,
+            int cycles,
+            long bytesOverwritten,
+            String overwriteStatus,
+            String deleteStatus
+    ) {
+
+        this.reportId = reportId;
         this.fileName = fileName;
         this.sizeBytes = sizeBytes;
         this.startedAtMillis = startedAtMillis;
@@ -59,8 +119,22 @@ class ErasureRecord {
         this.method = method;
         this.status = status;
         this.errorMessage = errorMessage;
+
+        this.manufacturer = manufacturer;
+        this.deviceModel = deviceModel;
+        this.androidVersion = androidVersion;
+        this.androidApi = androidApi;
+        this.buildId = buildId;
+        this.appVersion = appVersion;
+
+        this.cycles = cycles;
+        this.bytesOverwritten = bytesOverwritten;
+
+        this.overwriteStatus = overwriteStatus;
+        this.deleteStatus = deleteStatus;
     }
 }
+
 
 /**
  * Registro e emissão de relatórios de exclusão
@@ -453,24 +527,68 @@ final class ErasureReport {
 
     private static String toJsonLine(ErasureRecord r) {
 
-        StringBuilder sb = new StringBuilder();
+    StringBuilder sb = new StringBuilder();
 
-        sb.append("{\"v\":1");
-        sb.append(",\"fileName\":\"")
-                .append(jsonEscape(r.fileName)).append('"');
-        sb.append(",\"size\":").append(r.sizeBytes);
-        sb.append(",\"startedAt\":").append(r.startedAtMillis);
-        sb.append(",\"finishedAt\":").append(r.finishedAtMillis);
-        sb.append(",\"method\":\"")
-                .append(jsonEscape(r.method)).append('"');
-        sb.append(",\"status\":\"")
-                .append(jsonEscape(r.status)).append('"');
-        sb.append(",\"error\":\"")
-                .append(jsonEscape(r.errorMessage)).append('"');
-        sb.append('}');
+    sb.append("{\"v\":2");
 
-        return sb.toString();
-    }
+    sb.append(",\"reportId\":\"")
+            .append(jsonEscape(r.reportId)).append('"');
+
+    sb.append(",\"fileName\":\"")
+            .append(jsonEscape(r.fileName)).append('"');
+
+    sb.append(",\"size\":")
+            .append(r.sizeBytes);
+
+    sb.append(",\"startedAt\":")
+            .append(r.startedAtMillis);
+
+    sb.append(",\"finishedAt\":")
+            .append(r.finishedAtMillis);
+
+    sb.append(",\"method\":\"")
+            .append(jsonEscape(r.method)).append('"');
+
+    sb.append(",\"status\":\"")
+            .append(jsonEscape(r.status)).append('"');
+
+    sb.append(",\"error\":\"")
+            .append(jsonEscape(r.errorMessage)).append('"');
+
+    sb.append(",\"manufacturer\":\"")
+            .append(jsonEscape(r.manufacturer)).append('"');
+
+    sb.append(",\"deviceModel\":\"")
+            .append(jsonEscape(r.deviceModel)).append('"');
+
+    sb.append(",\"androidVersion\":\"")
+            .append(jsonEscape(r.androidVersion)).append('"');
+
+    sb.append(",\"androidApi\":")
+            .append(r.androidApi);
+
+    sb.append(",\"buildId\":\"")
+            .append(jsonEscape(r.buildId)).append('"');
+
+    sb.append(",\"appVersion\":\"")
+            .append(jsonEscape(r.appVersion)).append('"');
+
+    sb.append(",\"cycles\":")
+            .append(r.cycles);
+
+    sb.append(",\"bytesOverwritten\":")
+            .append(r.bytesOverwritten);
+
+    sb.append(",\"overwriteStatus\":\"")
+            .append(jsonEscape(r.overwriteStatus)).append('"');
+
+    sb.append(",\"deleteStatus\":\"")
+            .append(jsonEscape(r.deleteStatus)).append('"');
+
+    sb.append('}');
+
+    return sb.toString();
+}
 
     /**
      * Parser tolerante: extrai apenas os campos
@@ -478,56 +596,177 @@ final class ErasureReport {
      */
     private static ErasureRecord fromJsonLine(String line) {
 
-        try {
+    try {
 
-            if (line == null
-                    || !line.startsWith("{")
-                    || !line.endsWith("}")) {
-                return null;
-            }
+        if (line == null
+                || !line.startsWith("{")
+                || !line.endsWith("}")) {
+            return null;
+        }
 
-            String fileName =
-                    extractString(line, "fileName");
+        String fileName =
+                extractString(line, "fileName");
 
-            if (fileName == null) {
-                return null;
-            }
+        if (fileName == null) {
+            return null;
+        }
 
-            Long size = extractLong(line, "size");
-            Long startedAt = extractLong(line, "startedAt");
-            Long finishedAt = extractLong(line, "finishedAt");
+        Long size =
+                extractLong(line, "size");
 
-            String status =
-                    extractString(line, "status");
+        Long startedAt =
+                extractLong(line, "startedAt");
 
-            if (size == null || startedAt == null
-                    || finishedAt == null
-                    || status == null) {
-                return null;
-            }
+        Long finishedAt =
+                extractLong(line, "finishedAt");
 
-            String method =
-                    extractString(line, "method");
+        String status =
+                extractString(line, "status");
 
-            String error =
-                    extractString(line, "error");
+        if (size == null
+                || startedAt == null
+                || finishedAt == null
+                || status == null) {
+            return null;
+        }
+
+        String method =
+                extractString(line, "method");
+
+        String error =
+                extractString(line, "error");
+
+        // -----------------------------------------
+        // Campos introduzidos na versão 2.
+        // -----------------------------------------
+
+        String reportId =
+                extractString(line, "reportId");
+
+        String manufacturer =
+                extractString(line, "manufacturer");
+
+        String deviceModel =
+                extractString(line, "deviceModel");
+
+        String androidVersion =
+                extractString(line, "androidVersion");
+
+        Long androidApi =
+                extractLong(line, "androidApi");
+
+        String buildId =
+                extractString(line, "buildId");
+
+        String appVersion =
+                extractString(line, "appVersion");
+
+        Long cycles =
+                extractLong(line, "cycles");
+
+        Long bytesOverwritten =
+                extractLong(line, "bytesOverwritten");
+
+        String overwriteStatus =
+                extractString(line, "overwriteStatus");
+
+        String deleteStatus =
+                extractString(line, "deleteStatus");
+
+        // -----------------------------------------
+        // Registro antigo (v1).
+        // -----------------------------------------
+
+        if (reportId == null) {
 
             return new ErasureRecord(
                     jsonUnescape(fileName),
                     size,
                     startedAt,
                     finishedAt,
+
                     method == null
                             ? METHOD_DESCRIPTION
                             : jsonUnescape(method),
-                    jsonUnescape(status),
-                    error == null ? "" : jsonUnescape(error)
-            );
 
-        } catch (RuntimeException e) {
-            return null;
+                    jsonUnescape(status),
+
+                    error == null
+                            ? ""
+                            : jsonUnescape(error)
+            );
         }
+
+        // -----------------------------------------
+        // Registro novo (v2).
+        // -----------------------------------------
+
+        return new ErasureRecord(
+
+                jsonUnescape(reportId),
+
+                jsonUnescape(fileName),
+
+                size,
+                startedAt,
+                finishedAt,
+
+                method == null
+                        ? METHOD_DESCRIPTION
+                        : jsonUnescape(method),
+
+                jsonUnescape(status),
+
+                error == null
+                        ? ""
+                        : jsonUnescape(error),
+
+                manufacturer == null
+                        ? "Não registrado"
+                        : jsonUnescape(manufacturer),
+
+                deviceModel == null
+                        ? "Não registrado"
+                        : jsonUnescape(deviceModel),
+
+                androidVersion == null
+                        ? "Não registrado"
+                        : jsonUnescape(androidVersion),
+
+                androidApi == null
+                        ? 0
+                        : androidApi.intValue(),
+
+                buildId == null
+                        ? "Não registrado"
+                        : jsonUnescape(buildId),
+
+                appVersion == null
+                        ? "Não registrada"
+                        : jsonUnescape(appVersion),
+
+                cycles == null
+                        ? 1
+                        : cycles.intValue(),
+
+                bytesOverwritten == null
+                        ? 0
+                        : bytesOverwritten,
+
+                overwriteStatus == null
+                        ? "Não registrado"
+                        : jsonUnescape(overwriteStatus),
+
+                deleteStatus == null
+                        ? "Não registrado"
+                        : jsonUnescape(deleteStatus)
+        );
+
+    } catch (RuntimeException e) {
+
+        return null;
     }
+}
 
     private static String extractString(
             String json,
@@ -718,33 +957,58 @@ final class ErasureReport {
         ).format(new Date(millis));
     }
 
-    static void exportPdf(
+    
+static void exportPdf(
         Context context,
         OutputStream output,
         ErasureRecord record
 ) throws IOException {
 
     PdfDocument document = new PdfDocument();
-
     Bitmap iconBitmap = null;
 
     try {
 
         final int pageWidth = 595;
         final int pageHeight = 842;
+        final int left = 40;
+        final int right = 555;
 
         Paint titlePaint = new Paint(Paint.ANTI_ALIAS_FLAG);
         titlePaint.setTextSize(20);
         titlePaint.setFakeBoldText(true);
 
-        Paint textPaint = new Paint(Paint.ANTI_ALIAS_FLAG);
-        textPaint.setTextSize(12);
+        Paint sectionPaint = new Paint(Paint.ANTI_ALIAS_FLAG);
+        sectionPaint.setTextSize(12);
+        sectionPaint.setFakeBoldText(true);
 
-        Paint footerPaint = new Paint(Paint.ANTI_ALIAS_FLAG);
-        footerPaint.setTextSize(9);
+        Paint textPaint = new Paint(Paint.ANTI_ALIAS_FLAG);
+        textPaint.setTextSize(10);
+
+        Paint smallPaint = new Paint(Paint.ANTI_ALIAS_FLAG);
+        smallPaint.setTextSize(8);
 
         Paint linePaint = new Paint(Paint.ANTI_ALIAS_FLAG);
         linePaint.setStrokeWidth(1);
+
+        SimpleDateFormat fmt = new SimpleDateFormat(
+                "yyyy-MM-dd HH:mm:ss",
+                Locale.getDefault()
+        );
+
+        long durationMillis = Math.max(
+                0,
+                record.finishedAtMillis - record.startedAtMillis
+        );
+
+        long durationSeconds = durationMillis / 1000;
+
+        String durationText = String.format(
+                Locale.getDefault(),
+                "%02d min %02d s",
+                durationSeconds / 60,
+                durationSeconds % 60
+        );
 
         PdfDocument.PageInfo pageInfo =
                 new PdfDocument.PageInfo.Builder(
@@ -758,7 +1022,12 @@ final class ErasureReport {
 
         Canvas canvas = page.getCanvas();
 
-        // Ícone original do aplicativo.
+        int y = 70;
+
+        // -----------------------------------------
+        // Cabeçalho e ícone.
+        // -----------------------------------------
+
         Drawable icon = context.getDrawable(
                 R.drawable.app_icon
         );
@@ -766,147 +1035,320 @@ final class ErasureReport {
         if (icon != null) {
 
             iconBitmap = Bitmap.createBitmap(
-                    72,
-                    72,
+                    64,
+                    64,
                     Bitmap.Config.ARGB_8888
             );
 
             Canvas iconCanvas = new Canvas(iconBitmap);
 
-            icon.setBounds(
-                    0,
-                    0,
-                    72,
-                    72
-            );
-
+            icon.setBounds(0, 0, 64, 64);
             icon.draw(iconCanvas);
 
             canvas.drawBitmap(
                     iconBitmap,
-                    40,
-                    45,
+                    left,
+                    35,
                     null
             );
         }
 
-        // Título.
         canvas.drawText(
                 "Relatório de Exclusão",
-                125,
-                85,
+                120,
+                65,
                 titlePaint
         );
 
-        canvas.drawLine(
-                40,
-                135,
-                555,
-                135,
-                linePaint
+        canvas.drawText(
+                "S-File Encryptor",
+                120,
+                85,
+                smallPaint
         );
 
-        SimpleDateFormat fmt =
-                new SimpleDateFormat(
-                        "yyyy-MM-dd HH:mm:ss",
-                        Locale.getDefault()
-                );
+        canvas.drawLine(left, 120, right, 120, linePaint);
 
-        int y = 190;
-        final int lineHeight = 32;
+        y = 155;
+
+        // -----------------------------------------
+        // DEVICE DETAILS.
+        // -----------------------------------------
 
         canvas.drawText(
-                "Arquivo: " + truncate(record.fileName, 65),
-                40,
+                "1. DEVICE DETAILS",
+                left,
+                y,
+                sectionPaint
+        );
+
+        y += 25;
+
+        canvas.drawText(
+                "Fabricante: " + record.manufacturer,
+                left,
                 y,
                 textPaint
         );
 
-        y += lineHeight;
+        y += 18;
 
         canvas.drawText(
-                "Tamanho: " + record.sizeBytes + " bytes",
-                40,
+                "Modelo: " + record.deviceModel,
+                left,
                 y,
                 textPaint
         );
 
-        y += lineHeight;
+        y += 18;
+
+        canvas.drawText(
+                "Android: " + record.androidVersion,
+                left,
+                y,
+                textPaint
+        );
+
+        y += 18;
+
+        canvas.drawText(
+                "API: " + record.androidApi,
+                left,
+                y,
+                textPaint
+        );
+
+        y += 18;
+
+        canvas.drawText(
+                "Build ID: " + truncate(record.buildId, 75),
+                left,
+                y,
+                textPaint
+        );
+
+        y += 25;
+
+        canvas.drawLine(left, y, right, y, linePaint);
+
+        // -----------------------------------------
+        // DELETION DETAILS.
+        // -----------------------------------------
+
+        y += 25;
+
+        canvas.drawText(
+                "2. DELETION DETAILS",
+                left,
+                y,
+                sectionPaint
+        );
+
+        y += 25;
+
+        canvas.drawText(
+                "Arquivo: " + truncate(record.fileName, 75),
+                left,
+                y,
+                textPaint
+        );
+
+        y += 18;
+
+        canvas.drawText(
+                "Tamanho original: "
+                        + record.sizeBytes + " bytes",
+                left,
+                y,
+                textPaint
+        );
+
+        y += 18;
+
+        canvas.drawText(
+                "Método: " + truncate(record.method, 75),
+                left,
+                y,
+                textPaint
+        );
+
+        y += 18;
+
+        canvas.drawText(
+                "Ciclos: " + record.cycles,
+                left,
+                y,
+                textPaint
+        );
+
+        y += 18;
+
+        canvas.drawText(
+                "Bytes sobrescritos: "
+                        + record.bytesOverwritten,
+                left,
+                y,
+                textPaint
+        );
+
+        y += 18;
 
         canvas.drawText(
                 "Início: "
                         + fmt.format(
                                 new Date(record.startedAtMillis)
                         ),
-                40,
+                left,
                 y,
                 textPaint
         );
 
-        y += lineHeight;
+        y += 18;
 
         canvas.drawText(
                 "Término: "
                         + fmt.format(
                                 new Date(record.finishedAtMillis)
                         ),
-                40,
+                left,
                 y,
                 textPaint
         );
 
-        y += lineHeight;
+        y += 18;
 
         canvas.drawText(
-                "Método: "
-                        + truncate(record.method, 65),
-                40,
+                "Duração: " + durationText,
+                left,
                 y,
                 textPaint
         );
 
-        y += lineHeight;
+        y += 25;
+
+        canvas.drawLine(left, y, right, y, linePaint);
+
+        // -----------------------------------------
+        // OPERATION STATUS.
+        // -----------------------------------------
+
+        y += 25;
 
         canvas.drawText(
-                "Status: " + record.status,
-                40,
+                "3. OPERATION STATUS",
+                left,
+                y,
+                sectionPaint
+        );
+
+        y += 25;
+
+        canvas.drawText(
+                "Sobrescrita: " + record.overwriteStatus,
+                left,
+                y,
+                textPaint
+        );
+
+        y += 18;
+
+        canvas.drawText(
+                "Exclusão: " + record.deleteStatus,
+                left,
+                y,
+                textPaint
+        );
+
+        y += 18;
+
+        canvas.drawText(
+                "Resultado geral: " + record.status,
+                left,
                 y,
                 textPaint
         );
 
         if (!record.errorMessage.isEmpty()) {
 
-            y += lineHeight;
+            y += 18;
 
             canvas.drawText(
-                    "Erro: "
-                            + truncate(record.errorMessage, 65),
-                    40,
+                    "Erro: " + truncate(record.errorMessage, 75),
+                    left,
                     y,
                     textPaint
             );
         }
 
+        y += 25;
+
+        canvas.drawLine(left, y, right, y, linePaint);
+
+        // -----------------------------------------
+        // REPORT DETAILS.
+        // -----------------------------------------
+
+        y += 25;
+
+        canvas.drawText(
+                "4. REPORT DETAILS",
+                left,
+                y,
+                sectionPaint
+        );
+
+        y += 25;
+
+        canvas.drawText(
+                "Report ID: " + record.reportId,
+                left,
+                y,
+                smallPaint
+        );
+
+        y += 18;
+
+        canvas.drawText(
+                "Data do relatório: "
+                        + fmt.format(new Date()),
+                left,
+                y,
+                textPaint
+        );
+
+        y += 18;
+
+        canvas.drawText(
+                "Versão do aplicativo: " + record.appVersion,
+                left,
+                y,
+                textPaint
+        );
+
+        // -----------------------------------------
+        // Rodapé.
+        // -----------------------------------------
+
         canvas.drawLine(
-                40,
-                760,
-                555,
-                760,
+                left,
+                780,
+                right,
+                780,
                 linePaint
         );
 
         canvas.drawText(
                 "S-File Encryptor",
-                40,
-                785,
-                footerPaint
+                left,
+                800,
+                smallPaint
         );
 
         canvas.drawText(
-                "Relatório de operação de exclusão",
-                40,
-                800,
-                footerPaint
+                "Relatório individual de operação de exclusão",
+                left,
+                815,
+                smallPaint
         );
 
         document.finishPage(page);
