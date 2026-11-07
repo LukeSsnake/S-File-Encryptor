@@ -46,6 +46,9 @@ import java.util.List;
 import java.util.Map;
 import java.util.Set;
 import android.widget.CheckBox;
+import java.text.SimpleDateFormat;
+import java.util.Date;
+import java.util.Locale;
 import com.tom_roush.pdfbox.android.PDFBoxResourceLoader;
 
 import javax.crypto.Cipher;
@@ -112,6 +115,9 @@ public class MainActivity extends FragmentActivity {
 
     private long unzipTotalBytes;
     private long unzipProcessedBytes;
+
+    private static final int CREATE_ERASURE_PDF = 15;
+    private ErasureRecord pendingErasureRecord;
 
     private static final long MAX_ZIP_ENTRY_SIZE =
         1L * 1024 * 1024 * 1024; // 1 GiB por arquivo
@@ -297,6 +303,35 @@ public class MainActivity extends FragmentActivity {
     return copy;
 }
 
+        private void showErasureReportDialog(ErasureRecord record) {
+
+    SimpleDateFormat fmt = new SimpleDateFormat(
+            "yyyy-MM-dd HH:mm:ss",
+            Locale.getDefault()
+    );
+
+    String reportText =
+            "Arquivo: " + record.fileName
+                    + "\n\nTamanho: " + record.sizeBytes + " bytes"
+                    + "\n\nInício: "
+                    + fmt.format(new Date(record.startedAtMillis))
+                    + "\n\nTérmino: "
+                    + fmt.format(new Date(record.finishedAtMillis))
+                    + "\n\nMétodo: " + record.method
+                    + "\n\nStatus: " + record.status;
+
+    new AlertDialog.Builder(this)
+            .setTitle("🛡️ Relatório de Exclusão")
+            .setMessage(reportText)
+            .setNeutralButton(
+                "Salvar PDF",
+                (dialog, which) -> requestErasurePdf(record)
+                )
+            .setPositiveButton("Fechar", null)
+            .setCancelable(false)
+            .show();
+}
+
         private void executeSecureOverwrite() {
 
     if (inputUri == null || inputIsFolder) {
@@ -313,6 +348,51 @@ public class MainActivity extends FragmentActivity {
     Uri targetUri = inputUri;
 
     executor.execute(() -> {
+
+        long startedAt = System.currentTimeMillis();
+
+        String originalName = "Arquivo";
+        long originalSize = -1;
+
+        // Obtém nome e tamanho antes da sobrescrita.
+        try (Cursor cursor = getContentResolver().query(
+                targetUri,
+                new String[]{
+                        OpenableColumns.DISPLAY_NAME,
+                        OpenableColumns.SIZE
+                },
+                null,
+                null,
+                null
+        )) {
+
+            if (cursor != null && cursor.moveToFirst()) {
+
+                int nameIndex = cursor.getColumnIndex(
+                        OpenableColumns.DISPLAY_NAME
+                );
+
+                int sizeIndex = cursor.getColumnIndex(
+                        OpenableColumns.SIZE
+                );
+
+                if (nameIndex >= 0) {
+                    String name = cursor.getString(nameIndex);
+
+                    if (name != null && !name.isEmpty()) {
+                        originalName = name;
+                    }
+                }
+
+                if (sizeIndex >= 0 && !cursor.isNull(sizeIndex)) {
+                    originalSize = cursor.getLong(sizeIndex);
+                }
+            }
+
+        } catch (Exception ignored) {
+            // A falha na leitura dos metadados
+            // não deve impedir a exclusão.
+        }
 
         SecureDeleteManager.Result overwriteResult =
                 SecureDeleteManager.overwriteFile(
@@ -333,6 +413,58 @@ public class MainActivity extends FragmentActivity {
 
             finalResult = overwriteResult;
         }
+
+        long finishedAt = System.currentTimeMillis();
+
+        // Define o resultado registrado.
+        String recordStatus;
+        String errorMessage;
+
+        if (overwriteResult.status != SecureDeleteManager.Status.SUCCESS) {
+
+            recordStatus = "OVERWRITE_FAILED";
+            errorMessage = overwriteResult.message;
+
+        } else if (finalResult.status != SecureDeleteManager.Status.SUCCESS) {
+
+            recordStatus = "DELETE_FAILED";
+            errorMessage = finalResult.message;
+
+        } else {
+
+            recordStatus = "SUCCESS";
+            errorMessage = "";
+        }
+
+        long recordedSize = originalSize >= 0
+                ? originalSize
+                : overwriteResult.bytesOverwritten;
+
+        ErasureRecord record = new ErasureRecord(
+                originalName,
+                recordedSize,
+                startedAt,
+                finishedAt,
+                "Sobrescrita única com dados aleatórios",
+                recordStatus,
+                errorMessage
+        );
+
+        // Salva o registro sem deixar uma falha
+        // no relatório interromper a operação.
+        boolean reportSaved = true;
+
+        try {
+            ErasureReport.append(
+                    getApplicationContext(),
+                    record
+            );
+
+        } catch (IOException e) {
+            reportSaved = false;
+        }
+
+        final boolean finalReportSaved = reportSaved;
 
         runOnUiThread(() -> {
 
@@ -359,12 +491,12 @@ public class MainActivity extends FragmentActivity {
                         + overwriteResult.bytesOverwritten;
 
                 if (targetUri.equals(inputUri)) {
-                        inputUri = null;
+                    inputUri = null;
 
-                        fileName.setText("Nenhum arquivo selecionado");
-                        metaButton.setVisibility(View.GONE);
+                    fileName.setText("Nenhum arquivo selecionado");
+                    metaButton.setVisibility(View.GONE);
 
-                        deleteButton.setVisibility(View.GONE);
+                    deleteButton.setVisibility(View.GONE);
                 }
 
             } else {
@@ -377,11 +509,27 @@ public class MainActivity extends FragmentActivity {
                         + overwriteResult.bytesOverwritten;
             }
 
-            new AlertDialog.Builder(MainActivity.this)
-                    .setTitle(title)
-                    .setMessage(message)
-                    .setPositiveButton("OK", null)
-                    .show();
+            if (!finalReportSaved) {
+                message += "\n\nAviso: não foi possível salvar o registro do relatório.";
+            }
+
+            AlertDialog.Builder builder =
+                    new AlertDialog.Builder(MainActivity.this)
+                            .setTitle(title)
+                            .setMessage(message)
+                            .setPositiveButton("OK", null)
+                            .setCancelable(false);
+
+            // O botão aparece quando a operação foi concluída.
+            if (recordStatus.equals("SUCCESS")) {
+
+                builder.setNegativeButton(
+                        "Ver Relatório",
+                        (dialog, which) -> showErasureReportDialog(record)
+                );
+            }
+
+            builder.show();
         });
     });
 }
@@ -397,9 +545,9 @@ public class MainActivity extends FragmentActivity {
 
     TextView message = new TextView(this);
     message.setText(
-            "Esta operação tentará sobrescrever os dados do arquivo " +
+            "Esta operação irá sobrescrever os dados do arquivo " +
             "antes de excluí-lo.\n\n" +
-            "É uma proteção a mais do que simplesmente excluir do modo convencional. " +
+            "É uma proteção a mais do que simplesmente excluir de modo convencional.\n" +
             "Ainda podem restar resíduos.\n\n"
     );
 
@@ -1477,6 +1625,27 @@ private void authenticateForReplacement(
         );
     }
 
+    private void requestErasurePdf(ErasureRecord record) {
+
+    pendingErasureRecord = record;
+
+    Intent intent = new Intent(Intent.ACTION_CREATE_DOCUMENT);
+
+    intent.addCategory(Intent.CATEGORY_OPENABLE);
+
+    intent.setType("application/pdf");
+
+    intent.putExtra(
+            Intent.EXTRA_TITLE,
+            "Relatorio_Exclusao.pdf"
+    );
+
+    startActivityForResult(
+            intent,
+            CREATE_ERASURE_PDF
+    );
+}
+
     /* =========================================================
        RESULTADOS DOS SELETORES
        ========================================================= */
@@ -1493,6 +1662,76 @@ private void authenticateForReplacement(
                 resultCode,
                 data
         );
+
+        if (requestCode == CREATE_ERASURE_PDF) {
+
+    if (resultCode != RESULT_OK
+            || data == null
+            || data.getData() == null) {
+
+        pendingErasureRecord = null;
+        return;
+    }
+
+    Uri destination = data.getData();
+
+    persistWritePermission(destination, data);
+
+    ErasureRecord record = pendingErasureRecord;
+    pendingErasureRecord = null;
+
+    if (record == null) {
+        Toast.makeText(
+                this,
+                "Registro do relatório indisponível.",
+                Toast.LENGTH_LONG
+        ).show();
+        return;
+    }
+
+    executor.execute(() -> {
+
+        try (OutputStream output =
+                     getContentResolver().openOutputStream(
+                             destination,
+                             "w"
+                     )) {
+
+            if (output == null) {
+                throw new IOException(
+                        "Não foi possível abrir o destino."
+                );
+            }
+
+            ErasureReport.exportPdf(
+                    getApplicationContext(),
+                    output,
+                    record
+            );
+
+            runOnUiThread(() ->
+                    Toast.makeText(
+                            MainActivity.this,
+                            "Relatório PDF salvo com sucesso.",
+                            Toast.LENGTH_LONG
+                    ).show()
+            );
+
+        } catch (Exception e) {
+
+            runOnUiThread(() ->
+                    Toast.makeText(
+                            MainActivity.this,
+                            "Falha ao salvar o PDF: "
+                                    + e.getMessage(),
+                            Toast.LENGTH_LONG
+                    ).show()
+            );
+        }
+    });
+
+    return;
+}
 
         if (requestCode == CREATE_METADATA_OUTPUT) {
 
@@ -1858,6 +2097,7 @@ private void startMetadataCleaning() {
                                 android.R.string.ok,
                                 null
                         )
+                        .setCancelable(false)
                         .show();
             });
 
@@ -2004,6 +2244,7 @@ private void saveMetadataOutput(Uri destination) {
                                 android.R.string.ok,
                                 null
                         )
+                        .setCancelable(false)
                         .show();
 
             } else {
