@@ -83,13 +83,26 @@ The application does not require network access and has no Google Play Services,
 
 File and folder access is handled through Android's **Storage Access Framework (SAF)**. The application only accesses files and folders explicitly selected by the user.
 
-### Secure-delete report contents
+### Secure-Delete Report Contents
 
-The wipe report contains the file name, timestamps, operation status and
-device/model information. It is created in app-private storage, never
-leaves the device, and is only accessible outside the app if you
-explicitly export it via the system file picker (SAF). Filenames and
-content hashes are metadata and should be treated accordingly.
+Every secure-delete operation generates a local report so the user can
+audit what happened. The report contains: a randomly generated Report ID
+(UUID, not derived from file content), the file name, the file size,
+operation timestamps and duration, the overwrite method and cycle count,
+the number of bytes overwritten, per-stage statuses (overwrite, delete,
+overall) with any error message, and non-identifying device/app
+information (manufacturer, model, Android version/API level, build ID,
+app version).
+
+The report does **not** contain file contents or content hashes. It is
+stored exclusively in the app's private internal storage
+(`erasure_report.jsonl`), is never transmitted anywhere, and only leaves
+the device if the user explicitly exports it (text or single-operation
+PDF) via the system file picker. The entire history can be erased at any
+time from within the app.
+
+Note that file names are metadata and can themselves be sensitive;
+exported reports should be handled accordingly.
 
 ## File Privacy Tools
 
