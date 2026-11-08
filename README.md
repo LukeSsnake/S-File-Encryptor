@@ -87,6 +87,15 @@ The PDF report can be exported through Android's Storage Access Framework (SAF).
 
 These tools provide additional privacy features beyond encryption, helping users manage metadata and sensitive files directly on their Android devices.
 
+## Support the Project
+
+If you find S File Encryptor useful and would like to support its continued development, you can make a voluntary donation through the following platforms:
+
+- ☕ [Buy Me a Coffee](https://buymeacoffee.com/lukess)
+- 💖 [GitHub Sponsors](https://github.com/sponsors/LukeSsnake)
+
+Your support helps maintain and improve the project. Thank you!
+
 ## Building
 
 The project uses the Android Gradle Plugin and the Gradle wrapper included in this repository.
