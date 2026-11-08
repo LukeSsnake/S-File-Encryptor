@@ -83,6 +83,14 @@ The application does not require network access and has no Google Play Services,
 
 File and folder access is handled through Android's **Storage Access Framework (SAF)**. The application only accesses files and folders explicitly selected by the user.
 
+### Secure-delete report contents
+
+The wipe report contains the file name, timestamps, operation status and
+device/model information. It is created in app-private storage, never
+leaves the device, and is only accessible outside the app if you
+explicitly export it via the system file picker (SAF). Filenames and
+content hashes are metadata and should be treated accordingly.
+
 ## File Privacy Tools
 
 In addition to file encryption, S File Encryptor includes tools designed to help users protect their privacy and manage sensitive files.
