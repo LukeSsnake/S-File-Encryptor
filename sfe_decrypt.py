@@ -12,6 +12,12 @@ repository: https://github.com/LukeSsnake/S-File-Encryptor):
 Usage:
     python sfe_decrypt.py <file.aes> [-o OUTPUT]
 
+The app encrypts folders by compressing them into a ZIP first and naming
+the result "<folder>_pasta.aes". Accordingly, if the input file name ends
+with "_pasta.aes", the decrypted output gets a ".zip" extension instead
+(otherwise the output simply drops the ".aes" extension). Extract the ZIP
+with any standard archive tool.
+
 Dependencies:
     pip install cryptography argon2-cffi
     (PBKDF2 and HMAC use only the standard library)
@@ -88,6 +94,9 @@ V1_HMAC_SIZE = 32
 V1_KEY_SIZE = 32
 V1_DERIVED_SIZE = 64
 V1_ITERATIONS = 100_000
+
+# Folder-encryption convention used by the app.
+FOLDER_SUFFIX = "_pasta.aes"
 
 BUFFER_SIZE = 1024 * 1024    # 1 MiB (multiple of 16)
 
@@ -367,9 +376,23 @@ def decrypt_v1(input_path: Path, password: str, output_path: Path) -> None:
 # ==========================================================================
 
 def default_output_for(input_path: Path) -> Path:
+    """
+    Mirror the app's naming conventions:
+
+    * "<name>.aes"        -> "<name>"          (regular file)
+    * "<folder>_pasta.aes"-> "<folder>.zip"    (encrypted folder = ZIP)
+    * anything else       -> "<name>_decrypted"
+    """
     name = input_path.name
+
+    if name.lower().endswith(FOLDER_SUFFIX):
+        # Swap the full "_pasta.aes" suffix for ".zip".
+        return input_path.with_name(name[:len(name) - len(FOLDER_SUFFIX)]
+                                    + ".zip")
+
     if name.lower().endswith(".aes"):
         return input_path.with_name(name[:len(name) - 4])
+
     return input_path.with_name(name + "_decrypted")
 
 
@@ -399,7 +422,9 @@ def main() -> int:
     parser.add_argument(
         "-o", "--output",
         help="Output file (default: input name without the .aes extension; "
-             "if the input does not end in .aes, appends '_decrypted')",
+             "if the input ends with '_pasta.aes', the output gets a .zip "
+             "extension instead; if the input does not end in .aes, "
+             "appends '_decrypted')",
     )
     args = parser.parse_args()
 
