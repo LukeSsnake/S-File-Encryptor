@@ -7,7 +7,7 @@ S File Encryptor is an Android application for encrypting and decrypting files l
 ## Cryptography
 
 S File Encryptor supports two file formats. The complete binary layout of both
-formats is formally specified in [SFE_File_Format_Specification.md](SFE_File_Format_Specification.md).
+formats is formally specified in [FORMAT_SPECIFICATION.md](FORMAT_SPECIFICATION.md).
 
 ### V2 — Current format
 
@@ -59,7 +59,7 @@ S-File Encryptor uses a documented, open file format — not a proprietary one.
 Your files are never locked in: you can decrypt any `.aes` file on any platform
 without installing the application.
 
-* **[FORMAT_SPECIFICATION.md](SFE_File_Format_Specification.md)** — the complete binary
+* **[FORMAT_SPECIFICATION.md](FORMAT_SPECIFICATION.md)** — the complete binary
   specification of both file formats, enabling anyone to audit the format or
   build interoperable tools.
 * **[sfe_decrypt.py](sfe_decrypt.py)** — a standalone, cross-platform Python
