@@ -99,10 +99,6 @@ To build the application from the command line:
 
 See [Report](https://github.com/LukeSsnake/S-File-Encryptor/blob/main/S_FILE_ENCRYPTOR_SECURITY_AUDIT.md)
 
-## License
-
-MIT. See [LICENSE](LICENSE).
-
 ## Support the Project
 
 If you find S File Encryptor useful and would like to support its continued development, you can make a voluntary donation through the following platforms:
@@ -111,3 +107,7 @@ If you find S File Encryptor useful and would like to support its continued deve
 - 💖 [GitHub Sponsors](https://github.com/sponsors/LukeSsnake)
 
 Your support helps maintain and improve the project. Thank you!
+
+## License
+
+MIT. See [LICENSE](LICENSE).
