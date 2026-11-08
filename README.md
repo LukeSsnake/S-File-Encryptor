@@ -52,6 +52,30 @@ The V1 file format is:
 
 V1 files are decrypted for compatibility but new files are always created using the V2 format.
 
+## Decrypting Without the App
+
+S-File Encryptor uses a documented, open file format — not a proprietary one.
+Your files are never locked in: you can decrypt any `.aes` file on any platform
+without installing the application.
+
+* **[FORMAT_SPECIFICATION.md](FORMAT_SPECIFICATION.md)** — the complete binary
+  specification of both file formats, enabling anyone to audit the format or
+  build interoperable tools.
+* **[sfe_decrypt.py](sfe_decrypt.py)** — a standalone, cross-platform Python
+  decryptor supporting both formats. It streams large files and only releases
+  the decrypted output after authentication succeeds.
+
+Requirements: Python 3.9+ with two dependencies:
+
+    pip install cryptography argon2-cffi
+
+Usage:
+
+    python sfe_decrypt.py backup.aes
+
+The decrypted file is written alongside the input. A wrong password or a
+tampered file produces an authentication error, and no output file is created.
+
 ## Privacy
 
 The application does not require network access and has no Google Play Services, analytics, advertising, or crash-reporting SDKs.
