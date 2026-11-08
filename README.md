@@ -6,7 +6,8 @@ S File Encryptor is an Android application for encrypting and decrypting files l
 
 ## Cryptography
 
-S File Encryptor supports two file formats. The complete binary layout of both
+S File Encryptor supports two file formats.
+The complete binary layout of both
 formats is formally specified in [FORMAT SPECIFICATION](FORMAT_SPECIFICATION.md).
 
 ### V2 — Current format
