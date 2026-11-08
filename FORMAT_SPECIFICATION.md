@@ -2,7 +2,7 @@
 
 **Document version:** 1.0
 **Applies to:** S-File Encryptor (as of the version that writes `.aes` files in the V2 format)
-**Reference implementation:** [`CryptoEngine.java`](CryptoEngine.java)
+**Reference implementation:** [`CryptoEngine.java`](https://github.com/LukeSsnake/S-File-Encryptor/blob/main/app/src/main/java/com/lukestudio/fileencryptor2/CryptoEngine.java)
 **Purpose:** this document fully defines the binary structure of files encrypted by S-File Encryptor, in a platform-independent way, enabling third parties to build interoperable decryption tools (such as the standalone `sfe_decrypt.py` script).
 
 ---
