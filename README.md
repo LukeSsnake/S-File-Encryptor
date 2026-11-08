@@ -106,7 +106,7 @@ To build the application from the command line:
 
 ## Security Audit Report
 
-See [Report](https://github.com/LukeSsnake/S-File-Encryptor/blob/main/S_FILE_ENCRYPTOR_SECURITY_AUDIT.md](https://github.com/LukeSsnake/S-File-Encryptor/blob/main/S_FILE_ENCRYPTOR_SECURITY_AUDIT.md))
+See [Report](https://github.com/LukeSsnake/S-File-Encryptor/blob/main/S_FILE_ENCRYPTOR_SECURITY_AUDIT.md)
 
 ## License
 
