@@ -1,5 +1,27 @@
 <?xml version="1.0" encoding="utf-8"?>
 <manifest xmlns:android="http://schemas.android.com/apk/res/android">
+    <queries>
+        <package android:name="com.google.android.apps.walletnfcrel" />
+        <package android:name="com.nu.production" />
+        <package android:name="br.com.bb.android" />
+        <package android:name="com.itau" />
+        <package android:name="com.bradesco" />
+        <package android:name="com.santander.app" />
+        <package android:name="br.gov.caixa.tem" />
+        <package android:name="br.com.gabba.Caixa" />
+        <package android:name="br.com.intermedium" />
+        <package android:name="com.c6bank.app" />
+        <package android:name="com.btgpactual.banking" />
+        <package android:name="br.com.sicoobnet" />
+        <package android:name="br.com.sicredi.app" />
+        <package android:name="br.com.banrisul" />
+        <package android:name="br.com.bancopan" />
+        <package android:name="br.com.neon" />
+        <package android:name="com.original.bank" />
+        <package android:name="br.com.uol.ps.myaccount" />
+        <package android:name="com.mercadopago.wallet" />
+        <package android:name="com.picpay" />
+    </queries>
     <application
         android:icon="@drawable/app_icon"
         android:roundIcon="@drawable/app_icon"
