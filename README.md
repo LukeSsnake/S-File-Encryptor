@@ -87,7 +87,7 @@ File and folder access is handled through Android's **Storage Access Framework (
 
 Every secure-delete operation generates a local report so the user can
 audit what happened. The report contains: a randomly generated Report ID
-(UUID, not derived from file content), the file name, the file size,
+(UUID, not derived from file content), a redacted file name (extension only — the base name is never recorded), the file size,
 operation timestamps and duration, the overwrite method and cycle count,
 the number of bytes overwritten, per-stage statuses (overwrite, delete,
 overall) with any error message, and non-identifying device/app
@@ -100,9 +100,6 @@ stored exclusively in the app's private internal storage
 the device if the user explicitly exports it (text or single-operation
 PDF) via the system file picker. The entire history can be erased at any
 time from within the app.
-
-Note that file names are metadata and can themselves be sensitive;
-exported reports should be handled accordingly.
 
 ## File Privacy Tools
 
