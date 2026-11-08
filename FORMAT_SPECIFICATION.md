@@ -124,6 +124,18 @@ The reference implementation guarantees that **no plaintext is released before a
 
 Command-line tools can replicate this by writing to `output.tmp` and atomically renaming after tag validation.
 
+### Plaintext staging and cleanup
+
+Reference implementations (the Android app and `sfe_decrypt.py`) never
+write plaintext to the final destination path. Decrypted data is staged
+in a temporary file in the same directory as the destination (so the
+publishing rename is atomic within one filesystem), created with
+restrictive permissions. The final `os.replace()` occurs only after the
+GCM tag (V2) or HMAC (V1) has successfully verified. Every failure path
+— authentication failure, truncation, invalid header, I/O error —
+removes the temporary file in a `finally` handler, leaving no plaintext
+residue on disk.
+
 ---
 
 ## 3. V1 format (legacy — read-only)
