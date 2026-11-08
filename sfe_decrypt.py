@@ -216,6 +216,16 @@ def decrypt_v2(input_path: Path, password: str, output_path: Path) -> None:
 
         ciphertext_len = file_size - V2_HEADER_SIZE - V2_TAG_SIZE
 
+        # The tag sits at the end of the file and must be supplied to the
+        # GCM constructor (the 'cryptography' library does not accept it
+        # through the stream). Reading it here does NOT release any
+        # plaintext: finalize() still validates the tag before anything
+        # is moved to the final destination.
+        fin.seek(-V2_TAG_SIZE, os.SEEK_END)
+        tag = fin.read(V2_TAG_SIZE)
+        if len(tag) != V2_TAG_SIZE:
+            raise InvalidFile("Truncated file (tag).")
+
         key = derive_argon2id(
             password.encode("utf-8"),
             salt,
@@ -224,13 +234,17 @@ def decrypt_v2(input_path: Path, password: str, output_path: Path) -> None:
             parallelism,
         )
 
-        # AES-256-GCM; tag at the end of the file; ENTIRE header as AAD.
-        decryptor = Cipher(algorithms.AES(key), modes.GCM(nonce)).decryptor()
+        # AES-256-GCM; ENTIRE header as AAD; tag verified by finalize().
+        decryptor = Cipher(
+            algorithms.AES(key), modes.GCM(nonce, tag)
+        ).decryptor()
         decryptor.authenticate_additional_data(header)
 
         fd, tmp_path = stage_in_output_dir(output_path)
         try:
             with os.fdopen(fd, "wb") as fout:
+                fin.seek(V2_HEADER_SIZE, os.SEEK_SET)
+
                 remaining = ciphertext_len
                 while remaining > 0:
                     chunk = fin.read(min(BUFFER_SIZE, remaining))
@@ -239,23 +253,22 @@ def decrypt_v2(input_path: Path, password: str, output_path: Path) -> None:
                     fout.write(decryptor.update(chunk))
                     remaining -= len(chunk)
 
-                tag = fin.read(V2_TAG_SIZE)
-                if len(tag) != V2_TAG_SIZE:
-                    raise InvalidFile("Truncated file (tag).")
-
-                # The tag flows through the same stream; finalize() verifies it.
-                fout.write(decryptor.update(tag))
+                # finalize() verifies the tag. Failure means wrong
+                # password or tampered/corrupted file.
                 try:
-                    fout.write(decryptor.finalize())
+                    tail = decryptor.finalize()
+                    if tail:
+                        fout.write(tail)
                 except InvalidTag:
                     raise AuthenticationFailed from None
 
                 fout.flush()
                 os.fsync(fout.fileno())
 
-            # Extra content after the tag invalidates the file (same as the app).
-            if fin.read(1):
-                raise InvalidFile("Extra content after the tag.")
+            # Layout is header || ciphertext || tag: after streaming
+            # exactly ciphertext_len bytes from offset 48 and reading the
+            # tag from the end, the file is fully consumed. Nothing more
+            # to check.
 
             # Authenticated: atomic delivery of the plaintext.
             os.replace(tmp_path, output_path)
