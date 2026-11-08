@@ -143,6 +143,18 @@ public class MainActivity extends FragmentActivity {
 
         PDFBoxResourceLoader.init(getApplicationContext());
 
+        getOnBackPressedDispatcher().addCallback(
+                this,
+                new androidx.activity.OnBackPressedCallback(true) {
+
+                @Override
+                public void handleOnBackPressed() {
+
+                showExitDialog();
+            }
+        }
+);
+
         cleanTemporaryFiles();
 
         getWindow().setNavigationBarColor(
@@ -232,6 +244,11 @@ public class MainActivity extends FragmentActivity {
         biometricSettings.setOnClickListener(
                 v -> changeBiometricPassword()
         );
+
+        if (b == null) {
+                checkSupportLaunchCounter();
+        }
+
     }
 
     private void cleanTemporaryFiles() {
@@ -373,7 +390,7 @@ public class MainActivity extends FragmentActivity {
 
     new AlertDialog.Builder(this)
             .setTitle("🛡️ Relatório de Exclusão")
-            .setMessage(reportText)
+            .setMessage("\n" + reportText + "\n")
             .setNeutralButton(
                     "Salvar PDF",
                     (dialog, which) ->
@@ -811,7 +828,7 @@ public class MainActivity extends FragmentActivity {
                                         R.string.crypto_message                                  
                                 )
                         )
-                        .setNegativeButton(
+                        .setNeutralButton(
                                 "CÓDIGO FONTE",
                                 (d, which) -> {
 
@@ -855,8 +872,8 @@ public class MainActivity extends FragmentActivity {
                                         )
                                 )
                         )
-                        .setNegativeButton(
-                                "AVALIAR ⭐",
+                        .setNeutralButton(
+                                "⭐AVALIAR",
                                 (d, which) -> {
 
                                     try {
@@ -911,6 +928,37 @@ public class MainActivity extends FragmentActivity {
                                                 R.string.pix_copied,
                                                 Toast.LENGTH_SHORT
                                         ).show();
+
+                                        showBankAppsDialog();
+                                    }
+                                }
+                        )
+                        .setNegativeButton("☕DOAR",
+                                (d, which) -> {
+
+                                    try {
+
+                                        Intent intent =
+                                                new Intent(
+                                                        Intent.ACTION_VIEW,
+                                                        Uri.parse(
+                                                                "https://buymeacoffee.com/lukess"
+                                                        )
+                                                );
+
+                                        startActivity(intent);
+
+                                    } catch (Exception e) {
+
+                                        Intent intent =
+                                                new Intent(
+                                                        Intent.ACTION_VIEW,
+                                                        Uri.parse(
+                                                                "https://buymeacoffee.com/lukess"
+                                                        )
+                                                );
+
+                                        startActivity(intent);
                                     }
                                 }
                         )
@@ -918,6 +966,232 @@ public class MainActivity extends FragmentActivity {
 
         dialog.show();
     }
+
+    private void showBankAppsDialog() {
+
+    String[] bankPackages = {
+            "com.google.android.apps.walletnfcrel",
+            "com.nu.production",
+            "br.com.bb.android",
+            "com.itau",
+            "com.bradesco",
+            "com.santander.app",
+            "br.gov.caixa.tem",
+            "br.com.gabba.Caixa",
+            "br.com.intermedium",
+            "com.c6bank.app",
+            "com.btgpactual.banking",
+            "br.com.sicoobnet",
+            "br.com.sicredi.app",
+            "br.com.banrisul",
+            "br.com.bancopan",
+            "br.com.neon",
+            "com.original.bank",
+            "br.com.uol.ps.myaccount",
+            "com.mercadopago.wallet",
+            "com.picpay"
+    };
+
+    android.content.pm.PackageManager pm =
+            getPackageManager();
+
+    java.util.List<BankApp> installedApps =
+            new java.util.ArrayList<>();
+
+    for (String packageName : bankPackages) {
+
+        try {
+
+            Intent launchIntent =
+                    pm.getLaunchIntentForPackage(packageName);
+
+            if (launchIntent == null) {
+                continue;
+            }
+
+            android.content.pm.ApplicationInfo appInfo =
+                    pm.getApplicationInfo(packageName, 0);
+
+            String appName =
+                    pm.getApplicationLabel(appInfo).toString();
+
+            android.graphics.drawable.Drawable appIcon =
+                    pm.getApplicationIcon(appInfo);
+
+            installedApps.add(
+                    new BankApp(
+                            appName,
+                            packageName,
+                            appIcon,
+                            launchIntent
+                    )
+            );
+
+        } catch (Exception ignored) {
+            // Aplicativo não instalado ou indisponível.
+        }
+    }
+
+    if (installedApps.isEmpty()) {
+
+        Toast.makeText(
+                this,
+                "Nenhum aplicativo bancário compatível foi encontrado.",
+                Toast.LENGTH_LONG
+        ).show();
+
+        return;
+    }
+
+    java.util.Collections.sort(
+            installedApps,
+            (a, b) -> a.name.compareToIgnoreCase(b.name)
+    );
+
+    android.widget.ArrayAdapter<BankApp> adapter =
+            new android.widget.ArrayAdapter<BankApp>(
+                    this,
+                    android.R.layout.select_dialog_item,
+                    installedApps
+            ) {
+
+                @Override
+                public android.view.View getView(
+                        int position,
+                        android.view.View convertView,
+                        android.view.ViewGroup parent
+                ) {
+
+                    BankApp app = getItem(position);
+
+                    android.widget.LinearLayout row =
+                            new android.widget.LinearLayout(
+                                    MainActivity.this
+                            );
+
+                    row.setOrientation(
+                            android.widget.LinearLayout.HORIZONTAL
+                    );
+
+                    row.setGravity(
+                            android.view.Gravity.CENTER_VERTICAL
+                    );
+
+                    int padding =
+                            (int) (12 * getResources()
+                                    .getDisplayMetrics().density);
+
+                    row.setPadding(
+                            padding,
+                            padding,
+                            padding,
+                            padding
+                    );
+
+                    android.widget.ImageView icon =
+                            new android.widget.ImageView(
+                                    MainActivity.this
+                            );
+
+                    int iconSize =
+                            (int) (40 * getResources()
+                                    .getDisplayMetrics().density);
+
+                    android.widget.LinearLayout.LayoutParams iconParams =
+                            new android.widget.LinearLayout.LayoutParams(
+                                    iconSize,
+                                    iconSize
+                            );
+
+                    icon.setImageDrawable(app.icon);
+
+                    row.addView(icon, iconParams);
+
+                    android.widget.TextView name =
+                            new android.widget.TextView(
+                                    MainActivity.this
+                            );
+
+                    name.setText(app.name);
+                    name.setTextSize(16);
+                    name.setPadding(
+                            padding,
+                            0,
+                            0,
+                            0
+                    );
+
+                    row.addView(
+                            name,
+                            new android.widget.LinearLayout.LayoutParams(
+                                    0,
+                                    android.widget.LinearLayout.LayoutParams.WRAP_CONTENT,
+                                    1
+                            )
+                    );
+
+                    return row;
+                }
+            };
+
+    new AlertDialog.Builder(this)
+            .setTitle("PIX Copiado!\n" +
+                "Escolha seu app bancário"
+        )
+            .setAdapter(
+                    adapter,
+                    (dialog, which) -> {
+
+                        BankApp selected =
+                                installedApps.get(which);
+
+                        try {
+
+                            startActivity(selected.launchIntent);
+
+                        } catch (Exception e) {
+
+                            Toast.makeText(
+                                    MainActivity.this,
+                                    "Não foi possível abrir o aplicativo.",
+                                    Toast.LENGTH_SHORT
+                            ).show();
+                        }
+                    }
+            )
+            .setNegativeButton("Fechar", null)
+            .setCancelable(false)
+            .show();
+}
+
+        private void checkSupportLaunchCounter() {
+
+    android.content.SharedPreferences prefs =
+            getSharedPreferences(
+                    "SFileEncryptorPrefs",
+                    MODE_PRIVATE
+            );
+
+    int launchCount =
+            prefs.getInt("launch_count", 0);
+
+    launchCount++;
+
+    if (launchCount >= 10) {
+
+        prefs.edit()
+                .putInt("launch_count", 0)
+                .apply();
+
+        showSupport();
+
+    } else {
+
+        prefs.edit()
+                .putInt("launch_count", launchCount)
+                .apply();
+    }
+}
 
     private void enableBiometric() {
 
@@ -1009,6 +1283,7 @@ public class MainActivity extends FragmentActivity {
                                 R.string.save,
                                 null
                         )
+                        .setCancelable(false)
                         .create();
 
         dialog.setOnShowListener(
@@ -1443,6 +1718,7 @@ private void authenticateForDecryption(
                                 R.string.save,
                                 null
                         )
+                        .setCancelable(false)
                         .create();
 
         dialog.setOnShowListener(
@@ -4823,6 +5099,78 @@ protected void onNewIntent(Intent intent) {
     setIntent(intent);
 
     handleIncomingIntent(intent);
+}
+
+        private static class BankApp {
+
+    final String name;
+    final String packageName;
+    final android.graphics.drawable.Drawable icon;
+    final Intent launchIntent;
+
+    BankApp(
+            String name,
+            String packageName,
+            android.graphics.drawable.Drawable icon,
+            Intent launchIntent
+    ) {
+
+        this.name = name;
+        this.packageName = packageName;
+        this.icon = icon;
+        this.launchIntent = launchIntent;
+    }
+
+    @Override
+    public String toString() {
+        return name;
+    }
+}
+
+private void showExitDialog() {
+
+    new AlertDialog.Builder(this)
+            .setTitle("SAIR?")            
+            .setPositiveButton(
+                    "SIM",
+                    (dialog, which) -> finish()
+            )
+            .setNegativeButton(
+                    "NÃO",
+                    (dialog, which) -> dialog.dismiss()
+            )
+            .setNeutralButton(
+              "⭐AVALIAR",
+                                (d, which) -> {
+
+                                    try {
+
+                                        Intent intent =
+                                                new Intent(
+                                                        Intent.ACTION_VIEW,
+                                                        Uri.parse(
+                                                                "market://details?id=com.lukestudio.fileencryptor2"
+                                                        )
+                                                );
+
+                                        startActivity(intent);
+
+                                    } catch (Exception e) {
+
+                                        Intent intent =
+                                                new Intent(
+                                                        Intent.ACTION_VIEW,
+                                                        Uri.parse(
+                                                                "https://play.google.com/store/apps/details?id=com.lukestudio.fileencryptor2"
+                                                        )
+                                                );
+
+                                        startActivity(intent);
+                                    }
+                                }
+                        )            
+            .setCancelable(true)
+            .show();
 }
 
     @Override
