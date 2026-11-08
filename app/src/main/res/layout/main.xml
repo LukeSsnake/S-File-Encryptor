@@ -84,8 +84,19 @@
         android:contentDescription="@string/info_title" />
 
 </LinearLayout>
+    
+    <!-- Conteúdo principal -->
+    <LinearLayout
+        android:id="@+id/contentContainer"
+        android:layout_width="match_parent"
+        android:layout_height="0dp"
+        android:layout_weight="1"
+        android:orientation="vertical"
+        android:gravity="center"
+        android:background="#263238"
+        android:padding="8dp">
 
-    <!-- Exclusão -->
+        <!-- Exclusão -->
     <LinearLayout
         android:id="@+id/biometricContainer"
         android:layout_width="match_parent"
@@ -117,6 +128,7 @@
         android:layout_width="match_parent"
         android:layout_height="wrap_content"
         android:layout_marginTop="5dp"
+        android:layout_marginBottom="5dp"
         android:orientation="horizontal"
         android:gravity="center_vertical|end"
         android:background="#263238"
@@ -137,17 +149,6 @@
         android:contentDescription="@string/meta_title" />     
 
     </LinearLayout>
-
-    <!-- Conteúdo principal -->
-    <LinearLayout
-        android:id="@+id/contentContainer"
-        android:layout_width="match_parent"
-        android:layout_height="0dp"
-        android:layout_weight="1"
-        android:orientation="vertical"
-        android:gravity="center"
-        android:background="#263238"
-        android:padding="8dp">
 
         <LinearLayout
             android:layout_width="match_parent"
