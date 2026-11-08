@@ -104,9 +104,9 @@ To build the application from the command line:
 
     ./gradlew assembleRelease
 
-## Security Report
+## Security Audit Report
 
-See [Relatorio](https://github.com/LukeSsnake/S-File-Encryptor/blob/main/Relatorio_S-File_Encryptor.md)
+See [Report]([https://github.com/LukeSsnake/S-File-Encryptor/blob/main/Relatorio_S-File_Encryptor.md](https://github.com/LukeSsnake/S-File-Encryptor/blob/main/S_FILE_ENCRYPTOR_SECURITY_AUDIT.md))
 
 ## License
 
