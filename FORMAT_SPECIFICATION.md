@@ -113,6 +113,35 @@ plaintext = AES-256-GCM-Decrypt(key, nonce, aad = header(48 B), ciphertext, tag)
 
 Decryption is only considered successful after tag validation. A tag failure indicates a **wrong password, or a tampered/corrupted file** — the two cases cannot be distinguished (a desirable property of GCM).
 
+### Nonce and Key Uniqueness
+
+AES-256-GCM fails catastrophically if the same (key, nonce) pair is ever
+reused with different plaintexts. S-File Encryptor addresses this with
+two independent, per-file sources of randomness:
+
+1. **Per-file key.** The 16-byte salt stored in the header is generated
+   with a cryptographically secure random generator at encryption time.
+   Because Argon2id is deterministic given (password, salt, parameters),
+   two files encrypted with the same password almost certainly have
+   different keys.
+
+2. **Per-file nonce.** The 12-byte nonce is also generated randomly at
+   encryption time and stored in the header.
+
+The confidentiality/integrity requirement of GCM is uniqueness of the
+(key, nonce) pair — not of the nonce alone. Since the key is derived
+per file, a collision harmful to GCM would require two files to share
+BOTH the salt and the nonce under the same password. With 28 random
+bytes combined, the probability of such a collision is approximately
+2^-160, which is negligible.
+
+This strategy (random nonces under per-file derived keys) is chosen
+deliberately over a counter-based nonce scheme: counters are fragile
+across application reinstalls, multi-device use, and any scenario where
+persistent state cannot be relied upon. Both fields are authenticated
+as part of the GCM AAD, so any tampering with salt or nonce causes
+authentication failure at decryption time.
+
 ### 2.6 Recommended sequencing for streaming implementations
 
 The reference implementation guarantees that **no plaintext is released before authentication** by:
