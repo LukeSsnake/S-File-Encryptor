@@ -49,6 +49,7 @@ import android.widget.CheckBox;
 import java.text.SimpleDateFormat;
 import java.util.Date;
 import java.util.Locale;
+import androidx.documentfile.provider.DocumentFile;
 import com.tom_roush.pdfbox.android.PDFBoxResourceLoader;
 
 import javax.crypto.Cipher;
@@ -187,10 +188,7 @@ public class MainActivity extends FragmentActivity {
 
         biometricSwitch = findViewById(R.id.biometricSwitch);
         biometricSettings = findViewById(R.id.biometricSettings);
-
-        metaButton.setVisibility(View.GONE);
-        deleteButton.setVisibility(View.GONE);
-
+        
         boolean biometricEnabled =
                 BiometricPasswordStore.isEnabled(this);
 
@@ -205,17 +203,41 @@ public class MainActivity extends FragmentActivity {
 
         handleIncomingIntent(getIntent());
 
-        fileButton.setOnClickListener(v -> pickFile());
-        folderButton.setOnClickListener(v -> pickFolder());
+        fileButton.setOnClickListener(v -> {
+                deleteButton.setVisibility(View.VISIBLE);
+                pickFile();
+        });
+        folderButton.setOnClickListener(v -> {
+                deleteButton.setVisibility(View.VISIBLE);
+                pickFolder();
+        });
         helpButton.setOnClickListener(v -> showHelp());
         infoButton.setOnClickListener(v -> showSupport());
         infoCrypto.setOnClickListener(v -> showCrypto());
-        metaButton.setOnClickListener(v -> showMeta());
+        metaButton.setOnClickListener(v -> {
+                if (inputUri == null || inputIsFolder) {
+                        Toast.makeText(
+                this,
+                "Selecione um arquivo válido.",
+                Toast.LENGTH_SHORT
+        ).show();
+                } else {
+                        showMeta();
+                }
+        });
 
         action.setOnClickListener(v -> startWork());
 
         deleteButton.setOnClickListener(v -> {
-                showSecureDeleteConfirmation();
+                if (inputUri == null) {
+                        Toast.makeText(
+                this,
+                "Selecione um arquivo válido.",
+                Toast.LENGTH_SHORT
+        ).show();
+                } else {
+                        showSecureDeleteConfirmation();
+                }
         });
 
         biometricSwitch.setOnCheckedChangeListener(
@@ -678,10 +700,7 @@ public class MainActivity extends FragmentActivity {
                     fileName.setText(
                             "Nenhum arquivo selecionado"
                     );
-
-                    metaButton.setVisibility(View.GONE);
-
-                    deleteButton.setVisibility(View.GONE);
+                    
                 }
 
             } else {
@@ -731,6 +750,420 @@ public class MainActivity extends FragmentActivity {
     });
 }
 
+        private void executeSecureFolderOverwrite() {
+
+    if (inputUri == null || !inputIsFolder) {
+        Toast.makeText(
+                this,
+                "Selecione uma pasta válida.",
+                Toast.LENGTH_SHORT
+        ).show();
+        return;
+    }
+
+    deleteButton.setEnabled(false);
+
+    Uri targetUri = inputUri;
+
+    executor.execute(() -> {
+
+        long startedAt = System.currentTimeMillis();
+
+        DocumentFile root =
+                DocumentFile.fromTreeUri(
+                        getApplicationContext(),
+                        targetUri
+                );
+
+        if (root == null || !root.isDirectory()) {
+
+            runOnUiThread(() -> {
+
+                deleteButton.setEnabled(true);
+
+                new AlertDialog.Builder(
+                        MainActivity.this
+                )
+                        .setTitle("Pasta inválida")
+                        .setMessage(
+                                "Não foi possível acessar a pasta selecionada."
+                        )
+                        .setPositiveButton("OK", null)
+                        .show();
+            });
+
+            return;
+        }
+
+        int[] totalFiles = {0};
+        int[] successfulFiles = {0};
+        int[] failedFiles = {0};
+        long[] bytesOverwritten = {0};
+
+        List<DocumentFile> folders =
+                new ArrayList<>();
+
+        processFolderForSecureDeletion(
+                root,
+                totalFiles,
+                successfulFiles,
+                failedFiles,
+                bytesOverwritten,
+                folders
+        );
+
+        /*
+         * Remove as pastas somente depois de
+         * processar todos os arquivos.
+         *
+         * As pastas mais internas são removidas
+         * primeiro.
+         */
+        if (failedFiles[0] == 0) {
+
+    // Adiciona a pasta principal ao final.
+    folders.add(root);
+
+    // Remove primeiro as subpastas e depois a raiz.
+    for (int i = folders.size() - 1; i >= 0; i--) {
+
+        DocumentFile folder = folders.get(i);
+
+        try {
+
+            if (folder.exists()
+                    && folder.isDirectory()) {
+
+                folder.delete();
+            }
+
+        } catch (Exception ignored) {
+            // A falha na remoção da pasta
+            // não interrompe o restante da operação.
+        }
+    }
+}
+
+        long finishedAt =
+                System.currentTimeMillis();
+
+        // -----------------------------------------
+// Valores finais dos contadores.
+// -----------------------------------------
+
+final int finalTotalFiles = totalFiles[0];
+
+final int finalSuccessfulFiles =
+        successfulFiles[0];
+
+final int finalFailedFiles =
+        failedFiles[0];
+
+final long finalBytesOverwritten =
+        bytesOverwritten[0];
+        
+        final int filesFound = totalFiles[0];
+        final int filesSuccessful = successfulFiles[0];
+        final int filesFailed = failedFiles[0];
+        final long totalBytes = bytesOverwritten[0];
+
+        // -----------------------------------------
+// Resultado geral.
+ // -----------------------------------------
+
+String recordStatus;
+String errorMessage;
+
+if (finalFailedFiles == 0) {
+
+    recordStatus = "SUCCESS";
+    errorMessage = "";
+
+} else {
+
+    recordStatus = "PARTIAL_FAILURE";
+
+    errorMessage =
+            "Uma ou mais operações de sobrescrita "
+            + "ou exclusão não foram concluídas.";
+}
+
+// -----------------------------------------
+// Status individuais.
+// -----------------------------------------
+
+String overwriteStatus =
+        finalFailedFiles == 0
+                ? "SUCCESS"
+                : "NOT_SEPARATELY_TRACKED";
+
+String deleteStatus =
+        finalFailedFiles == 0
+                ? "SUCCESS"
+                : "NOT_SEPARATELY_TRACKED";
+
+// -----------------------------------------
+// Dados do dispositivo.
+// -----------------------------------------
+
+String manufacturer =
+        android.os.Build.MANUFACTURER;
+
+String deviceModel =
+        android.os.Build.MODEL;
+
+String androidVersion =
+        android.os.Build.VERSION.RELEASE;
+
+int androidApi =
+        android.os.Build.VERSION.SDK_INT;
+
+String buildId =
+        android.os.Build.ID;
+
+String appVersion;
+
+try {
+
+    appVersion =
+            getPackageManager()
+                    .getPackageInfo(
+                            getPackageName(),
+                            0
+                    )
+                    .versionName;
+
+    if (appVersion == null
+            || appVersion.isEmpty()) {
+
+        appVersion = "Não registrada";
+    }
+
+} catch (Exception e) {
+
+    appVersion = "Não registrada";
+}
+
+// -----------------------------------------
+// Cria o registro completo.
+// -----------------------------------------
+
+ErasureRecord record = new ErasureRecord(
+
+        java.util.UUID.randomUUID().toString(),
+
+        "****",
+        finalBytesOverwritten,
+
+        startedAt,
+        finishedAt,
+
+        "Sobrescrita única com dados aleatórios",
+
+        recordStatus,
+        errorMessage,
+
+        manufacturer,
+        deviceModel,
+        androidVersion,
+        androidApi,
+        buildId,
+        appVersion,
+
+        1,
+
+        finalBytesOverwritten,
+
+        overwriteStatus,
+        deleteStatus,
+
+        "FOLDER",
+        finalTotalFiles,
+        finalSuccessfulFiles,
+        finalFailedFiles
+);
+
+// -----------------------------------------
+// Salva o relatório.
+// -----------------------------------------
+
+boolean reportSaved = true;
+
+try {
+
+    ErasureReport.append(
+            getApplicationContext(),
+            record
+    );
+
+} catch (IOException e) {
+
+    reportSaved = false;
+}
+
+final boolean finalReportSaved = reportSaved;
+
+        runOnUiThread(() -> {
+
+            deleteButton.setEnabled(true);
+
+            String title;
+            String message;
+
+            if (filesFailed == 0) {
+
+                title = "Operação concluída";
+
+                message =
+                        "Pasta processada com sucesso."
+                        + "\n\nArquivos encontrados: "
+                        + filesFound
+                        + "\nArquivos excluídos: "
+                        + filesSuccessful
+                        + "\nBytes sobrescritos: "
+                        + totalBytes;
+
+                if (targetUri.equals(inputUri)) {
+
+                    inputUri = null;
+                    inputIsFolder = false;
+
+                    fileName.setText(
+                            "Nenhum arquivo selecionado"
+                    );
+                    
+                }
+
+            } else {
+
+                title = "Operação parcialmente concluída";
+
+                message =
+                        "A pasta foi processada, "
+                        + "mas alguns arquivos não puderam "
+                        + "ser excluídos."
+                        + "\n\nArquivos encontrados: "
+                        + filesFound
+                        + "\nArquivos excluídos: "
+                        + filesSuccessful
+                        + "\nArquivos com falha: "
+                        + filesFailed
+                        + "\nBytes sobrescritos: "
+                        + totalBytes;
+            }
+
+            AlertDialog.Builder builder =
+            new AlertDialog.Builder(
+                    MainActivity.this
+            )
+                    .setTitle(title)
+                    .setMessage(message)
+                    .setPositiveButton(
+                            "OK",
+                            null
+                    )                    
+                    .setCancelable(false);
+                    // O botão aparece quando a operação
+            // foi concluída com sucesso.
+            if (recordStatus.equals("SUCCESS")) {
+
+                builder.setNegativeButton(
+                        "Ver Relatório",
+                        (dialog, which) ->
+                                showErasureReportDialog(record)
+                );
+            }
+                builder.show();
+        });
+    });
+}
+
+        private void processFolderForSecureDeletion(
+        DocumentFile folder,
+        int[] totalFiles,
+        int[] successfulFiles,
+        int[] failedFiles,
+        long[] bytesOverwritten,
+        List<DocumentFile> folders
+) {
+
+    if (folder == null
+            || !folder.exists()
+            || !folder.isDirectory()) {
+        return;
+    }
+
+    DocumentFile[] children = folder.listFiles();
+
+    if (children == null) {
+        return;
+    }
+
+    for (DocumentFile child : children) {
+
+        if (child == null) {
+            continue;
+        }
+
+        if (child.isDirectory()) {
+
+            processFolderForSecureDeletion(
+                    child,
+                    totalFiles,
+                    successfulFiles,
+                    failedFiles,
+                    bytesOverwritten,
+                    folders
+            );
+
+            folders.add(child);
+
+            continue;
+        }
+
+        if (!child.isFile()) {
+            continue;
+        }
+
+        totalFiles[0]++;
+
+        Uri fileUri = child.getUri();
+
+        SecureDeleteManager.Result overwriteResult =
+                SecureDeleteManager.overwriteFile(
+                        getApplicationContext(),
+                        fileUri
+                );
+
+        if (overwriteResult.status
+                != SecureDeleteManager.Status.SUCCESS) {
+
+            failedFiles[0]++;
+            continue;
+        }
+
+        bytesOverwritten[0] +=
+                overwriteResult.bytesOverwritten;
+
+        SecureDeleteManager.Result deleteResult =
+                SecureDeleteManager.deleteFile(
+                        getApplicationContext(),
+                        fileUri
+                );
+
+        if (deleteResult.status
+        == SecureDeleteManager.Status.SUCCESS
+        || !child.exists()) {
+
+    successfulFiles[0]++;
+
+} else {
+
+    failedFiles[0]++;
+}
+    }
+}
+
         private void showSecureDeleteConfirmation() {
 
     LinearLayout layout = new LinearLayout(this);
@@ -761,7 +1194,14 @@ public class MainActivity extends FragmentActivity {
             .setView(layout)
             .setNegativeButton("CANCELAR", null)
             .setPositiveButton(R.string.deletee, (d, which) -> {
-                executeSecureOverwrite();
+                if (inputIsFolder) {
+
+                        executeSecureFolderOverwrite();
+
+                } else {
+
+                        executeSecureOverwrite();
+                }
             })
             .create();
 
@@ -2245,9 +2685,7 @@ private void authenticateForReplacement(
             );
 
             inputMode = MODE_FILE;
-            inputIsFolder = false;
-
-            deleteButton.setVisibility(View.VISIBLE);
+            inputIsFolder = false;           
 
             String selectedName =
                     name(inputUri);
@@ -2259,15 +2697,7 @@ private void authenticateForReplacement(
             decryptMode = selectedName
                             .toLowerCase(java.util.Locale.ROOT)
                             .endsWith(".aes");
-
-        metaButton.setVisibility(
-        decryptMode ? View.GONE : View.VISIBLE
-        );
-
-        deleteButton.setVisibility(
-        decryptMode ? View.GONE : View.VISIBLE
-        );
-
+        
             action.setText(
                     decryptMode
                             ? R.string.decrypt
@@ -2278,10 +2708,7 @@ private void authenticateForReplacement(
         }
 
         if (requestCode == PICK_FOLDER) {
-
-            metaButton.setVisibility(View.GONE);
-            deleteButton.setVisibility(View.GONE);
-
+            
             inputUri = data.getData();
 
             persistTreePermission(
