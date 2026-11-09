@@ -26,6 +26,10 @@ public final class SecureDeleteManager {
         FAILED
     }
 
+    public interface ProgressListener {
+    void onProgress(long bytesWritten, long totalBytes);
+}
+
     public static final class Result {
 
         public final Status status;
@@ -52,9 +56,17 @@ public final class SecureDeleteManager {
     }
 
     public static Result overwriteFile(
-            Context context,
-            Uri uri
-    ) {
+        Context context,
+        Uri uri
+) {
+    return overwriteFile(context, uri, null);
+}
+
+public static Result overwriteFile(
+        Context context,
+        Uri uri,
+        ProgressListener listener
+) {
 
         if (context == null || uri == null) {
 
@@ -104,6 +116,13 @@ public final class SecureDeleteManager {
 
                 long fileSize = channel.size();
 
+                if (listener != null) {
+    try {
+        listener.onProgress(0, fileSize);
+    } catch (RuntimeException ignored) {
+    }
+}
+
                 if (fileSize < 0) {
 
                     return result(
@@ -148,6 +167,14 @@ public final class SecureDeleteManager {
                         offset += written;
                         totalWritten += written;
                     }
+
+                    if (listener != null) {
+    try {
+        listener.onProgress(totalWritten, fileSize);
+    } catch (RuntimeException ignored) {
+    }
+}
+
                 }
 
                 // Solicita sincronização dos dados.
