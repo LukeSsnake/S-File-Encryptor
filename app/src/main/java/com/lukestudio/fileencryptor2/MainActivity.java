@@ -434,7 +434,13 @@ public class MainActivity extends FragmentActivity {
         return;
     }
 
-    deleteButton.setEnabled(false);
+    setBusy(true);
+
+progress.setProgress(0);
+
+progressText.setText(
+        "Preparando exclusão..."
+);
 
     Uri targetUri = inputUri;
 
@@ -486,10 +492,15 @@ public class MainActivity extends FragmentActivity {
         }
 
         SecureDeleteManager.Result overwriteResult =
-                SecureDeleteManager.overwriteFile(
-                        getApplicationContext(),
-                        targetUri
-                );
+        SecureDeleteManager.overwriteFile(
+                getApplicationContext(),
+                targetUri,
+                (bytesWritten, totalBytes) ->
+                        updateSecureDeleteProgress(
+                                bytesWritten,
+                                totalBytes
+                        )
+        );
 
         SecureDeleteManager.Result finalResult;
 
@@ -669,7 +680,7 @@ public class MainActivity extends FragmentActivity {
 
         runOnUiThread(() -> {
 
-            deleteButton.setEnabled(true);
+            setBusy(false);
 
             String title;
             String message;
@@ -761,7 +772,10 @@ public class MainActivity extends FragmentActivity {
         return;
     }
 
-    deleteButton.setEnabled(false);
+    setBusy(true);
+
+progress.setProgress(0);
+progressText.setText("Preparando exclusão...");
 
     Uri targetUri = inputUri;
 
@@ -773,13 +787,13 @@ public class MainActivity extends FragmentActivity {
                 DocumentFile.fromTreeUri(
                         getApplicationContext(),
                         targetUri
-                );
+                );                
 
         if (root == null || !root.isDirectory()) {
 
             runOnUiThread(() -> {
 
-                deleteButton.setEnabled(true);
+                setBusy(false);
 
                 new AlertDialog.Builder(
                         MainActivity.this
@@ -795,6 +809,11 @@ public class MainActivity extends FragmentActivity {
             return;
         }
 
+        final int expectedTotalFiles =
+        countFilesInFolder(root);
+
+        final int[] processedFiles = {0};
+
         int[] totalFiles = {0};
         int[] successfulFiles = {0};
         int[] failedFiles = {0};
@@ -804,13 +823,15 @@ public class MainActivity extends FragmentActivity {
                 new ArrayList<>();
 
         processFolderForSecureDeletion(
-                root,
-                totalFiles,
-                successfulFiles,
-                failedFiles,
-                bytesOverwritten,
-                folders
-        );
+        root,
+        totalFiles,
+        successfulFiles,
+        failedFiles,
+        bytesOverwritten,
+        folders,
+        expectedTotalFiles,
+        processedFiles
+);
 
         /*
          * Remove as pastas somente depois de
@@ -1004,9 +1025,9 @@ try {
 final boolean finalReportSaved = reportSaved;
 
         runOnUiThread(() -> {
-
-            deleteButton.setEnabled(true);
-
+            
+            setBusy(false);
+            
             String title;
             String message;
 
@@ -1078,13 +1099,50 @@ final boolean finalReportSaved = reportSaved;
     });
 }
 
+        private int countFilesInFolder(DocumentFile folder) {
+
+    if (folder == null
+            || !folder.exists()
+            || !folder.isDirectory()) {
+        return 0;
+    }
+
+    int count = 0;
+
+    DocumentFile[] children = folder.listFiles();
+
+    if (children == null) {
+        return 0;
+    }
+
+    for (DocumentFile child : children) {
+
+        if (child == null) {
+            continue;
+        }
+
+        if (child.isDirectory()) {
+
+            count += countFilesInFolder(child);
+
+        } else if (child.isFile()) {
+
+            count++;
+        }
+    }
+
+    return count;
+}
+
         private void processFolderForSecureDeletion(
         DocumentFile folder,
         int[] totalFiles,
         int[] successfulFiles,
         int[] failedFiles,
         long[] bytesOverwritten,
-        List<DocumentFile> folders
+        List<DocumentFile> folders,
+        int expectedTotalFiles,
+        int[] processedFiles
 ) {
 
     if (folder == null
@@ -1113,7 +1171,9 @@ final boolean finalReportSaved = reportSaved;
                     successfulFiles,
                     failedFiles,
                     bytesOverwritten,
-                    folders
+                    folders,
+                    expectedTotalFiles,
+                    processedFiles
             );
 
             folders.add(child);
@@ -1125,41 +1185,76 @@ final boolean finalReportSaved = reportSaved;
             continue;
         }
 
-        totalFiles[0]++;
+       totalFiles[0]++;
 
-        Uri fileUri = child.getUri();
+try {
 
-        SecureDeleteManager.Result overwriteResult =
-                SecureDeleteManager.overwriteFile(
-                        getApplicationContext(),
-                        fileUri
-                );
+    Uri fileUri = child.getUri();
 
-        if (overwriteResult.status
-                != SecureDeleteManager.Status.SUCCESS) {
+    SecureDeleteManager.Result overwriteResult =
+            SecureDeleteManager.overwriteFile(
+                    getApplicationContext(),
+                    fileUri
+            );
 
-            failedFiles[0]++;
-            continue;
-        }
+    if (overwriteResult.status
+            != SecureDeleteManager.Status.SUCCESS) {
 
-        bytesOverwritten[0] +=
-                overwriteResult.bytesOverwritten;
+        failedFiles[0]++;
 
-        SecureDeleteManager.Result deleteResult =
-                SecureDeleteManager.deleteFile(
-                        getApplicationContext(),
-                        fileUri
-                );
+        continue;
+    }
 
-        if (deleteResult.status
-        == SecureDeleteManager.Status.SUCCESS
-        || !child.exists()) {
+    bytesOverwritten[0] +=
+            overwriteResult.bytesOverwritten;
 
-    successfulFiles[0]++;
+    SecureDeleteManager.Result deleteResult =
+            SecureDeleteManager.deleteFile(
+                    getApplicationContext(),
+                    fileUri
+            );
 
-} else {
+    if (deleteResult.status
+            == SecureDeleteManager.Status.SUCCESS
+            || !child.exists()) {
+
+        successfulFiles[0]++;
+
+    } else {
+
+        failedFiles[0]++;
+    }
+
+} catch (Exception e) {
 
     failedFiles[0]++;
+
+} finally {
+
+    processedFiles[0]++;
+
+    final int percent = expectedTotalFiles > 0
+            ? (int) (
+                    processedFiles[0] * 100L
+                    / expectedTotalFiles
+            )
+            : 100;
+
+    final int currentFile = processedFiles[0];
+
+    runOnUiThread(() -> {
+
+        progress.setProgress(
+                Math.min(100, percent)
+        );
+
+        progressText.setText(
+                "Excluindo arquivos: "
+                        + currentFile
+                        + " de "
+                        + expectedTotalFiles
+        );
+    });
 }
     }
 }
@@ -2873,6 +2968,7 @@ private void startMetadataCleaning() {
             || lowerName.endsWith(".3gp");
 
     setBusy(true);
+    progressText.setText("Preparando...");
 
     getWindow().addFlags(
             WindowManager.LayoutParams.FLAG_KEEP_SCREEN_ON
@@ -3692,7 +3788,7 @@ zipTree(
             progress.setProgress(
                     percent
             );
-
+                    
             progressText.setText(
                     getString(
                             decrypting
@@ -3701,8 +3797,34 @@ zipTree(
                             percent
                     )
             );
+        
         });
     }
+
+    private void updateSecureDeleteProgress(
+        long bytesWritten,
+        long totalBytes
+) {
+
+    runOnUiThread(() -> {
+
+        int percent = 0;
+
+        if (totalBytes > 0) {
+
+            percent = (int) Math.min(
+                    100.0,
+                    ((double) bytesWritten / totalBytes) * 100.0
+            );
+        }
+
+        progress.setProgress(percent);
+
+        progressText.setText(
+                "Sobrescrevendo arquivo: " + percent + "%"
+        );
+    });
+}
 
     private void updateZipProgress(
             int value
@@ -5027,12 +5149,25 @@ private void copyToOutput(
                 done += n;
 
                 if (total > 0) {
-                    updateCryptoProgress(
-                            done,
-                            total,
-                            decrypting
-                    );
-                }
+
+    if (metadataCleaningInProgress) {
+
+        updateProgress(
+                (int) Math.min(
+                        100,
+                        (done * 100L) / total
+                )
+        );
+
+    } else {
+
+        updateCryptoProgress(
+                done,
+                total,
+                decrypting
+        );
+    }
+}
             }
 
             out.flush();
@@ -5192,8 +5327,14 @@ private void copyToOutput(
                     )
             );
 
+            if (metadataCleaningInProgress) {
+
+                progressText.setText("Limpando...");
+
+            } else {
+
             progressText.setText(
-                    getString(
+                 getString(
                             decryptMode
                                     ? R.string.decrypting_progress
                                     : R.string.encrypting_progress,
@@ -5206,6 +5347,7 @@ private void copyToOutput(
                             )
                     )
             );
+        }
         });
     }
 
@@ -5223,13 +5365,7 @@ private void copyToOutput(
             infoCrypto.setEnabled(!busy);
             metaButton.setEnabled(!busy);
             deleteButton.setEnabled(!busy);
-
-            /*
-             * O botão de informações permanece disponível
-             * durante as operações.
-             */
-            infoButton.setEnabled(true);
-
+            
             biometricSwitch.setEnabled(!busy);
 
             biometricSettings.setEnabled(
