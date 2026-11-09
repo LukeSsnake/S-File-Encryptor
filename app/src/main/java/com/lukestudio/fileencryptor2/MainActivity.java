@@ -2941,6 +2941,7 @@ private void authenticateForReplacement(
     }
 
     
+
 private void startMetadataCleaning() {
 
     if (inputUri == null || inputIsFolder || decryptMode) {
@@ -2957,15 +2958,19 @@ private void startMetadataCleaning() {
     final Uri sourceUri = inputUri;
     final String originalName = name(sourceUri);
 
-    // Identifica vídeos pelo formato da extensão.
+    // Identifica o formato pela extensão.
     String lowerName = originalName == null
             ? ""
             : originalName.toLowerCase(java.util.Locale.ROOT);
 
+    final boolean isAac =
+            lowerName.endsWith(".aac");
+
     final boolean isVideo =
             lowerName.endsWith(".mp4")
             || lowerName.endsWith(".m4v")
-            || lowerName.endsWith(".3gp");
+            || lowerName.endsWith(".3gp")
+            || lowerName.endsWith(".m4a");
 
     setBusy(true);
     progressText.setText("Preparando...");
@@ -3000,7 +3005,14 @@ private void startMetadataCleaning() {
             );
 
             // Encaminha para o limpador correto.
-            if (isVideo) {
+            if (isAac) {
+
+                AacMetadataCleaner.clean(
+                        inputTemp,
+                        cleanedTemp
+                );
+
+            } else if (isVideo) {
 
                 VideoMetadataCleaner.clean(
                         MainActivity.this,
