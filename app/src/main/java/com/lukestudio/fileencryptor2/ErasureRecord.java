@@ -54,6 +54,11 @@ class ErasureRecord {
 
     final String overwriteStatus;
     final String deleteStatus;
+    final String operationType;
+
+    final int filesFound;
+    final int filesDeleted;
+    final int filesFailed;
 
         /**
      * Redacts the base file name, keeping only the extension
@@ -127,29 +132,93 @@ class ErasureRecord {
             String overwriteStatus,
             String deleteStatus
     ) {
+    this(
+            reportId,
+            fileName,
+            sizeBytes,
+            startedAtMillis,
+            finishedAtMillis,
+            method,
+            status,
+            errorMessage,
+            manufacturer,
+            deviceModel,
+            androidVersion,
+            androidApi,
+            buildId,
+            appVersion,
+            cycles,
+            bytesOverwritten,
+            overwriteStatus,
+            deleteStatus,
+            "FILE",
+            0,
+            0,
+            0
+    );
+}
 
-        this.reportId = reportId;
-        this.fileName = redactFileName(fileName);
-        this.sizeBytes = sizeBytes;
-        this.startedAtMillis = startedAtMillis;
-        this.finishedAtMillis = finishedAtMillis;
-        this.method = method;
-        this.status = status;
-        this.errorMessage = errorMessage;
+        ErasureRecord(
+        String reportId,
+        String fileName,
+        long sizeBytes,
+        long startedAtMillis,
+        long finishedAtMillis,
+        String method,
+        String status,
+        String errorMessage,
+        String manufacturer,
+        String deviceModel,
+        String androidVersion,
+        int androidApi,
+        String buildId,
+        String appVersion,
+        int cycles,
+        long bytesOverwritten,
+        String overwriteStatus,
+        String deleteStatus,
+        String operationType,
+        int filesFound,
+        int filesDeleted,
+        int filesFailed
+) {
 
-        this.manufacturer = manufacturer;
-        this.deviceModel = deviceModel;
-        this.androidVersion = androidVersion;
-        this.androidApi = androidApi;
-        this.buildId = buildId;
-        this.appVersion = appVersion;
+    this.reportId = reportId;
 
-        this.cycles = cycles;
-        this.bytesOverwritten = bytesOverwritten;
+    // O nome nunca será armazenado.
+    this.fileName = "FOLDER".equals(operationType)
+            ? "Pasta"
+            : redactFileName(fileName);
 
-        this.overwriteStatus = overwriteStatus;
-        this.deleteStatus = deleteStatus;
-    }
+    this.sizeBytes = sizeBytes;
+
+    this.startedAtMillis = startedAtMillis;
+    this.finishedAtMillis = finishedAtMillis;
+
+    this.method = method;
+    this.status = status;
+    this.errorMessage = errorMessage;
+
+    this.manufacturer = manufacturer;
+    this.deviceModel = deviceModel;
+    this.androidVersion = androidVersion;
+    this.androidApi = androidApi;
+    this.buildId = buildId;
+    this.appVersion = appVersion;
+
+    this.cycles = cycles;
+    this.bytesOverwritten = bytesOverwritten;
+
+    this.overwriteStatus = overwriteStatus;
+    this.deleteStatus = deleteStatus;
+
+    this.operationType = operationType;
+
+    this.filesFound = filesFound;
+    this.filesDeleted = filesDeleted;
+    this.filesFailed = filesFailed;
+}
+
 }
 
 
@@ -542,11 +611,12 @@ final class ErasureReport {
     // Serialização JSONL manual (sem dependências).
     // -------------------------------------------------
 
-    private static String toJsonLine(ErasureRecord r) {
+    
+private static String toJsonLine(ErasureRecord r) {
 
     StringBuilder sb = new StringBuilder();
 
-    sb.append("{\"v\":2");
+    sb.append("{\"v\":3");
 
     sb.append(",\"reportId\":\"")
             .append(jsonEscape(r.reportId)).append('"');
@@ -602,16 +672,30 @@ final class ErasureReport {
     sb.append(",\"deleteStatus\":\"")
             .append(jsonEscape(r.deleteStatus)).append('"');
 
+    sb.append(",\"operationType\":\"")
+            .append(jsonEscape(r.operationType)).append('"');
+
+    sb.append(",\"filesFound\":")
+            .append(r.filesFound);
+
+    sb.append(",\"filesDeleted\":")
+            .append(r.filesDeleted);
+
+    sb.append(",\"filesFailed\":")
+            .append(r.filesFailed);
+
     sb.append('}');
 
     return sb.toString();
 }
 
+
     /**
      * Parser tolerante: extrai apenas os campos
      * conhecidos. Retorna null para linhas inválidas.
      */
-    private static ErasureRecord fromJsonLine(String line) {
+    
+private static ErasureRecord fromJsonLine(String line) {
 
     try {
 
@@ -653,10 +737,6 @@ final class ErasureReport {
         String error =
                 extractString(line, "error");
 
-        // -----------------------------------------
-        // Campos introduzidos na versão 2.
-        // -----------------------------------------
-
         String reportId =
                 extractString(line, "reportId");
 
@@ -690,9 +770,21 @@ final class ErasureReport {
         String deleteStatus =
                 extractString(line, "deleteStatus");
 
-        // -----------------------------------------
+        // Campos introduzidos na versão 3.
+
+        String operationType =
+                extractString(line, "operationType");
+
+        Long filesFound =
+                extractLong(line, "filesFound");
+
+        Long filesDeleted =
+                extractLong(line, "filesDeleted");
+
+        Long filesFailed =
+                extractLong(line, "filesFailed");
+
         // Registro antigo (v1).
-        // -----------------------------------------
 
         if (reportId == null) {
 
@@ -714,9 +806,29 @@ final class ErasureReport {
             );
         }
 
-        // -----------------------------------------
-        // Registro novo (v2).
-        // -----------------------------------------
+        // Valores padrão para registros v2 antigos.
+
+        String finalOperationType =
+                operationType == null
+                        ? "FILE"
+                        : jsonUnescape(operationType);
+
+        int finalFilesFound =
+                filesFound == null
+                        ? 0
+                        : filesFound.intValue();
+
+        int finalFilesDeleted =
+                filesDeleted == null
+                        ? 0
+                        : filesDeleted.intValue();
+
+        int finalFilesFailed =
+                filesFailed == null
+                        ? 0
+                        : filesFailed.intValue();
+
+        // Registro v2 ou v3.
 
         return new ErasureRecord(
 
@@ -776,7 +888,12 @@ final class ErasureReport {
 
                 deleteStatus == null
                         ? "Não registrado"
-                        : jsonUnescape(deleteStatus)
+                        : jsonUnescape(deleteStatus),
+
+                finalOperationType,
+                finalFilesFound,
+                finalFilesDeleted,
+                finalFilesFailed
         );
 
     } catch (RuntimeException e) {
@@ -1163,22 +1280,67 @@ static void exportPdf(
 
         y += 25;
 
-        canvas.drawText(
-                "Arquivo: " + truncate(record.fileName, 75),
-                left,
-                y,
-                textPaint
-        );
+        
+if ("FOLDER".equals(record.operationType)) {
 
-        y += 18;
+    canvas.drawText(
+            "Operação: Exclusão segura de pasta",
+            left,
+            y,
+            textPaint
+    );
 
-        canvas.drawText(
-                "Tamanho original: "
-                        + record.sizeBytes + " bytes",
-                left,
-                y,
-                textPaint
-        );
+    y += 18;
+
+    canvas.drawText(
+            "Arquivos encontrados: " + record.filesFound,
+            left,
+            y,
+            textPaint
+    );
+
+    y += 18;
+
+    canvas.drawText(
+            "Arquivos excluídos: " + record.filesDeleted,
+            left,
+            y,
+            textPaint
+    );
+
+    y += 18;
+
+    canvas.drawText(
+            "Arquivos com falha: " + record.filesFailed,
+            left,
+            y,
+            textPaint
+    );
+
+    y += 18;
+
+} else {
+
+    canvas.drawText(
+            "Arquivo: " + truncate(record.fileName, 75),
+            left,
+            y,
+            textPaint
+    );
+
+    y += 18;
+}
+
+        String sizeLabel = "FOLDER".equals(record.operationType)
+        ? "Tamanho total dos arquivos: "
+        : "Tamanho original: ";
+
+canvas.drawText(
+        sizeLabel + record.sizeBytes + " bytes",
+        left,
+        y,
+        textPaint
+);
 
         y += 18;
 
