@@ -105,6 +105,7 @@ public final class VideoMetadataCleaner {
     public enum VideoFormat {
         MP4,
         M4V,
+        M4A,
         THREE_GP
     }
 
@@ -216,32 +217,75 @@ public final class VideoMetadataCleaner {
             );
 
             if (majorBrand.startsWith("3g")) {
-                return VideoFormat.THREE_GP;
-            }
+    return VideoFormat.THREE_GP;
+}
 
-            if ("M4V ".equals(majorBrand)
-                    || "M4VH".equals(majorBrand)
-                    || "M4VP".equals(majorBrand)) {
-                return VideoFormat.M4V;
-            }
+if ("M4A ".equals(majorBrand)
+        || "M4B ".equals(majorBrand)
+        || "M4P ".equals(majorBrand)) {
 
-            if ("isom".equals(majorBrand)
-                    || "iso2".equals(majorBrand)
-                    || "iso3".equals(majorBrand)
-                    || "iso4".equals(majorBrand)
-                    || "iso5".equals(majorBrand)
-                    || "iso6".equals(majorBrand)
-                    || "mp41".equals(majorBrand)
-                    || "mp42".equals(majorBrand)
-                    || "avc1".equals(majorBrand)
-                    || "dash".equals(majorBrand)
-                    || "M4V ".equals(majorBrand)) {
-                return VideoFormat.MP4;
-            }
+    return VideoFormat.M4A;
+}
 
-            throw new IOException(
-                    "Formato não suportado: " + majorBrand
-            );
+if ("M4V ".equals(majorBrand)
+        || "M4VH".equals(majorBrand)
+        || "M4VP".equals(majorBrand)) {
+
+    return VideoFormat.M4V;
+}
+
+boolean isM4ACompatible = false;
+boolean isM4VCompatible = false;
+
+for (int i = 8; i + 4 <= payload.length; i += 4) {
+
+    String compatibleBrand = new String(
+            payload,
+            i,
+            4,
+            StandardCharsets.ISO_8859_1
+    );
+
+    if ("M4A ".equals(compatibleBrand)
+            || "M4B ".equals(compatibleBrand)
+            || "M4P ".equals(compatibleBrand)) {
+
+        isM4ACompatible = true;
+    }
+
+    if ("M4V ".equals(compatibleBrand)
+            || "M4VH".equals(compatibleBrand)
+            || "M4VP".equals(compatibleBrand)) {
+
+        isM4VCompatible = true;
+    }
+}
+
+if (isM4ACompatible) {
+    return VideoFormat.M4A;
+}
+
+if (isM4VCompatible) {
+    return VideoFormat.M4V;
+}
+
+if ("isom".equals(majorBrand)
+        || "iso2".equals(majorBrand)
+        || "iso3".equals(majorBrand)
+        || "iso4".equals(majorBrand)
+        || "iso5".equals(majorBrand)
+        || "iso6".equals(majorBrand)
+        || "mp41".equals(majorBrand)
+        || "mp42".equals(majorBrand)
+        || "avc1".equals(majorBrand)
+        || "dash".equals(majorBrand)) {
+
+    return VideoFormat.MP4;
+}
+
+throw new IOException(
+        "Formato não suportado: " + majorBrand
+);
         }
     }
 
@@ -1020,7 +1064,8 @@ private static boolean isPersonalMetadataKey(String key) {
             java.util.Locale.ROOT
     );
 
-    return normalized.contains("location")
+    return normalized.equals("mdta:com.android.version")
+            ||normalized.contains("location")
             || normalized.contains("gps")
             || normalized.contains("latitude")
             || normalized.contains("longitude")
