@@ -134,7 +134,7 @@ These tools provide additional privacy features beyond encryption, helping users
 
 ## Security Audit Report
 
-See [Report](https://github.com/LukeSsnake/S-File-Encryptor/blob/main/S_FILE_ENCRYPTOR_SECURITY_AUDIT.md)
+See [REPORT](https://github.com/LukeSsnake/S-File-Encryptor/blob/main/S_FILE_ENCRYPTOR_SECURITY_AUDIT.md)
 
 ## Building
 
