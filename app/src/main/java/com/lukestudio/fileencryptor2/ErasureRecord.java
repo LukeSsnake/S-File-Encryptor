@@ -55,6 +55,23 @@ class ErasureRecord {
     final String overwriteStatus;
     final String deleteStatus;
 
+        /**
+     * Redacts the base file name, keeping only the extension
+     * (e.g. "photo.jpg" -> "****.jpg"). Names without a valid
+     * extension are reduced to "****". Applied at construction
+     * time so the full name is never stored in reports or logs.
+     */
+    private static String redactFileName(String fileName) {
+        if (fileName == null || fileName.isEmpty()) {
+            return "***";
+        }
+        int dot = fileName.lastIndexOf('.');
+        if (dot <= 0 || dot == fileName.length() - 1) {
+            return "****";
+        }
+        return "****" + fileName.substring(dot);
+    }
+
     // Construtor antigo: mantém compatibilidade
     // com os registros e chamadas existentes.
     ErasureRecord(
@@ -112,7 +129,7 @@ class ErasureRecord {
     ) {
 
         this.reportId = reportId;
-        this.fileName = fileName;
+        this.fileName = redactFileName(fileName);
         this.sizeBytes = sizeBytes;
         this.startedAtMillis = startedAtMillis;
         this.finishedAtMillis = finishedAtMillis;
