@@ -132,6 +132,10 @@ The PDF report can be exported through Android's Storage Access Framework (SAF).
 
 These tools provide additional privacy features beyond encryption, helping users manage metadata and sensitive files directly on their Android devices.
 
+## Security Audit Report
+
+See [Report](https://github.com/LukeSsnake/S-File-Encryptor/blob/main/S_FILE_ENCRYPTOR_SECURITY_AUDIT.md)
+
 ## Building
 
 The project uses the Android Gradle Plugin and the Gradle wrapper included in this repository.
@@ -139,10 +143,6 @@ The project uses the Android Gradle Plugin and the Gradle wrapper included in th
 To build the application from the command line:
 
     ./gradlew assembleRelease
-
-## Security Audit Report
-
-See [Report](https://github.com/LukeSsnake/S-File-Encryptor/blob/main/S_FILE_ENCRYPTOR_SECURITY_AUDIT.md)
 
 ## Support the Project
 
