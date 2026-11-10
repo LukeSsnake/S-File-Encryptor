@@ -9,176 +9,251 @@
 
     <!-- Logo + botão Info -->
     <LinearLayout
-    android:id="@+id/logoContainer"
-    android:layout_width="match_parent"
-    android:layout_height="wrap_content"
-    android:layout_marginTop="50dp"
-    android:orientation="horizontal"
-    android:gravity="center_vertical"
-    android:background="#263238"
-    android:paddingStart="8dp"
-    android:paddingEnd="8dp">
-
-    <ImageView
-        android:id="@+id/appLogo"
-        android:layout_width="40dp"
-        android:layout_height="40dp"
-        android:src="@drawable/app_icon"
-        android:scaleType="centerCrop" />
-
-    <TextView
-        android:id="@+id/biometricLabel"
-        android:layout_width="wrap_content"
+        android:id="@+id/logoContainer"
+        android:layout_width="match_parent"
         android:layout_height="wrap_content"
-        android:text="@string/biometric"
-        android:textSize="14sp"
-        android:textColor="#FFFFFF"
-        android:paddingStart="6dp"
-        android:paddingEnd="2dp" />
+        android:layout_marginTop="50dp"
+        android:orientation="horizontal"
+        android:gravity="center_vertical"
+        android:background="#263238"
+        android:paddingStart="8dp"
+        android:paddingEnd="8dp">
 
-    <Switch
-        android:id="@+id/biometricSwitch"
-        android:layout_width="wrap_content"
+        <ImageView
+            android:id="@+id/appLogo"
+            android:layout_width="40dp"
+            android:layout_height="40dp"
+            android:src="@drawable/app_icon"
+            android:scaleType="centerCrop" />
+
+        <TextView
+            android:id="@+id/biometricLabel"
+            android:layout_width="wrap_content"
+            android:layout_height="wrap_content"
+            android:text="@string/biometric"
+            android:textSize="14sp"
+            android:textColor="#FFFFFF"
+            android:paddingStart="6dp"
+            android:paddingEnd="2dp" />
+
+        <Switch
+            android:id="@+id/biometricSwitch"
+            android:layout_width="wrap_content"
+            android:layout_height="wrap_content"
+            android:thumbTint="#80CBC4"
+            android:trackTint="#546E7A"
+            android:contentDescription="@string/biometric" />
+
+        <TextView
+            android:id="@+id/biometricSettings"
+            android:layout_width="wrap_content"
+            android:layout_height="wrap_content"
+            android:text="⚙️"
+            android:textSize="22sp"
+            android:textColor="#FFFFFF"
+            android:padding="8dp"
+            android:clickable="true"
+            android:focusable="true"
+            android:enabled="false"
+            android:contentDescription="@string/biometric_settings" />
+
+        <View
+            android:layout_width="0dp"
+            android:layout_height="1dp"
+            android:layout_weight="1" />
+
+        <Button
+            android:id="@+id/infoCrypto"
+            android:layout_width="44dp"
+            android:layout_height="wrap_content"
+            android:text="@string/info_crypto"
+            android:textSize="22sp"
+            android:textColor="#000000"
+            android:minWidth="0dp"
+            android:padding="0dp"
+            android:contentDescription="@string/crypto_title" />
+
+        <Button
+            android:id="@+id/infoButton"
+            android:layout_width="44dp"
+            android:layout_height="wrap_content"
+            android:text="@string/info_button"
+            android:textSize="22sp"
+            android:textColor="#000000"
+            android:minWidth="0dp"
+            android:padding="0dp"
+            android:layout_marginStart="4dp"
+            android:contentDescription="@string/info_title" />
+
+    </LinearLayout>
+
+    <!-- Nome do arquivo -->
+    <LinearLayout
+        android:id="@+id/nameContainer"
+        android:layout_width="match_parent"
         android:layout_height="wrap_content"
-        android:contentDescription="@string/biometric" />
+        android:orientation="vertical"
+        android:gravity="center"
+        android:background="#263238"
+        android:paddingStart="8dp"
+        android:paddingEnd="8dp">
 
-    <TextView
-        android:id="@+id/biometricSettings"
-        android:layout_width="wrap_content"
-        android:layout_height="wrap_content"
-        android:text="⚙️"
-        android:textSize="22sp"
-        android:textColor="#FFFFFF"
-        android:padding="8dp"
-        android:clickable="true"
-        android:focusable="true"
-        android:enabled="false"
-        android:contentDescription="@string/biometric_settings" />
+        <TextView
+            android:id="@+id/fileName"
+            android:layout_width="match_parent"
+            android:layout_height="50dp"
+            android:layout_marginTop="70dp"
+            android:text="Nenhum arquivo selecionado"
+            android:textColor="#FFFFFF"
+            android:textSize="20sp"
+            android:gravity="center" />
 
-    <View
-        android:layout_width="0dp"
-        android:layout_height="1dp"
-        android:layout_weight="1" />
+    </LinearLayout>
 
-    <Button
-        android:id="@+id/infoCrypto"
-        android:layout_width="44dp"
-        android:layout_height="wrap_content"
-        android:text="@string/info_crypto"
-        android:textSize="22sp"
-        android:textColor="#000000"
-        android:minWidth="0dp"
-        android:padding="0dp"
-        android:contentDescription="@string/crypto_title" />
-
-    <Button
-        android:id="@+id/infoButton"
-        android:layout_width="44dp"
-        android:layout_height="wrap_content"
-        android:text="@string/info_button"
-        android:textSize="22sp"
-        android:textColor="#000000"
-        android:minWidth="0dp"
-        android:padding="0dp"
-        android:layout_marginStart="4dp"
-        android:contentDescription="@string/info_title" />
-
-</LinearLayout>
-    
     <!-- Conteúdo principal -->
     <LinearLayout
         android:id="@+id/contentContainer"
         android:layout_width="match_parent"
-        android:layout_height="0dp"
-        android:layout_weight="1"
+        android:layout_height="wrap_content"
         android:orientation="vertical"
         android:gravity="center"
         android:background="#263238"
         android:padding="8dp">
 
-        <!-- Exclusão -->
-    <LinearLayout
-        android:id="@+id/biometricContainer"
-        android:layout_width="match_parent"
-        android:layout_height="wrap_content"
-        android:layout_marginTop="15dp"
-        android:orientation="horizontal"
-        android:gravity="center_vertical|end"
-        android:background="#263238"
-        android:paddingStart="8dp"
-        android:paddingEnd="8dp">  
+        <!-- Informações + Tools -->
+        <LinearLayout
+            android:id="@+id/biometricContainer"
+            android:layout_width="match_parent"
+            android:layout_height="230dp"
+            android:layout_marginTop="15dp"
+            android:orientation="horizontal"
+            android:gravity="center_vertical"
+            android:background="#263238"
+            android:paddingStart="8dp"
+            android:paddingEnd="8dp">
 
-        <Button
-        android:id="@+id/deleteButton"
-        android:layout_width="44dp"
-        android:layout_height="wrap_content"
-        android:text="@string/del_button"
-        android:textSize="22sp"
-        android:textColor="#000000"
-        android:minWidth="0dp"
-        android:padding="0dp"
-        android:layout_marginStart="4dp"
-        android:contentDescription="@string/del_title" />     
+            <!-- Card de informações -->
+            <LinearLayout
+                android:layout_width="0dp"
+                android:layout_height="match_parent"
+                android:layout_weight="1"
+                android:orientation="vertical"
+                android:background="@drawable/card_background_view"
+                android:padding="8dp"
+                android:elevation="10dp">
 
-    </LinearLayout>
+                <ProgressBar
+                    android:id="@+id/progress"
+                    style="?android:attr/progressBarStyleHorizontal"
+                    android:layout_width="match_parent"
+                    android:layout_height="wrap_content"
+                    android:max="100"
+                    android:progressTint="#06a74e"
+                    android:visibility="gone"
+                    android:layout_marginTop="8dp" />
 
-    <!-- Metadado -->
-    <LinearLayout
-        android:id="@+id/metadadoContainer"
-        android:layout_width="match_parent"
-        android:layout_height="wrap_content"
-        android:layout_marginTop="5dp"
-        android:layout_marginBottom="5dp"
-        android:orientation="horizontal"
-        android:gravity="center_vertical|end"
-        android:background="#263238"
-        android:paddingStart="8dp"
-        android:paddingEnd="8dp">  
+                <TextView
+                    android:id="@+id/progressText"
+                    android:layout_width="wrap_content"
+                    android:layout_height="wrap_content"
+                    android:text="0%"
+                    android:textColor="#FFFFFF"
+                    android:visibility="gone" />
 
-        <Button
-        android:id="@+id/metaButton"
-        android:layout_width="44dp"
-        android:layout_height="wrap_content"
-        android:layout_gravity="end|center_vertical"
-        android:text="@string/meta_button"
-        android:textSize="18sp"
-        android:textColor="#000000"
-        android:minWidth="0dp"
-        android:padding="4dp"
-        android:layout_marginStart="4dp"
-        android:contentDescription="@string/meta_title" />     
+                <ScrollView
+                    android:layout_width="match_parent"
+                    android:layout_height="0dp"
+                    android:layout_weight="1"
+                    android:fillViewport="true"
+                    android:scrollbars="vertical">
 
-    </LinearLayout>
+                    <TextView
+                        android:id="@+id/fileInfo"
+                        android:layout_width="match_parent"
+                        android:layout_height="wrap_content"
+                        android:text="Nenhum arquivo selecionado"
+                        android:textColor="#FFFFFF"
+                        android:textSize="16sp" />
 
+                </ScrollView>
+                
+            </LinearLayout>
+
+            <!-- Tools à direita -->
+            <LinearLayout
+                android:id="@+id/fileToolsContainer"
+                android:layout_width="wrap_content"
+                android:layout_height="match_parent"
+                android:orientation="vertical"
+                android:gravity="bottom|end"
+                android:background="#263238"
+                android:paddingStart="8dp"
+                android:paddingEnd="8dp"
+                android:paddingBottom="8dp">
+
+                <Button
+                    android:id="@+id/deleteButton"
+                    android:layout_width="44dp"
+                    android:layout_height="wrap_content"
+                    android:text="@string/del_button"
+                    android:textSize="22sp"
+                    android:textColor="#000000"
+                    android:minWidth="0dp"
+                    android:padding="0dp"
+                    android:contentDescription="@string/del_title" />
+
+                <Button
+                    android:id="@+id/metaButton"
+                    android:layout_width="44dp"
+                    android:layout_height="wrap_content"
+                    android:layout_marginTop="6dp"
+                    android:text="@string/meta_button"
+                    android:textSize="18sp"
+                    android:textColor="#000000"
+                    android:minWidth="0dp"
+                    android:padding="4dp"
+                    android:contentDescription="@string/meta_title" />
+
+            </LinearLayout>
+
+        </LinearLayout>
+
+        <!-- Card dos botões -->
         <LinearLayout
             android:layout_width="match_parent"
-            android:layout_height="wrap_content"
+            android:layout_height="200dp"            
             android:orientation="vertical"
             android:gravity="center"
             android:background="@drawable/card_background"
             android:padding="8dp"
+            android:layout_marginTop="15dp"
             android:layout_marginBottom="15dp"
             android:elevation="10dp">
 
+            <!-- Senha -->
+            <LinearLayout
+                android:layout_width="wrap_content"
+                android:layout_height="wrap_content"
+                android:orientation="horizontal"
+                android:gravity="center">
 
-            <FrameLayout
-                android:layout_width="match_parent"
-                android:layout_height="wrap_content">
-
-                <TextView
-                    android:id="@+id/fileName"
+                <EditText
+                    android:id="@+id/password"
                     android:layout_width="wrap_content"
                     android:layout_height="wrap_content"
-                    android:layout_gravity="center"
-                    android:text="@string/no_file"
+                    android:layout_marginBottom="13dp"
+                    android:hint="@string/password_hint"
                     android:textSize="16sp"
-                    android:textColor="#546E7A"
+                    android:textColor="#000000"
+                    android:textColorHint="#607D8B"
                     android:padding="8dp"
-                    android:maxLines="2"
-                    android:ellipsize="middle" />                 
+                    android:singleLine="true"
+                    android:imeOptions="actionDone"
+                    android:inputType="text" />
 
-            </FrameLayout>       
+            </LinearLayout>
 
+            <!-- Arquivo / Pasta / Ajuda -->
             <LinearLayout
                 android:layout_width="wrap_content"
                 android:layout_height="wrap_content"
@@ -219,57 +294,18 @@
 
             </LinearLayout>
 
-        </LinearLayout>
-
-        <LinearLayout
-            android:layout_width="match_parent"
-            android:layout_height="150dp"
-            android:orientation="vertical"
-            android:gravity="center"
-            android:background="@drawable/card_background"
-            android:padding="8dp"
-            android:elevation="10dp">
-
-            <EditText
-                android:id="@+id/password"
-                android:layout_width="wrap_content"
-                android:layout_height="wrap_content"
-                android:hint="@string/password_hint"
-                android:textSize="16sp"
-                android:textColor="#000000"
-                android:textColorHint="#607D8B"
-                android:padding="8dp"
-                android:singleLine="true"
-                android:imeOptions="actionDone"
-                android:inputType="text" />
-
+            <!-- Ação -->
             <Button
                 android:id="@+id/actionButton"
                 android:layout_width="wrap_content"
                 android:layout_height="wrap_content"
+                android:layout_marginTop="15dp"
                 android:text="@string/encrypt"
                 android:textSize="16sp"
                 android:textColor="#000000"
                 android:padding="8dp" />
 
         </LinearLayout>
-
-        <ProgressBar
-            android:id="@+id/progress"
-            style="?android:attr/progressBarStyleHorizontal"
-            android:layout_width="match_parent"
-            android:layout_height="wrap_content"
-            android:max="100"
-            android:visibility="gone"
-            android:layout_marginTop="16dp" />
-
-        <TextView
-            android:id="@+id/progressText"
-            android:layout_width="wrap_content"
-            android:layout_height="wrap_content"
-            android:text="0%"
-            android:textColor="#FFFFFF"
-            android:visibility="gone" />
 
     </LinearLayout>
 
