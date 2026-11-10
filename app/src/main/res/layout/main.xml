@@ -41,7 +41,7 @@
             android:layout_width="wrap_content"
             android:layout_height="wrap_content"
             android:thumbTint="#80CBC4"
-            android:trackTint="#546E7A"
+            android:trackTint="#4bbccb"
             android:contentDescription="@string/biometric" />
 
         <TextView
