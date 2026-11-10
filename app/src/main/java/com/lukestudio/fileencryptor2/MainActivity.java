@@ -179,11 +179,7 @@ public class MainActivity extends FragmentActivity {
 
         getWindow().getDecorView().setSystemUiVisibility(0);
 
-        setContentView(R.layout.main);
-
-        ReminderReceiver.scheduleFirstReminder(this);
-
-        requestNotificationPermission();
+        setContentView(R.layout.main);        
 
         fileName = findViewById(R.id.fileName);
         fileInfo = findViewById(R.id.fileInfo);
@@ -6458,27 +6454,7 @@ private void appendPdfField(
                 .append("\n\n");
     }
 }
-
-        private static final int REQUEST_NOTIFICATION_PERMISSION = 2001;
-
-private void requestNotificationPermission() {
-
-    if (android.os.Build.VERSION.SDK_INT >= 33) {
-
-        if (checkSelfPermission(
-                android.Manifest.permission.POST_NOTIFICATIONS)
-                != android.content.pm.PackageManager.PERMISSION_GRANTED) {
-
-            requestPermissions(
-                    new String[]{
-                            android.Manifest.permission.POST_NOTIFICATIONS
-                    },
-                    REQUEST_NOTIFICATION_PERMISSION
-            );
-        }
-    }
-}
-
+        
     @Override
     protected void onDestroy() {
 
