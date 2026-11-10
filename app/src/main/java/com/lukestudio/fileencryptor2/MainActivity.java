@@ -51,6 +51,14 @@ import java.util.Date;
 import java.util.Locale;
 import androidx.documentfile.provider.DocumentFile;
 import com.tom_roush.pdfbox.android.PDFBoxResourceLoader;
+import android.graphics.BitmapFactory;
+import androidx.exifinterface.media.ExifInterface;
+import java.io.InputStream;
+import android.media.MediaMetadataRetriever;
+
+import com.tom_roush.pdfbox.android.PDFBoxResourceLoader;
+import com.tom_roush.pdfbox.pdmodel.PDDocument;
+import com.tom_roush.pdfbox.pdmodel.PDDocumentInformation;
 
 import javax.crypto.Cipher;
 
@@ -92,6 +100,7 @@ public class MainActivity extends FragmentActivity {
     private char[] pendingPassword;
 
     private TextView fileName;
+    private TextView fileInfo;
     private TextView progressText;
     private EditText password;
     private ProgressBar progress;
@@ -137,10 +146,10 @@ public class MainActivity extends FragmentActivity {
     protected void onCreate(Bundle b) {
         super.onCreate(b);
 
-        getWindow().setFlags(
+         getWindow().setFlags(
             WindowManager.LayoutParams.FLAG_SECURE,
             WindowManager.LayoutParams.FLAG_SECURE
-    );
+    ); 
 
         PDFBoxResourceLoader.init(getApplicationContext());
 
@@ -155,7 +164,7 @@ public class MainActivity extends FragmentActivity {
             }
         }
 );
-
+        
         cleanTemporaryFiles();
 
         getWindow().setNavigationBarColor(
@@ -173,6 +182,7 @@ public class MainActivity extends FragmentActivity {
         setContentView(R.layout.main);
 
         fileName = findViewById(R.id.fileName);
+        fileInfo = findViewById(R.id.fileInfo);
         progress = findViewById(R.id.progress);
         progressText = findViewById(R.id.progressText);
         password = findViewById(R.id.password);
@@ -202,6 +212,8 @@ public class MainActivity extends FragmentActivity {
         );
 
         handleIncomingIntent(getIntent());
+
+        fileInfo.setText("_");
 
         fileButton.setOnClickListener(v -> {
                 deleteButton.setVisibility(View.VISIBLE);
@@ -2789,6 +2801,8 @@ private void authenticateForReplacement(
                     selectedName
             );
 
+            updateFileInfo(inputUri, false);
+
             decryptMode = selectedName
                             .toLowerCase(java.util.Locale.ROOT)
                             .endsWith(".aes");
@@ -2820,6 +2834,8 @@ private void authenticateForReplacement(
             fileName.setText(
                     selectedName
             );
+
+            updateFileInfo(inputUri, true);
 
             decryptMode = false;
 
@@ -5746,6 +5762,691 @@ private void showExitDialog() {
                         )            
             .setCancelable(true)
             .show();
+}
+
+        private void updateFileInfo(Uri uri, boolean isFolder) {
+
+    if (uri == null) {
+        fileInfo.setText("Nenhum arquivo selecionado");
+        return;
+    }
+
+    String displayName = isFolder
+            ? treeName(uri)
+            : name(uri);
+
+    String mimeType = isFolder
+            ? "Pasta"
+            : getContentResolver().getType(uri);
+
+    long fileSize = -1;
+    long lastModified = -1;
+
+    String[] projection = isFolder
+            ? new String[]{
+                    DocumentsContract.Document.COLUMN_DISPLAY_NAME,
+                    DocumentsContract.Document.COLUMN_LAST_MODIFIED
+            }
+            : new String[]{
+                    OpenableColumns.DISPLAY_NAME,
+                    OpenableColumns.SIZE,
+                    DocumentsContract.Document.COLUMN_LAST_MODIFIED
+            };
+
+    try (Cursor cursor = getContentResolver().query(
+            uri,
+            projection,
+            null,
+            null,
+            null
+    )) {
+
+        if (cursor != null && cursor.moveToFirst()) {
+
+            int nameIndex = cursor.getColumnIndex(
+                    isFolder
+                            ? DocumentsContract.Document.COLUMN_DISPLAY_NAME
+                            : OpenableColumns.DISPLAY_NAME
+            );
+
+            if (nameIndex >= 0 && !cursor.isNull(nameIndex)) {
+                displayName = cursor.getString(nameIndex);
+            }
+
+            if (!isFolder) {
+
+                int sizeIndex = cursor.getColumnIndex(
+                        OpenableColumns.SIZE
+                );
+
+                if (sizeIndex >= 0 && !cursor.isNull(sizeIndex)) {
+                    fileSize = cursor.getLong(sizeIndex);
+                }
+            }
+
+            int modifiedIndex = cursor.getColumnIndex(
+                    DocumentsContract.Document.COLUMN_LAST_MODIFIED
+            );
+
+            if (modifiedIndex >= 0 && !cursor.isNull(modifiedIndex)) {
+                lastModified = cursor.getLong(modifiedIndex);
+            }
+        }
+
+    } catch (Exception e) {
+
+        android.util.Log.w(
+                "SFileEncryptor",
+                "Falha ao consultar informações do documento.",
+                e
+        );
+    }
+
+    String extension = isFolder
+            ? "Não aplicável"
+            : getFileExtension(displayName);
+
+    String category = isFolder
+            ? "Pasta"
+            : getFileCategory(mimeType, extension);
+
+    StringBuilder info = new StringBuilder();
+
+    info.append("Nome: ")
+            .append(displayName)
+            .append("\n\n");
+
+    info.append("Categoria: ")
+            .append(category)
+            .append("\n\n");
+
+    info.append("Extensão: ")
+            .append(extension)
+            .append("\n\n");
+
+    info.append("Tipo MIME: ")
+            .append(mimeType != null
+                    ? mimeType
+                    : "Não identificado")
+            .append("\n\n");
+
+    if (isFolder) {
+
+        info.append("Tamanho: Não aplicável\n\n");
+
+    } else {
+
+        info.append("Tamanho: ")
+                .append(formatFileSize(fileSize))
+                .append("\n");
+
+        info.append("Tamanho exato: ")
+                .append(fileSize >= 0
+                        ? String.format(
+                                Locale.US,
+                                "%,d bytes",
+                                fileSize
+                        )
+                        : "Não disponível")
+                .append("\n\n");
+    }
+
+    if (lastModified > 0) {
+
+        SimpleDateFormat dateFormat =
+                new SimpleDateFormat(
+                        "dd/MM/yyyy HH:mm:ss",
+                        Locale.getDefault()
+                );
+
+        info.append("Última modificação: ")
+                .append(dateFormat.format(new Date(lastModified)))
+                .append("\n\n");
+
+    } else {
+
+        info.append("Última modificação: Não disponível\n\n");
+    }
+
+    info.append("Origem: ")
+            .append(getStorageOrigin(uri, isFolder))
+            .append("\n\n");
+
+    info.append("Provedor SAF: ")
+            .append(uri.getAuthority() != null
+                    ? uri.getAuthority()
+                    : "Não identificado")
+            .append("\n\n");
+
+    try {
+
+        String documentId = null;
+
+        if (isFolder) {
+
+            documentId = DocumentsContract.getTreeDocumentId(uri);
+
+        } else if (DocumentsContract.isDocumentUri(this, uri)) {
+
+            documentId = DocumentsContract.getDocumentId(uri);
+        }
+
+        info.append("Identificador: ")
+                .append(documentId != null
+                        ? documentId
+                        : "Não disponibilizado")
+                .append("\n\n");
+
+    } catch (Exception e) {
+
+        info.append("Identificador: Não disponibilizado\n\n");
+    }
+
+    info.append("URI: ")
+            .append(uri.toString());
+
+    // Informações específicas de imagens.
+    if (!isFolder && category.equals("Imagem")) {
+
+        info.append("\n\n--- INFORMAÇÕES DA IMAGEM ---\n\n");
+
+        appendImageInfo(info, uri);
+    }
+
+    final String baseInfo = info.toString();
+final long selectedFileSize = fileSize;
+
+fileInfo.setText(baseInfo);
+
+if (!isFolder
+        && (category.equals("Vídeo")
+        || category.equals("Áudio")
+        || category.equals("Documento PDF"))) {
+
+    new Thread(() -> {
+
+        String extraInfo;
+
+        if (category.equals("Vídeo")) {
+
+            extraInfo = getMediaInfo(uri, true);
+
+        } else if (category.equals("Áudio")) {
+
+            extraInfo = getMediaInfo(uri, false);
+
+        } else {
+
+            extraInfo = getPdfInfo(uri, selectedFileSize);
+        }
+
+        final String result = baseInfo + extraInfo;
+
+        runOnUiThread(() -> {
+
+            // Evita mostrar informações de um arquivo anterior
+            // caso o usuário selecione outro durante a consulta.
+            if (uri.equals(inputUri) && !inputIsFolder) {
+                fileInfo.setText(result);
+            }
+        });
+
+    }, "SFE-Metadata").start();
+}
+}
+
+private String formatFileSize(long bytes) {
+
+    if (bytes < 0) {
+        return "Não disponível";
+    }
+
+    if (bytes < 1024) {
+        return bytes + " bytes";
+    }
+
+    if (bytes < 1024L * 1024) {
+        return String.format(
+                Locale.getDefault(),
+                "%.2f KB",
+                bytes / 1024.0
+        );
+    }
+
+    if (bytes < 1024L * 1024 * 1024) {
+        return String.format(
+                Locale.getDefault(),
+                "%.2f MB",
+                bytes / (1024.0 * 1024)
+        );
+    }
+
+    return String.format(
+            Locale.getDefault(),
+            "%.2f GB",
+            bytes / (1024.0 * 1024 * 1024)
+    );
+}
+
+        private String getStorageOrigin(Uri uri, boolean isFolder) {
+
+    String authority = uri.getAuthority();
+
+    if (authority == null) {
+        return "Origem não identificada";
+    }
+
+    // Armazenamento interno ou volume externo.
+    if (authority.equals("com.android.externalstorage.documents")) {
+
+        try {
+
+            String documentId = isFolder
+                    ? DocumentsContract.getTreeDocumentId(uri)
+                    : DocumentsContract.getDocumentId(uri);
+
+            int separator = documentId.indexOf(':');
+
+            String volume = separator >= 0
+                    ? documentId.substring(0, separator)
+                    : documentId;
+
+            if ("primary".equalsIgnoreCase(volume)) {
+                return "Memória interna do aparelho";
+            }
+
+            return "Cartão SD ou outro volume externo";
+
+        } catch (Exception e) {
+
+            return "Armazenamento externo";
+        }
+    }
+
+    // Google Drive.
+    if (authority.startsWith("com.google.android.apps.docs")) {
+        return "Google Drive";
+    }
+
+    // OneDrive.
+    if (authority.equals(
+            "com.microsoft.skydrive.content.StorageAccessProvider")) {
+        return "Microsoft OneDrive";
+    }
+
+    // Provedor de downloads.
+    if (authority.equals("com.android.providers.downloads.documents")) {
+        return "Downloads do Android";
+    }
+
+    // Provedor de mídia.
+    if (authority.equals("com.android.providers.media.documents")) {
+        return "Biblioteca de mídia do Android";
+    }
+
+    return "Outro provedor: " + authority;
+}
+
+        private String getFileExtension(String fileName) {
+
+    if (fileName == null || fileName.isEmpty()) {
+        return "Não identificada";
+    }
+
+    int dot = fileName.lastIndexOf('.');
+
+    if (dot <= 0 || dot == fileName.length() - 1) {
+        return "Sem extensão";
+    }
+
+    return fileName.substring(dot + 1)
+            .toUpperCase(Locale.ROOT);
+}
+
+        private String getFileCategory(String mimeType, String extension) {
+
+    if (mimeType != null) {
+
+        if (mimeType.startsWith("image/")) return "Imagem";
+        if (mimeType.startsWith("video/")) return "Vídeo";
+        if (mimeType.startsWith("audio/")) return "Áudio";
+        if (mimeType.equals("application/pdf")) return "Documento PDF";
+        if (mimeType.startsWith("text/")) return "Arquivo de texto";
+    }
+
+    String ext = extension.toLowerCase(Locale.ROOT);
+
+    if (ext.matches("jpg|jpeg|png|gif|bmp|webp|heic|heif|tif|tiff")) {
+        return "Imagem";
+    }
+
+    if (ext.matches("mp4|m4v|3gp|mkv|avi|mov|webm")) {
+        return "Vídeo";
+    }
+
+    if (ext.matches("mp3|m4a|aac|wav|flac|ogg|opus|wma")) {
+        return "Áudio";
+    }
+
+    if (ext.equals("pdf")) return "Documento PDF";
+
+    if (ext.matches("zip|rar|7z|tar|gz")) {
+        return "Arquivo compactado";
+    }
+
+    if (ext.matches("doc|docx|odt|xls|xlsx|ppt|pptx")) {
+        return "Documento";
+    }
+
+    return "Outro arquivo";
+}
+
+        private void appendImageInfo(StringBuilder info, Uri uri) {
+
+    try (InputStream input =
+                 getContentResolver().openInputStream(uri)) {
+
+        if (input == null) return;
+
+        BitmapFactory.Options options =
+                new BitmapFactory.Options();
+
+        options.inJustDecodeBounds = true;
+
+        BitmapFactory.decodeStream(
+                input,
+                null,
+                options
+        );
+
+        if (options.outWidth > 0 && options.outHeight > 0) {
+
+            info.append("Dimensões: ")
+                    .append(options.outWidth)
+                    .append(" × ")
+                    .append(options.outHeight)
+                    .append(" pixels\n\n");
+
+            info.append("Proporção: ")
+                    .append(String.format(
+                            Locale.US,
+                            "%.2f:1",
+                            (double) options.outWidth / options.outHeight
+                    ))
+                    .append("\n\n");
+        }
+
+    } catch (Exception e) {
+
+        android.util.Log.w(
+                "SFileEncryptor",
+                "Não foi possível obter dimensões da imagem.",
+                e
+        );
+    }
+}
+
+        private String formatMediaDuration(long durationMs) {
+
+    if (durationMs < 0) {
+        return "Não disponível";
+    }
+
+    long seconds = durationMs / 1000;
+    long hours = seconds / 3600;
+    long minutes = (seconds % 3600) / 60;
+    long remainingSeconds = seconds % 60;
+
+    if (hours > 0) {
+        return String.format(
+                Locale.getDefault(),
+                "%02d:%02d:%02d",
+                hours,
+                minutes,
+                remainingSeconds
+        );
+    }
+
+    return String.format(
+            Locale.getDefault(),
+            "%02d:%02d",
+            minutes,
+            remainingSeconds
+    );
+}
+
+        private String getMediaInfo(Uri uri, boolean isVideo) {
+
+    MediaMetadataRetriever retriever =
+            new MediaMetadataRetriever();
+
+    StringBuilder info = new StringBuilder();
+
+    try {
+
+        retriever.setDataSource(this, uri);
+
+        info.append("\n\n--- INFORMAÇÕES DE MÍDIA ---\n\n");
+
+        String duration = retriever.extractMetadata(
+                MediaMetadataRetriever.METADATA_KEY_DURATION
+        );
+
+        if (duration != null) {
+            info.append("Duração: ")
+                    .append(formatMediaDuration(
+                            Long.parseLong(duration)
+                    ))
+                    .append("\n\n");
+        }
+
+        String mediaMime = retriever.extractMetadata(
+                MediaMetadataRetriever.METADATA_KEY_MIMETYPE
+        );
+
+        if (mediaMime != null) {
+            info.append("Formato de mídia: ")
+                    .append(mediaMime)
+                    .append("\n\n");
+        }
+
+        String bitrate = retriever.extractMetadata(
+                MediaMetadataRetriever.METADATA_KEY_BITRATE
+        );
+
+        if (bitrate != null) {
+            info.append("Bitrate: ")
+        .append(String.format(
+                Locale.getDefault(),
+                "%.0f kbps",
+                Long.parseLong(bitrate) / 1000.0
+        ))
+        .append("\n\n");
+        }
+
+        if (isVideo) {
+
+            String width = retriever.extractMetadata(
+                    MediaMetadataRetriever.METADATA_KEY_VIDEO_WIDTH
+            );
+
+            String height = retriever.extractMetadata(
+                    MediaMetadataRetriever.METADATA_KEY_VIDEO_HEIGHT
+            );
+
+            if (width != null && height != null) {
+                info.append("Resolução: ")
+                        .append(width)
+                        .append(" × ")
+                        .append(height)
+                        .append(" pixels\n\n");
+            }
+
+            String rotation = retriever.extractMetadata(
+                    MediaMetadataRetriever.METADATA_KEY_VIDEO_ROTATION
+            );
+
+            if (rotation != null) {
+                info.append("Rotação: ")
+                        .append(rotation)
+                        .append("°\n\n");
+            }
+
+            String frameRate = retriever.extractMetadata(
+                    MediaMetadataRetriever.METADATA_KEY_CAPTURE_FRAMERATE
+            );
+
+            if (frameRate != null) {
+                info.append("Taxa de quadros: ")
+                        .append(frameRate)
+                        .append(" fps\n\n");
+            }
+        }
+
+        appendMediaTag(info, retriever, "Título",
+                MediaMetadataRetriever.METADATA_KEY_TITLE);
+
+        appendMediaTag(info, retriever, "Artista",
+                MediaMetadataRetriever.METADATA_KEY_ARTIST);
+
+        appendMediaTag(info, retriever, "Álbum",
+                MediaMetadataRetriever.METADATA_KEY_ALBUM);
+
+        appendMediaTag(info, retriever, "Gênero",
+                MediaMetadataRetriever.METADATA_KEY_GENRE);
+
+        appendMediaTag(info, retriever, "Data da mídia",
+                MediaMetadataRetriever.METADATA_KEY_DATE);
+
+    } catch (Exception e) {
+
+        android.util.Log.w(
+                "SFileEncryptor",
+                "Não foi possível consultar os metadados de mídia.",
+                e
+        );
+
+        return "\n\nMetadados de mídia: Não foi possível consultar este arquivo.";
+    } finally {
+
+        try {
+            retriever.release();
+        } catch (Exception ignored) {
+        }
+    }
+
+    return info.toString();
+}
+
+        private void appendMediaTag(
+        StringBuilder info,
+        MediaMetadataRetriever retriever,
+        String label,
+        int key
+) {
+
+    String value = retriever.extractMetadata(key);
+
+    if (value != null && !value.trim().isEmpty()) {
+
+        info.append(label)
+                .append(": ")
+                .append(value.trim())
+                .append("\n\n");
+    }
+}
+
+        private String getPdfInfo(Uri uri, long fileSize) {
+
+    StringBuilder info = new StringBuilder();
+
+    // Evita analisar PDFs muito grandes durante a consulta de informações.
+    if (fileSize > 30L * 1024 * 1024) {
+        return "\n\n--- INFORMAÇÕES DO PDF ---\n\n"
+                + "Leitura dos metadados ignorada: arquivo maior que 30 MB.";
+    }
+
+    PDFBoxResourceLoader.init(getApplicationContext());
+
+    try (InputStream input =
+                 getContentResolver().openInputStream(uri)) {
+
+        if (input == null) {
+            return "\n\nNão foi possível abrir o PDF para leitura.";
+        }
+
+        try (PDDocument document = PDDocument.load(input)) {
+
+            info.append("\n\n--- INFORMAÇÕES DO PDF ---\n\n");
+
+            info.append("Quantidade de páginas: ")
+                    .append(document.getNumberOfPages())
+                    .append("\n\n");
+
+            info.append("Versão do PDF: ")
+                    .append(document.getVersion())
+                    .append("\n\n");
+
+            PDDocumentInformation metadata =
+                    document.getDocumentInformation();
+
+            appendPdfField(info, "Título", metadata.getTitle());
+            appendPdfField(info, "Autor", metadata.getAuthor());
+            appendPdfField(info, "Assunto", metadata.getSubject());
+            appendPdfField(info, "Palavras-chave", metadata.getKeywords());
+            appendPdfField(info, "Aplicativo criador", metadata.getCreator());
+            appendPdfField(info, "Programa produtor", metadata.getProducer());
+
+            SimpleDateFormat dateFormat =
+                    new SimpleDateFormat(
+                            "dd/MM/yyyy HH:mm:ss",
+                            Locale.getDefault()
+                    );
+
+            if (metadata.getCreationDate() != null) {
+                info.append("Data de criação: ")
+                        .append(dateFormat.format(
+                                metadata.getCreationDate().getTime()
+                        ))
+                        .append("\n\n");
+            }
+
+            if (metadata.getModificationDate() != null) {
+                info.append("Data de modificação: ")
+                        .append(dateFormat.format(
+                                metadata.getModificationDate().getTime()
+                        ))
+                        .append("\n\n");
+            }
+        }
+
+    } catch (Exception e) {
+
+        android.util.Log.w(
+                "SFileEncryptor",
+                "Não foi possível consultar os metadados do PDF.",
+                e
+        );
+
+        return "\n\nMetadados do PDF: Não foi possível consultar este documento.";
+    }
+
+    return info.toString();
+}
+
+private void appendPdfField(
+        StringBuilder info,
+        String label,
+        String value
+) {
+
+    if (value != null && !value.trim().isEmpty()) {
+
+        info.append(label)
+                .append(": ")
+                .append(value.trim())
+                .append("\n\n");
+    }
 }
 
     @Override
