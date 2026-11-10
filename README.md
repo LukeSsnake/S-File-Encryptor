@@ -132,6 +132,8 @@ The PDF report can be exported through Android's Storage Access Framework (SAF).
 
 These tools provide additional privacy features beyond encryption, helping users manage metadata and sensitive files directly on their Android devices.
 
+NOTE: In devices with flash memory there is no full guarantee that deleted files will be irrecoverable. There may be some residues left.
+
 ## Security Audit Report
 
 See [REPORT](https://github.com/LukeSsnake/S-File-Encryptor/blob/main/S_FILE_ENCRYPTOR_SECURITY_AUDIT.md)
