@@ -181,6 +181,10 @@ public class MainActivity extends FragmentActivity {
 
         setContentView(R.layout.main);
 
+        ReminderReceiver.scheduleFirstReminder(this);
+
+        requestNotificationPermission();
+
         fileName = findViewById(R.id.fileName);
         fileInfo = findViewById(R.id.fileInfo);
         progress = findViewById(R.id.progress);
@@ -1303,10 +1307,12 @@ try {
             .setPositiveButton(R.string.deletee, (d, which) -> {
                 if (inputIsFolder) {
 
+                        fileInfo.setText("_");
                         executeSecureFolderOverwrite();
 
                 } else {
 
+                        fileInfo.setText("_");
                         executeSecureOverwrite();
                 }
             })
@@ -2960,6 +2966,8 @@ private void authenticateForReplacement(
 
 private void startMetadataCleaning() {
 
+        fileInfo.setText("_");
+
     if (inputUri == null || inputIsFolder || decryptMode) {
         fail("Selecione um arquivo válido para remover os metadados.");
         return;
@@ -3314,6 +3322,8 @@ private void saveMetadataOutput(Uri destination) {
        ========================================================= */
 
     private void startWork() {
+
+        fileInfo.setText("_");
 
         if (metadataCleaningInProgress) {
            return;
@@ -6446,6 +6456,26 @@ private void appendPdfField(
                 .append(": ")
                 .append(value.trim())
                 .append("\n\n");
+    }
+}
+
+        private static final int REQUEST_NOTIFICATION_PERMISSION = 2001;
+
+private void requestNotificationPermission() {
+
+    if (android.os.Build.VERSION.SDK_INT >= 33) {
+
+        if (checkSelfPermission(
+                android.Manifest.permission.POST_NOTIFICATIONS)
+                != android.content.pm.PackageManager.PERMISSION_GRANTED) {
+
+            requestPermissions(
+                    new String[]{
+                            android.Manifest.permission.POST_NOTIFICATIONS
+                    },
+                    REQUEST_NOTIFICATION_PERMISSION
+            );
+        }
     }
 }
 
