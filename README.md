@@ -7,6 +7,9 @@ S File Encryptor is an Android application for encrypting and decrypting files l
 
 <img width="1080" height="2400" alt="Screenshot_2026-11-10-09-54-43-030_com lukestudio fileencryptor2" src="https://github.com/user-attachments/assets/9b3479d6-a08b-4413-835e-4339c3207fc5" />
 
+## Download
+
+[<img src="https://play.google.com/intl/en_us/badges/images/generic/en-play-badge.png" alt="Get it on Google Play" height="80">](https://play.google.com/store/apps/details?id=com.lukestudio.fileencryptor2)
 
 ## Cryptography
 
