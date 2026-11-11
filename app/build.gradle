@@ -11,6 +11,19 @@ android {
         versionCode 28
         versionName '3.0.7'
     }
+
+    packaging {
+        resources {
+            excludes += [
+                'META-INF/versions/9/OSGI-INF/MANIFEST.MF',
+                'META-INF/LICENSE.md',
+                'META-INF/LICENSE',
+                'META-INF/NOTICE.md',
+                'META-INF/NOTICE'
+            ]
+        }
+    }
+    
 }
 
 
