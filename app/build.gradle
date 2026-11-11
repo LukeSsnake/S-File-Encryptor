@@ -2,7 +2,7 @@ plugins { id 'com.android.application' }
 
 android {
     namespace 'com.lukestudio.fileencryptor2'
-    compileSdk 35
+    compileSdk 36
 
     defaultConfig {
         applicationId 'com.lukestudio.fileencryptor2'
