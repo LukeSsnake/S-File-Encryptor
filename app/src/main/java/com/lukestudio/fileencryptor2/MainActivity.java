@@ -113,6 +113,7 @@ public class MainActivity extends FragmentActivity {
     private Button infoCrypto;
     private Button metaButton;
     private Button deleteButton;
+    private Button hashButton;
     private Switch biometricSwitch;
     private TextView biometricSettings;
 
@@ -197,6 +198,7 @@ public class MainActivity extends FragmentActivity {
         infoCrypto = findViewById(R.id.infoCrypto);
         metaButton = findViewById(R.id.metaButton);
         deleteButton = findViewById(R.id.deleteButton);
+        hashButton = findViewById(R.id.hashButton);
 
         biometricSwitch = findViewById(R.id.biometricSwitch);
         biometricSettings = findViewById(R.id.biometricSettings);
@@ -228,6 +230,19 @@ public class MainActivity extends FragmentActivity {
         helpButton.setOnClickListener(v -> showHelp());
         infoButton.setOnClickListener(v -> showSupport());
         infoCrypto.setOnClickListener(v -> showCrypto());
+
+        hashButton.setOnClickListener(v -> {
+                if (inputUri == null || inputIsFolder) {
+                        Toast.makeText(
+                this,
+                "Selecione um arquivo válido.",
+                Toast.LENGTH_SHORT
+        ).show();
+                } else {
+                        showHash();
+                }
+        });
+
         metaButton.setOnClickListener(v -> {
                 if (inputUri == null || inputIsFolder) {
                         Toast.makeText(
@@ -1408,6 +1423,221 @@ private void showEncryptDelete() {
                 )
                 .show();
     }
+
+    
+
+private void showHash() {
+
+    if (inputUri == null) {
+
+        Toast.makeText(
+                this,
+                "Selecione um arquivo primeiro.",
+                Toast.LENGTH_SHORT
+        ).show();
+
+        return;
+    }
+
+    final Uri selectedUri = inputUri;
+
+    final String[] calculatedHash = {null};
+    final boolean[] calculationFinished = {false};
+    final boolean[] calculationFailed = {false};
+
+    LinearLayout layout = new LinearLayout(this);
+    layout.setOrientation(LinearLayout.VERTICAL);
+
+    int padding = (int) (20 * getResources()
+            .getDisplayMetrics().density);
+
+    layout.setPadding(padding, padding, padding, padding);
+
+    TextView nameLabel = new TextView(this);
+    nameLabel.setText("Nome do arquivo:");
+    nameLabel.setTextSize(14);
+
+    TextView nameValue = new TextView(this);
+    nameValue.setText(name(selectedUri));
+    nameValue.setTextSize(16);
+
+    TextView hashLabel = new TextView(this);
+    hashLabel.setText("\nSHA-256 do arquivo:");
+    hashLabel.setTextSize(14);
+
+    TextView calculatedHashValue = new TextView(this);
+    calculatedHashValue.setText("Calculando...");
+    calculatedHashValue.setTextSize(12);
+    calculatedHashValue.setTextIsSelectable(true);
+
+    TextView compareLabel = new TextView(this);
+    compareLabel.setText("\nHash para comparação:");
+    compareLabel.setTextSize(14);
+
+    EditText hashInput = new EditText(this);
+    hashInput.setSingleLine(true);
+    hashInput.setHint("Cole a hash SHA-256 aqui");
+
+    hashInput.setInputType(
+            android.text.InputType.TYPE_CLASS_TEXT
+                    | android.text.InputType.TYPE_TEXT_FLAG_NO_SUGGESTIONS
+    );
+
+    hashInput.setFilters(new android.text.InputFilter[]{
+            new android.text.InputFilter.LengthFilter(64)
+    });
+
+    TextView resultText = new TextView(this);
+    resultText.setTextSize(16);
+    resultText.setPadding(0, padding, 0, 0);
+    resultText.setVisibility(View.GONE);
+
+    layout.addView(nameLabel);
+    layout.addView(nameValue);
+    layout.addView(hashLabel);
+    layout.addView(calculatedHashValue);
+    layout.addView(compareLabel);
+    layout.addView(hashInput);
+    layout.addView(resultText);
+
+    AlertDialog dialog = new AlertDialog.Builder(this)
+            .setTitle("🔗 COMPARAR SHA-256")
+            .setView(layout)
+            .setNegativeButton("Fechar", null)
+            .setNeutralButton("Copiar Hash", null)
+            .setCancelable(false)
+            .create();
+
+    final Button[] copyButton = new Button[1];
+
+    dialog.setOnShowListener(d -> {
+
+        copyButton[0] =
+                dialog.getButton(AlertDialog.BUTTON_NEUTRAL);
+
+        copyButton[0].setEnabled(false);
+
+        copyButton[0].setOnClickListener(v -> {
+
+            if (calculatedHash[0] == null) {
+                return;
+            }
+
+            android.content.ClipboardManager clipboard =
+                    (android.content.ClipboardManager)
+                            getSystemService(CLIPBOARD_SERVICE);
+
+            android.content.ClipData clip =
+                    android.content.ClipData.newPlainText(
+                            "SHA-256",
+                            calculatedHash[0]
+                    );
+
+            clipboard.setPrimaryClip(clip);
+
+            Toast.makeText(
+                    MainActivity.this,
+                    "Hash copiada!",
+                    Toast.LENGTH_SHORT
+            ).show();
+        });
+
+        hashInput.addTextChangedListener(
+                new android.text.TextWatcher() {
+
+            @Override
+            public void beforeTextChanged(
+                    CharSequence s,
+                    int start,
+                    int count,
+                    int after
+            ) {
+            }
+
+            @Override
+            public void onTextChanged(
+                    CharSequence s,
+                    int start,
+                    int before,
+                    int count
+            ) {
+            }
+
+            @Override
+            public void afterTextChanged(
+                    android.text.Editable s
+            ) {
+
+                updateHashComparison(
+                        s.toString(),
+                        calculatedHash[0],
+                        calculationFinished[0],
+                        calculationFailed[0],
+                        resultText
+                );
+            }
+        });
+
+        // Inicia o cálculo automaticamente.
+        executor.execute(() -> {
+
+            try {
+
+                String hash = calculateSHA256(selectedUri);
+
+                runOnUiThread(() -> {
+
+                    if (!dialog.isShowing()) {
+                        return;
+                    }
+
+                    calculatedHash[0] = hash;
+                    calculationFinished[0] = true;
+
+                    calculatedHashValue.setText(hash);
+
+                    copyButton[0].setEnabled(true);
+
+                    // Compara automaticamente se o usuário
+                    // já tiver colado uma hash.
+                    updateHashComparison(
+                            hashInput.getText().toString(),
+                            calculatedHash[0],
+                            calculationFinished[0],
+                            calculationFailed[0],
+                            resultText
+                    );
+                });
+
+            } catch (Exception e) {
+
+                runOnUiThread(() -> {
+
+                    if (!dialog.isShowing()) {
+                        return;
+                    }
+
+                    calculationFinished[0] = true;
+                    calculationFailed[0] = true;
+
+                    calculatedHashValue.setText(
+                            "Falha ao calcular SHA-256."
+                    );
+
+                    updateHashComparison(
+                            hashInput.getText().toString(),
+                            null,
+                            true,
+                            true,
+                            resultText
+                    );
+                });
+            }
+        });
+    });
+
+    dialog.show();
+}
 
     private void showMeta() {
 
@@ -5544,6 +5774,7 @@ private void copyToOutput(
             infoCrypto.setEnabled(!busy);
             metaButton.setEnabled(!busy);
             deleteButton.setEnabled(!busy);
+            hashButton.setEnabled(!busy);
             
             biometricSwitch.setEnabled(!busy);
 
@@ -6655,6 +6886,127 @@ private void appendPdfField(
     // Em versões antigas, não arrisca permitir um destino não verificado.
     return true;
 }
+
+        private String calculateSHA256(Uri uri) throws Exception {
+
+    java.security.MessageDigest digest =
+            java.security.MessageDigest.getInstance("SHA-256");
+
+    try (InputStream input =
+                 getContentResolver().openInputStream(uri)) {
+
+        if (input == null) {
+            throw new IOException("Não foi possível abrir o arquivo.");
+        }
+
+        byte[] buffer = new byte[64 * 1024];
+
+        int bytesRead;
+
+        while ((bytesRead = input.read(buffer)) != -1) {
+
+            digest.update(buffer, 0, bytesRead);
+        }
+
+        java.util.Arrays.fill(buffer, (byte) 0);
+    }
+
+    byte[] hashBytes = digest.digest();
+
+    StringBuilder hex = new StringBuilder(64);
+
+    for (byte b : hashBytes) {
+
+        hex.append(String.format(
+                java.util.Locale.ROOT,
+                "%02x",
+                b & 0xff
+        ));
+    }
+
+    java.util.Arrays.fill(hashBytes, (byte) 0);
+
+    return hex.toString();
+}
+
+
+private void updateHashComparison(
+        String enteredHash,
+        String calculatedHash,
+        boolean calculationFinished,
+        boolean calculationFailed,
+        TextView resultText
+) {
+
+    String expectedHash = enteredHash.trim();
+
+    // Aguarda o usuário inserir os 64 caracteres.
+    if (expectedHash.isEmpty()
+            || expectedHash.length() < 64) {
+
+        resultText.setVisibility(View.GONE);
+        return;
+    }
+
+    resultText.setVisibility(View.VISIBLE);
+
+    if (!expectedHash.matches("(?i)[0-9a-f]{64}")) {
+
+        resultText.setText("❌ HASH SHA-256 INVÁLIDA");
+
+        resultText.setTextColor(
+                android.graphics.Color.rgb(198, 40, 40)
+        );
+
+        return;
+    }
+
+    if (!calculationFinished) {
+
+        resultText.setText("Calculando SHA-256...");
+
+        resultText.setTextColor(
+                android.graphics.Color.GRAY
+        );
+
+        return;
+    }
+
+    if (calculationFailed || calculatedHash == null) {
+
+        resultText.setText(
+                "❌ NÃO FOI POSSÍVEL CALCULAR A HASH"
+        );
+
+        resultText.setTextColor(
+                android.graphics.Color.rgb(198, 40, 40)
+        );
+
+        return;
+    }
+
+    if (calculatedHash.equalsIgnoreCase(expectedHash)) {
+
+        resultText.setText(
+                "✅ HASHES CORRESPONDEM"
+        );
+
+        resultText.setTextColor(
+                android.graphics.Color.rgb(46, 125, 50)
+        );
+
+    } else {
+
+        resultText.setText(
+                "❌ HASHES DIFERENTES"
+        );
+
+        resultText.setTextColor(
+                android.graphics.Color.rgb(198, 40, 40)
+        );
+    }
+}
+
         
     @Override
     protected void onDestroy() {
