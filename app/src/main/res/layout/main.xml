@@ -192,9 +192,22 @@
                 android:paddingBottom="8dp">
 
                 <Button
+                    android:id="@+id/hashButton"
+                    android:layout_width="44dp"
+                    android:layout_height="wrap_content"
+                    android:layout_marginTop="6dp"
+                    android:text="@string/hash_button"
+                    android:textSize="22sp"
+                    android:textColor="#000000"
+                    android:minWidth="0dp"
+                    android:padding="0dp"
+                    android:contentDescription="@string/hash_title" />
+
+                <Button
                     android:id="@+id/deleteButton"
                     android:layout_width="44dp"
                     android:layout_height="wrap_content"
+                    android:layout_marginTop="6dp"
                     android:text="@string/del_button"
                     android:textSize="22sp"
                     android:textColor="#000000"
