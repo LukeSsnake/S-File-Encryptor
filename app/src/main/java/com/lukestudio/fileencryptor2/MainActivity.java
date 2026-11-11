@@ -59,6 +59,7 @@ import android.media.MediaMetadataRetriever;
 import com.tom_roush.pdfbox.android.PDFBoxResourceLoader;
 import com.tom_roush.pdfbox.pdmodel.PDDocument;
 import com.tom_roush.pdfbox.pdmodel.PDDocumentInformation;
+import android.provider.DocumentsContract;
 
 import javax.crypto.Cipher;
 
@@ -125,6 +126,7 @@ public class MainActivity extends FragmentActivity {
 
     private long unzipTotalBytes;
     private long unzipProcessedBytes;
+    private boolean deleteOriginalAfterEncryption = false;
 
     private static final int CREATE_ERASURE_PDF = 15;
     private ErasureRecord pendingErasureRecord;
@@ -776,13 +778,21 @@ progressText.setText(
         private void executeSecureFolderOverwrite() {
 
     if (inputUri == null || !inputIsFolder) {
-        Toast.makeText(
-                this,
-                "Selecione uma pasta válida.",
-                Toast.LENGTH_SHORT
-        ).show();
-        return;
-    }
+
+    getWindow().clearFlags(
+            WindowManager.LayoutParams.FLAG_KEEP_SCREEN_ON
+    );
+
+    setBusy(false);
+
+    Toast.makeText(
+            this,
+            "Selecione uma pasta válida.",
+            Toast.LENGTH_SHORT
+    ).show();
+
+    return;
+}
 
     setBusy(true);
 
@@ -804,6 +814,10 @@ progressText.setText("Preparando exclusão...");
         if (root == null || !root.isDirectory()) {
 
             runOnUiThread(() -> {
+
+                getWindow().clearFlags(
+                WindowManager.LayoutParams.FLAG_KEEP_SCREEN_ON
+        );
 
                 setBusy(false);
 
@@ -1037,6 +1051,12 @@ try {
 final boolean finalReportSaved = reportSaved;
 
         runOnUiThread(() -> {
+
+            // A tela só pode apagar depois que a exclusão
+    // de todos os arquivos e pastas terminar.
+    getWindow().clearFlags(
+            WindowManager.LayoutParams.FLAG_KEEP_SCREEN_ON
+    );
             
             setBusy(false);
             
@@ -1325,6 +1345,56 @@ try {
     });
 
     dialoguee.show();
+}
+
+        
+private void showEncryptDelete() {
+
+    LinearLayout layout = new LinearLayout(this);
+    layout.setOrientation(LinearLayout.VERTICAL);
+
+    int padding = (int) (20 * getResources().getDisplayMetrics().density);
+
+    layout.setPadding(padding, padding, padding, 0);
+
+    TextView message = new TextView(this);
+
+    message.setText(
+            "\nCriptografar e excluir com a EXCLUSÃO SEGURA o Arquivo Original?\n\n"
+    );
+
+    message.setTextSize(16);
+
+    CheckBox checkBox = new CheckBox(this);
+
+    checkBox.setText("🗑️ EXCLUIR o Arquivo Original após criptografar.");
+
+    layout.addView(message);
+    layout.addView(checkBox);
+
+    AlertDialog dial =
+            new AlertDialog.Builder(this)
+                    .setTitle("🔐 Criptografar")
+                    .setView(layout)
+                    .setNegativeButton("Cancelar",
+        (d, which) -> {
+            deleteOriginalAfterEncryption = false;
+            clearPendingPassword();
+        }
+)
+                    .setPositiveButton(
+                            "ENCRYPT",
+                            (d, which) -> {
+
+                                deleteOriginalAfterEncryption =
+                                        checkBox.isChecked();
+
+                                pickOutput();
+                            }
+                    )
+                    .create();
+
+    dial.show();
 }
 
     private void showHelp() {
@@ -2228,7 +2298,7 @@ private void authenticateForDecryption(
 
         pendingPassword = stored;
 
-        pickOutput();
+        continueWithSelectedOutput();
     }
 
     private void showStoredPasswordDialog(char[] stored) {
@@ -2779,6 +2849,7 @@ private void authenticateForReplacement(
                     requestCode == PICK_OUTPUT_FOLDER
             ) {
                 clearPendingPassword();
+                deleteOriginalAfterEncryption = false;
             }
 
             return;
@@ -2850,18 +2921,64 @@ private void authenticateForReplacement(
 
         if (requestCode == CREATE_OUTPUT) {
 
-            outputUri = data.getData();
-            outputDocumentCreatedByApp = true;
+    outputUri = data.getData();
+    outputDocumentCreatedByApp = true;
 
-            persistWritePermission(
-                    outputUri,
-                    data
+    // Não permite salvar o AES dentro da pasta
+    // que está sendo criptografada.
+    if (inputIsFolder && !decryptMode
+            && isOutputInsideInputFolder(outputUri)) {
+
+        // Tenta remover o arquivo vazio criado pelo seletor.
+        try {
+
+            DocumentsContract.deleteDocument(
+                    getContentResolver(),
+                    outputUri
             );
 
-            startPendingWork();
-
-            return;
+        } catch (Exception ignored) {
         }
+
+        outputUri = null;
+        outputDocumentCreatedByApp = false;
+
+        new AlertDialog.Builder(this)
+                .setTitle("Destino inválido")
+                .setMessage(
+                        "Você não pode salvar o arquivo criptografado "
+                                + "dentro da própria pasta que está sendo "
+                                + "criptografada.\n\n"
+                                + "Escolha outro local para evitar que "
+                                + "o arquivo de saída seja incluído "
+                                + "na operação."
+                )
+                .setCancelable(false)
+                .setPositiveButton(
+                        "Escolher outro local",
+                        (dialog, which) -> pickOutputFile()
+                )
+                .setNegativeButton(
+                        "Cancelar",
+                        (dialog, which) -> {
+                            clearPendingPassword();
+                            deleteOriginalAfterEncryption = false;
+                        }
+                )
+                .show();
+
+        return;
+    }
+
+    persistWritePermission(
+            outputUri,
+            data
+    );
+
+    startPendingWork();
+
+    return;
+}
 
         if (requestCode == PICK_OUTPUT_FOLDER) {
 
@@ -3275,43 +3392,46 @@ private void saveMetadataOutput(Uri destination) {
 
     private void startPendingWork() {
 
-        final char[] pass =
-                pendingPassword;
+    final char[] pass = pendingPassword;
+    pendingPassword = null;
 
-        pendingPassword = null;
+    final boolean decrypt = decryptMode;
 
-        password.getText().clear();
+    // Guarda a escolha antes de iniciar o processamento.
+    final boolean deleteOriginal =
+            !decrypt && deleteOriginalAfterEncryption;
 
-        if (pass == null) {
-            return;
-        }
+    // Impede que a escolha seja reutilizada em outra operação.
+    deleteOriginalAfterEncryption = false;
 
-        final boolean decrypt =
-                decryptMode;
+    password.getText().clear();
 
-        final boolean folder =
-                inputIsFolder ||
-                (
-                        decrypt &&
-                        isFolderEncryptedName(
-                                name(inputUri)
-                        )
-                );
-
-        setBusy(true);
-
-        getWindow().addFlags(
-                WindowManager.LayoutParams.FLAG_KEEP_SCREEN_ON
-        );
-
-        executor.execute(
-                () -> doWork(
-                        pass,
-                        decrypt,
-                        folder
-                )
-        );
+    if (pass == null) {
+        return;
     }
+
+    final boolean folder =
+            inputIsFolder ||
+            (
+                    decrypt &&
+                    isFolderEncryptedName(name(inputUri))
+            );
+
+    setBusy(true);
+
+    getWindow().addFlags(
+            WindowManager.LayoutParams.FLAG_KEEP_SCREEN_ON
+    );
+
+    executor.execute(
+            () -> doWork(
+                    pass,
+                    decrypt,
+                    folder,
+                    deleteOriginal
+            )
+    );
+}
 
     /* =========================================================
        INÍCIO DA OPERAÇÃO
@@ -3379,7 +3499,17 @@ private void saveMetadataOutput(Uri destination) {
 
         pendingPassword = copyPassword(password);
 
-        pickOutput();
+if (decryptMode) {
+
+    // Arquivo .aes: descriptografa diretamente.
+    continueWithSelectedOutput();
+
+} else {
+
+    // Arquivo normal: pergunta se deve excluir
+    // o original após a criptografia.
+    showEncryptDelete();
+}
     }
 
     private void unlockWithBiometric() {
@@ -3496,7 +3626,7 @@ try {
 
                     dialog.dismiss();
 
-                    pickOutput();
+                    continueWithSelectedOutput();
                 })
         );
 
@@ -3510,7 +3640,8 @@ try {
     private void doWork(
             char[] pass,
             boolean decrypt,
-            boolean folder
+            boolean folder,
+            boolean deleteOriginal
     ) {
 
         File tempInput = null;
@@ -3694,37 +3825,51 @@ zipTree(
             }
 
             deleteQuietly(tempInput);
-            deleteQuietly(tempZip);
-            deleteQuietly(tempOutput);
+deleteQuietly(tempZip);
+deleteQuietly(tempOutput);
 
-            outputDocumentCreatedByApp = false;
+outputDocumentCreatedByApp = false;
 
-            runOnUiThread(() -> {
+runOnUiThread(() -> {
 
-                setBusy(false);
+    // Se houver exclusão do original, mantém a tela acesa
+    // e transfere o controle para a exclusão segura.
+    if (!decrypt && deleteOriginal) {
 
-                getWindow().clearFlags(
-                        WindowManager.LayoutParams.FLAG_KEEP_SCREEN_ON
-                );
+        if (folder) {
+            executeSecureFolderOverwrite();
+        } else {
+            executeSecureOverwrite();
+        }
 
-                new AlertDialog.Builder(MainActivity.this)
-        .setTitle(
-                decrypt
-                        ? "🔓 DESCRIPTOGRAFADO!"
-                        : "🔒 CRIPTOGRAFADO!"
-        )
-        .setMessage(
-                decrypt
-                        ? R.string.decrypted
-                        : R.string.encrypted
-        )
-        .setCancelable(false)
-        .setPositiveButton(
-                android.R.string.ok,
-                (dialog, which) -> dialog.dismiss()
-        )
-        .show();
-            });
+        return;
+    }
+
+    // Sem exclusão, pode apagar a tela normalmente.
+    getWindow().clearFlags(
+            WindowManager.LayoutParams.FLAG_KEEP_SCREEN_ON
+    );
+
+    setBusy(false);
+
+    new AlertDialog.Builder(MainActivity.this)
+            .setTitle(
+                    decrypt
+                            ? "🔓 DESCRIPTOGRAFADO!"
+                            : "🔒 CRIPTOGRAFADO!"
+            )
+            .setMessage(
+                    decrypt
+                            ? R.string.decrypted
+                            : R.string.encrypted
+            )
+            .setCancelable(false)
+            .setPositiveButton(
+                    android.R.string.ok,
+                    (dialog, which) -> dialog.dismiss()
+            )
+            .show();
+});
 
         } catch (
                 CryptoEngine.WrongPasswordException e
@@ -6453,6 +6598,62 @@ private void appendPdfField(
                 .append(value.trim())
                 .append("\n\n");
     }
+}
+
+        private void continueWithSelectedOutput() {
+
+    if (decryptMode) {
+
+        deleteOriginalAfterEncryption = false;
+        pickOutput();
+
+    } else {
+
+        showEncryptDelete();
+    }
+}
+
+        private boolean isOutputInsideInputFolder(Uri outputDocumentUri) {
+
+    if (inputUri == null || outputDocumentUri == null || !inputIsFolder) {
+        return false;
+    }
+
+    String inputAuthority = inputUri.getAuthority();
+    String outputAuthority = outputDocumentUri.getAuthority();
+
+    // Autoridades diferentes representam provedores diferentes.
+    if (inputAuthority == null
+            || !inputAuthority.equals(outputAuthority)) {
+        return false;
+    }
+
+    // Verifica se o arquivo de saída é descendente da pasta original.
+    if (android.os.Build.VERSION.SDK_INT >= 24) {
+
+        try {
+
+            Uri parentDocumentUri =
+                    DocumentsContract.buildDocumentUriUsingTree(
+                            inputUri,
+                            DocumentsContract.getTreeDocumentId(inputUri)
+                    );
+
+            return DocumentsContract.isChildDocument(
+                    getContentResolver(),
+                    parentDocumentUri,
+                    outputDocumentUri
+            );
+
+        } catch (Exception e) {
+
+            // Se não for possível verificar, bloqueia por segurança.
+            return true;
+        }
+    }
+
+    // Em versões antigas, não arrisca permitir um destino não verificado.
+    return true;
 }
         
     @Override
