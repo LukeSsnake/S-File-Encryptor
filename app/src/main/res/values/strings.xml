@@ -294,4 +294,18 @@
         Cancelar
     </string>
 
+    <!-- =====================================================
+                          HASH
+         ===================================================== -->
+    
+    <string name="hash_button">🔗</string>
+
+    <string name="hash_title">
+        Has
+    </string>
+
+    <string name="h_title">
+        🗑️ EXCLUSÃO SEGURA
+    </string>
+   
 </resources>
