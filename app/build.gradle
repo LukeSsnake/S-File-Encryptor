@@ -8,8 +8,8 @@ android {
         applicationId 'com.lukestudio.fileencryptor2'
         minSdk 23
         targetSdk 36
-        versionCode 28
-        versionName '3.0.7'
+        versionCode 29
+        versionName '3.0.8'
     }
 
     packaging {
