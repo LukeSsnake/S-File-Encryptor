@@ -1,9 +1,7 @@
-![Build](https://github.com/LukeSsnake/S-File-Encryptor/actions/workflows/build.yml/badge.svg)
+![Build](https://github.com/LukeSsnake/S-File-Encryptor/actions/workflows/build.yml/badge.svg) [![Google Play](https://img.shields.io/badge/Google%20Play-Download-414141?logo=googleplay&logoColor=white)](https://play.google.com/store/apps/details?id=com.lukestudio.fileencryptor2)
 # S File Encryptor
 
 S File Encryptor is an Android application for encrypting and decrypting files locally with a password.
-
-[![Google Play](https://img.shields.io/badge/Google%20Play-Download-414141?logo=googleplay&logoColor=white)](https://play.google.com/store/apps/details?id=com.lukestudio.fileencryptor2)
 
 <img width="1080" height="2400" alt="Screenshot_2026-11-10-09-54-43-030_com lukestudio fileencryptor2" src="https://github.com/user-attachments/assets/9b3479d6-a08b-4413-835e-4339c3207fc5" />
 
