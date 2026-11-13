@@ -16,6 +16,7 @@ S File Encryptor is an Android application for encrypting and decrypting files l
   </a>
 </p>
 
+Latest APK: [Releases](https://github.com/LukeSsnake/S-File-Encryptor/releases).
 
 ## Cryptography
 
