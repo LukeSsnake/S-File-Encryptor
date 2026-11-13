@@ -1,7 +1,7 @@
-# S-File-Encryptor
-
 [![Build](https://github.com/LukeSsnake/S-File-Encryptor/actions/workflows/build.yml/badge.svg)](https://github.com/LukeSsnake/S-File-Encryptor/actions/workflows/build.yml)
 [![Google Play](https://img.shields.io/badge/Google%20Play-Download-414141?logo=googleplay&logoColor=white)](https://play.google.com/store/apps/details?id=com.lukestudio.fileencryptor2)
+
+# S-File-Encryptor
 
 S-File-Encryptor is an Android application that combines local file encryption, metadata removal, secure file deletion, SHA-256 hash verification, and an integrated hexadecimal editor.
 
