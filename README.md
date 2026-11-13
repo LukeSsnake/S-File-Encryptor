@@ -1,4 +1,4 @@
-<!-- ![Build](https://github.com/LukeSsnake/S-File-Encryptor/actions/workflows/build.yml/badge.svg) -->
+![Build](https://github.com/LukeSsnake/S-File-Encryptor/actions/workflows/build.yml/badge.svg)
 # S File Encryptor
 
 S File Encryptor is an Android application for encrypting and decrypting files locally with a password.
