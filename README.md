@@ -67,7 +67,7 @@ S-File-Encryptor provides a collection of tools for file privacy, security, inte
 
 S-File-Encryptor supports two file formats.
 
-The complete binary layout of both formats is formally specified in [FORMAT_SPECIFICATION.md](FORMAT_SPECIFICATION.md).
+The complete binary layout of both formats is formally specified in [FORMAT SPECIFICATION](FORMAT_SPECIFICATION.md).
 
 ### V2 — Current format
 
