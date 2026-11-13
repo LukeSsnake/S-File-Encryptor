@@ -29,43 +29,22 @@ android {
     }
 
     signingConfigs {
-        release {
-            if (keystorePropertiesFile.exists()) {
-                def requiredProperties = [
-                    'storeFile',
-                    'storePassword',
-                    'keyAlias',
-                    'keyPassword'
-                ]
-
-                def missingProperties = requiredProperties.findAll {
-                    !keystoreProperties.getProperty(it)?.trim()
-                }
-
-                if (!missingProperties.isEmpty()) {
-                    throw new GradleException(
-                        "Propriedades ausentes em keystore.properties: " +
-                        missingProperties.join(', ')
-                    )
-                }
-
-                storeFile rootProject.file(
-                    keystoreProperties['storeFile']
-                )
+        if (keystorePropertiesFile.exists()) {
+            release {
+                storeFile rootProject.file(keystoreProperties['storeFile'])
                 storePassword keystoreProperties['storePassword']
                 keyAlias keystoreProperties['keyAlias']
                 keyPassword keystoreProperties['keyPassword']
-            } else {
-                throw new GradleException(
-                    'Arquivo keystore.properties não encontrado.'
-                )
             }
         }
     }
 
     buildTypes {
         release {
-            signingConfig signingConfigs.release
+            if (keystorePropertiesFile.exists()) {
+                signingConfig signingConfigs.release
+            }
+
             minifyEnabled true
             shrinkResources true
 
@@ -99,7 +78,6 @@ dependencies {
     implementation 'com.google.android.flexbox:flexbox:3.0.0'
 
     implementation 'net.java.dev.jna:jna:5.19.1@aar'
-
     implementation project(':file_picker')
 
     compileOnly 'org.jspecify:jspecify:1.0.0'
