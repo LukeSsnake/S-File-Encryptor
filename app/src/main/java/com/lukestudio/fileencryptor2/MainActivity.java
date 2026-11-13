@@ -21,6 +21,9 @@ import android.widget.ProgressBar;
 import android.widget.Switch;
 import android.widget.TextView;
 import android.widget.Toast;
+import android.content.ContentValues;
+import android.provider.MediaStore;
+import java.io.OutputStream;
 
 import androidx.biometric.BiometricManager;
 import androidx.biometric.BiometricPrompt;
@@ -60,6 +63,7 @@ import com.tom_roush.pdfbox.android.PDFBoxResourceLoader;
 import com.tom_roush.pdfbox.pdmodel.PDDocument;
 import com.tom_roush.pdfbox.pdmodel.PDDocumentInformation;
 import android.provider.DocumentsContract;
+import org.exbin.bined.editor.android.HexEditorActivity;
 
 import javax.crypto.Cipher;
 
@@ -70,10 +74,12 @@ public class MainActivity extends FragmentActivity {
     private static final int CREATE_OUTPUT = 12;
     private static final int PICK_OUTPUT_FOLDER = 13;
 
+    private static final int PICK_HEX_FILE = 14;
+
     private static final int MODE_FILE = 0;
     private static final int MODE_FOLDER = 1;
 
-    private static final int CREATE_METADATA_OUTPUT = 14;
+    private static final int CREATE_METADATA_OUTPUT = 17;
     private File metadataTempFile;
     private String metadataOutputName;
     private boolean metadataCleaningInProgress = false;
@@ -114,6 +120,7 @@ public class MainActivity extends FragmentActivity {
     private Button metaButton;
     private Button deleteButton;
     private Button hashButton;
+    private Button hexButton;
     private Switch biometricSwitch;
     private TextView biometricSettings;
 
@@ -152,7 +159,7 @@ public class MainActivity extends FragmentActivity {
          getWindow().setFlags(
             WindowManager.LayoutParams.FLAG_SECURE,
             WindowManager.LayoutParams.FLAG_SECURE
-    ); 
+    );
 
         PDFBoxResourceLoader.init(getApplicationContext());
 
@@ -167,7 +174,7 @@ public class MainActivity extends FragmentActivity {
             }
         }
 );
-        
+
         cleanTemporaryFiles();
 
         getWindow().setNavigationBarColor(
@@ -182,7 +189,7 @@ public class MainActivity extends FragmentActivity {
 
         getWindow().getDecorView().setSystemUiVisibility(0);
 
-        setContentView(R.layout.main);        
+        setContentView(R.layout.main);
 
         fileName = findViewById(R.id.fileName);
         fileInfo = findViewById(R.id.fileInfo);
@@ -199,10 +206,11 @@ public class MainActivity extends FragmentActivity {
         metaButton = findViewById(R.id.metaButton);
         deleteButton = findViewById(R.id.deleteButton);
         hashButton = findViewById(R.id.hashButton);
+        hexButton = findViewById(R.id.hexButton);
 
         biometricSwitch = findViewById(R.id.biometricSwitch);
         biometricSettings = findViewById(R.id.biometricSettings);
-        
+
         boolean biometricEnabled =
                 BiometricPasswordStore.isEnabled(this);
 
@@ -231,11 +239,23 @@ public class MainActivity extends FragmentActivity {
         infoButton.setOnClickListener(v -> showSupport());
         infoCrypto.setOnClickListener(v -> showCrypto());
 
+        hexButton.setOnClickListener(v -> {
+                if (inputUri == null || inputIsFolder) {
+                        Toast.makeText(
+                this,
+                getString(R.string.select_valid_file),
+                Toast.LENGTH_SHORT
+        ).show();
+                } else {
+                        showHex();
+                }
+        });
+
         hashButton.setOnClickListener(v -> {
                 if (inputUri == null || inputIsFolder) {
                         Toast.makeText(
                 this,
-                "Selecione um arquivo válido.",
+                getString(R.string.select_valid_file),
                 Toast.LENGTH_SHORT
         ).show();
                 } else {
@@ -247,7 +267,7 @@ public class MainActivity extends FragmentActivity {
                 if (inputUri == null || inputIsFolder) {
                         Toast.makeText(
                 this,
-                "Selecione um arquivo válido.",
+                getString(R.string.select_valid_file),
                 Toast.LENGTH_SHORT
         ).show();
                 } else {
@@ -261,7 +281,7 @@ public class MainActivity extends FragmentActivity {
                 if (inputUri == null) {
                         Toast.makeText(
                 this,
-                "Selecione um arquivo válido.",
+                getString(R.string.select_valid_file),
                 Toast.LENGTH_SHORT
         ).show();
                 } else {
@@ -345,12 +365,12 @@ public class MainActivity extends FragmentActivity {
         if (file.delete()) {
             android.util.Log.d(
                     "SFileEncryptor",
-                    "Arquivo temporário antigo removido."
+                    getString(R.string.old_temp_file_removed)
             );
         } else {
             android.util.Log.w(
                     "SFileEncryptor",
-                    "Falha ao remover arquivo temporário antigo."
+                    getString(R.string.old_temp_file_remove_failed)
             );
         }
     }
@@ -379,39 +399,39 @@ public class MainActivity extends FragmentActivity {
     );
 
     String reportText =
-            "ID do relatório: " + record.reportId
+            getString(R.string.report_id) + record.reportId
 
-                    + "\n\nArquivo: " + record.fileName
+                    + getString(R.string.report_file) + record.fileName
 
-                    + "\n\nTamanho: "
-                    + record.sizeBytes + " bytes"
+                    + getString(R.string.report_size)
+                    + record.sizeBytes + getString(R.string.bytes_suffix)
 
-                    + "\n\nInício: "
+                    + getString(R.string.report_start)
                     + fmt.format(
                             new Date(record.startedAtMillis)
                     )
 
-                    + "\n\nTérmino: "
+                    + getString(R.string.report_end)
                     + fmt.format(
                             new Date(record.finishedAtMillis)
                     )
 
-                    + "\n\nMétodo: "
+                    + getString(R.string.report_method)
                     + record.method
 
                     + "\n\nCiclos: "
                     + record.cycles
 
-                    + "\n\nBytes sobrescritos: "
+                    + getString(R.string.bytes_overwritten_label)
                     + record.bytesOverwritten
 
                     + "\n\nSobrescrita: "
                     + record.overwriteStatus
 
-                    + "\n\nExclusão: "
+                    + getString(R.string.report_deletion)
                     + record.deleteStatus
 
-                    + "\n\nResultado geral: "
+                    + getString(R.string.report_overall_result)
                     + record.status
 
                     + "\n\nFabricante: "
@@ -429,25 +449,25 @@ public class MainActivity extends FragmentActivity {
                     + "\n\nBuild ID: "
                     + record.buildId
 
-                    + "\n\nVersão do aplicativo: "
+                    + getString(R.string.report_app_version)
                     + record.appVersion;
 
     if (!record.errorMessage.isEmpty()) {
 
         reportText +=
-                "\n\nErro: "
+                getString(R.string.report_error)
                         + record.errorMessage;
     }
 
     new AlertDialog.Builder(this)
-            .setTitle("🛡️ Relatório de Exclusão")
+            .setTitle(getString(R.string.erasure_report_title))
             .setMessage("\n" + reportText + "\n")
             .setNeutralButton(
-                    "Salvar PDF",
+                    getString(R.string.save_pdf),
                     (dialog, which) ->
                             requestErasurePdf(record)
             )
-            .setPositiveButton("Fechar", null)
+            .setPositiveButton(getString(R.string.close), null)
             .setCancelable(false)
             .show();
 }
@@ -457,7 +477,7 @@ public class MainActivity extends FragmentActivity {
     if (inputUri == null || inputIsFolder) {
         Toast.makeText(
                 this,
-                "Selecione um arquivo válido.",
+                getString(R.string.select_valid_file),
                 Toast.LENGTH_SHORT
         ).show();
         return;
@@ -468,7 +488,7 @@ public class MainActivity extends FragmentActivity {
 progress.setProgress(0);
 
 progressText.setText(
-        "Preparando exclusão..."
+        getString(R.string.preparing_deletion)
 );
 
     Uri targetUri = inputUri;
@@ -477,7 +497,7 @@ progressText.setText(
 
         long startedAt = System.currentTimeMillis();
 
-        String originalName = "Arquivo";
+        String originalName = getString(R.string.file_default);
         long originalSize = -1;
 
         // Obtém nome e tamanho antes da sobrescrita.
@@ -639,12 +659,12 @@ progressText.setText(
             if (appVersion == null
                     || appVersion.isEmpty()) {
 
-                appVersion = "Não registrada";
+                appVersion = getString(R.string.not_registered);
             }
 
         } catch (Exception e) {
 
-            appVersion = "Não registrada";
+            appVersion = getString(R.string.not_registered);
         }
 
         // -----------------------------------------
@@ -669,7 +689,7 @@ progressText.setText(
                 startedAt,
                 finishedAt,
 
-                "Sobrescrita única com dados aleatórios",
+                getString(R.string.single_random_overwrite),
 
                 recordStatus,
                 errorMessage,
@@ -717,20 +737,20 @@ progressText.setText(
             if (overwriteResult.status
                     != SecureDeleteManager.Status.SUCCESS) {
 
-                title = "Sobrescrita não concluída";
+                title = getString(R.string.overwrite_not_completed);
 
                 message = overwriteResult.message
-                        + "\n\nO arquivo não foi excluído.";
+                        + getString(R.string.file_not_deleted);
 
             } else if (finalResult.status
                     == SecureDeleteManager.Status.SUCCESS) {
 
-                title = "Operação concluída";
+                title = getString(R.string.operation_completed);
 
                 message = overwriteResult.message
                         + "\n\n"
                         + finalResult.message
-                        + "\n\nBytes sobrescritos: "
+                        + getString(R.string.bytes_overwritten_label)
                         + overwriteResult.bytesOverwritten;
 
                 if (targetUri.equals(inputUri)) {
@@ -738,28 +758,28 @@ progressText.setText(
                     inputUri = null;
 
                     fileName.setText(
-                            "Nenhum arquivo selecionado"
+                            getString(R.string.no_file_selected)
                     );
-                    
+
                 }
 
             } else {
 
-                title = "Arquivo não excluído";
+                title = getString(R.string.file_not_deleted_title);
 
                 message =
-                        "A sobrescrita foi concluída, "
-                        + "mas a exclusão falhou.\n\n"
+                        getString(R.string.overwrite_completed_but)
+                        + getString(R.string.deletion_failed)
                         + finalResult.message
-                        + "\n\nBytes sobrescritos: "
+                        + getString(R.string.bytes_overwritten_label)
                         + overwriteResult.bytesOverwritten;
             }
 
             if (!finalReportSaved) {
 
                 message +=
-                        "\n\nAviso: não foi possível "
-                        + "salvar o registro do relatório.";
+                        getString(R.string.warning_report_prefix)
+                        + getString(R.string.warning_report_save_failed);
             }
 
             AlertDialog.Builder builder =
@@ -769,7 +789,7 @@ progressText.setText(
                             .setTitle(title)
                             .setMessage(message)
                             .setPositiveButton(
-                                    "OK",
+                                    getString(R.string.ok_button),
                                     null
                             )
                             .setCancelable(false);
@@ -779,7 +799,7 @@ progressText.setText(
             if (recordStatus.equals("SUCCESS")) {
 
                 builder.setNegativeButton(
-                        "Ver Relatório",
+                        getString(R.string.view_report),
                         (dialog, which) ->
                                 showErasureReportDialog(record)
                 );
@@ -802,7 +822,7 @@ progressText.setText(
 
     Toast.makeText(
             this,
-            "Selecione uma pasta válida.",
+            getString(R.string.select_valid_folder),
             Toast.LENGTH_SHORT
     ).show();
 
@@ -812,7 +832,7 @@ progressText.setText(
     setBusy(true);
 
 progress.setProgress(0);
-progressText.setText("Preparando exclusão...");
+progressText.setText(getString(R.string.preparing_deletion));
 
     Uri targetUri = inputUri;
 
@@ -824,7 +844,7 @@ progressText.setText("Preparando exclusão...");
                 DocumentFile.fromTreeUri(
                         getApplicationContext(),
                         targetUri
-                );                
+                );
 
         if (root == null || !root.isDirectory()) {
 
@@ -839,11 +859,11 @@ progressText.setText("Preparando exclusão...");
                 new AlertDialog.Builder(
                         MainActivity.this
                 )
-                        .setTitle("Pasta inválida")
+                        .setTitle(getString(R.string.invalid_folder_title))
                         .setMessage(
-                                "Não foi possível acessar a pasta selecionada."
+                                getString(R.string.invalid_folder_message)
                         )
-                        .setPositiveButton("OK", null)
+                        .setPositiveButton(getString(R.string.ok_button), null)
                         .show();
             });
 
@@ -923,7 +943,7 @@ final int finalFailedFiles =
 
 final long finalBytesOverwritten =
         bytesOverwritten[0];
-        
+
         final int filesFound = totalFiles[0];
         final int filesSuccessful = successfulFiles[0];
         final int filesFailed = failedFiles[0];
@@ -946,8 +966,8 @@ if (finalFailedFiles == 0) {
     recordStatus = "PARTIAL_FAILURE";
 
     errorMessage =
-            "Uma ou mais operações de sobrescrita "
-            + "ou exclusão não foram concluídas.";
+            getString(R.string.folder_partial_error_prefix)
+            + getString(R.string.folder_partial_error_suffix);
 }
 
 // -----------------------------------------
@@ -998,12 +1018,12 @@ try {
     if (appVersion == null
             || appVersion.isEmpty()) {
 
-        appVersion = "Não registrada";
+        appVersion = getString(R.string.not_registered);
     }
 
 } catch (Exception e) {
 
-    appVersion = "Não registrada";
+    appVersion = getString(R.string.not_registered);
 }
 
 // -----------------------------------------
@@ -1020,7 +1040,7 @@ ErasureRecord record = new ErasureRecord(
         startedAt,
         finishedAt,
 
-        "Sobrescrita única com dados aleatórios",
+        getString(R.string.single_random_overwrite),
 
         recordStatus,
         errorMessage,
@@ -1072,23 +1092,23 @@ final boolean finalReportSaved = reportSaved;
     getWindow().clearFlags(
             WindowManager.LayoutParams.FLAG_KEEP_SCREEN_ON
     );
-            
+
             setBusy(false);
-            
+
             String title;
             String message;
 
             if (filesFailed == 0) {
 
-                title = "Operação concluída";
+                title = getString(R.string.operation_completed);
 
                 message =
-                        "Pasta processada com sucesso."
-                        + "\n\nArquivos encontrados: "
+                        getString(R.string.folder_processed_success)
+                        + getString(R.string.files_found)
                         + filesFound
-                        + "\nArquivos excluídos: "
+                        + getString(R.string.files_deleted)
                         + filesSuccessful
-                        + "\nBytes sobrescritos: "
+                        + getString(R.string.bytes_overwritten_label)
                         + totalBytes;
 
                 if (targetUri.equals(inputUri)) {
@@ -1097,26 +1117,26 @@ final boolean finalReportSaved = reportSaved;
                     inputIsFolder = false;
 
                     fileName.setText(
-                            "Nenhum arquivo selecionado"
+                            getString(R.string.no_file_selected)
                     );
-                    
+
                 }
 
             } else {
 
-                title = "Operação parcialmente concluída";
+                title = getString(R.string.partial_operation_title);
 
                 message =
-                        "A pasta foi processada, "
-                        + "mas alguns arquivos não puderam "
-                        + "ser excluídos."
-                        + "\n\nArquivos encontrados: "
+                        getString(R.string.folder_processed_but)
+                        + getString(R.string.some_files_could_not)
+                        + getString(R.string.be_deleted)
+                        + getString(R.string.files_found)
                         + filesFound
-                        + "\nArquivos excluídos: "
+                        + getString(R.string.files_deleted)
                         + filesSuccessful
-                        + "\nArquivos com falha: "
+                        + getString(R.string.files_failed)
                         + filesFailed
-                        + "\nBytes sobrescritos: "
+                        + getString(R.string.bytes_overwritten_label)
                         + totalBytes;
             }
 
@@ -1127,16 +1147,16 @@ final boolean finalReportSaved = reportSaved;
                     .setTitle(title)
                     .setMessage(message)
                     .setPositiveButton(
-                            "OK",
+                            getString(R.string.ok_button),
                             null
-                    )                    
+                    )
                     .setCancelable(false);
                     // O botão aparece quando a operação
             // foi concluída com sucesso.
             if (recordStatus.equals("SUCCESS")) {
 
                 builder.setNegativeButton(
-                        "Ver Relatório",
+                        getString(R.string.view_report),
                         (dialog, which) ->
                                 showErasureReportDialog(record)
                 );
@@ -1296,9 +1316,9 @@ try {
         );
 
         progressText.setText(
-                "Excluindo arquivos: "
+                getString(R.string.deleting_files_progress)
                         + currentFile
-                        + " de "
+                        + getString(R.string.of_suffix)
                         + expectedTotalFiles
         );
     });
@@ -1317,16 +1337,16 @@ try {
 
     TextView message = new TextView(this);
     message.setText(
-            "Esta operação irá sobrescrever os dados do arquivo " +
-            "antes de excluí-lo.\n\n" +
-            "É uma proteção a mais do que simplesmente excluir de modo convencional.\n" +
-            "Ainda podem restar resíduos.\n\n"
+            getString(R.string.secure_delete_message_prefix) +
+            getString(R.string.secure_delete_message_mid) +
+            getString(R.string.secure_delete_message_protection) +
+            getString(R.string.secure_delete_message_residue)
     );
 
     message.setTextSize(16);
 
     CheckBox checkBox = new CheckBox(this);
-    checkBox.setText("Sim, desejo continuar com a exclusão.");
+    checkBox.setText(getString(R.string.confirm_secure_delete));
 
     layout.addView(message);
     layout.addView(checkBox);
@@ -1334,7 +1354,7 @@ try {
     AlertDialog dialoguee = new AlertDialog.Builder(this)
             .setTitle(R.string.del_title)
             .setView(layout)
-            .setNegativeButton("CANCELAR", null)
+            .setNegativeButton(getString(R.string.cancel), null)
             .setPositiveButton(R.string.deletee, (d, which) -> {
                 if (inputIsFolder) {
 
@@ -1362,7 +1382,7 @@ try {
     dialoguee.show();
 }
 
-        
+
 private void showEncryptDelete() {
 
     LinearLayout layout = new LinearLayout(this);
@@ -1375,30 +1395,30 @@ private void showEncryptDelete() {
     TextView message = new TextView(this);
 
     message.setText(
-            "\nCriptografar e excluir com a EXCLUSÃO SEGURA o Arquivo Original?\n\n"
+            getString(R.string.encrypt_delete_message)
     );
 
     message.setTextSize(16);
 
     CheckBox checkBox = new CheckBox(this);
 
-    checkBox.setText("🗑️ EXCLUIR o Arquivo Original após criptografar.");
+    checkBox.setText(getString(R.string.delete_original_after_encrypt));
 
     layout.addView(message);
     layout.addView(checkBox);
 
     AlertDialog dial =
             new AlertDialog.Builder(this)
-                    .setTitle("🔐 Criptografar")
+                    .setTitle(getString(R.string.encrypt_title))
                     .setView(layout)
-                    .setNegativeButton("Cancelar",
+                    .setNegativeButton(getString(R.string.cancel),
         (d, which) -> {
             deleteOriginalAfterEncryption = false;
             clearPendingPassword();
         }
 )
                     .setPositiveButton(
-                            "ENCRYPT",
+                            getString(R.string.encrypt),
                             (d, which) -> {
 
                                 deleteOriginalAfterEncryption =
@@ -1424,7 +1444,45 @@ private void showEncryptDelete() {
                 .show();
     }
 
-    
+
+private void showHex() {
+
+    new AlertDialog.Builder(this)
+            .setTitle(getString(R.string.hex_editor_title))
+            .setMessage(
+                    getString(R.string.hex_editor_message_prefix) +
+                    getString(R.string.hex_editor_message_suffix)
+            )
+            .setPositiveButton(getString(R.string.open), (dialog, which) -> {
+
+                if (inputUri == null || inputIsFolder) {
+
+                    Toast.makeText(
+                            this,
+                            getString(R.string.select_file_first),
+                            Toast.LENGTH_LONG
+                    ).show();
+
+                    return;
+                }
+
+                Intent intent = new Intent(
+                        Intent.ACTION_VIEW,
+                        inputUri,
+                        MainActivity.this,
+                        HexEditorActivity.class
+                );
+
+                intent.addFlags(
+                        Intent.FLAG_GRANT_READ_URI_PERMISSION |
+                        Intent.FLAG_GRANT_WRITE_URI_PERMISSION
+                );
+
+                startActivity(intent);
+            })
+            .setNegativeButton(getString(R.string.cancel), null)
+            .show();
+}
 
 private void showHash() {
 
@@ -1432,7 +1490,7 @@ private void showHash() {
 
         Toast.makeText(
                 this,
-                "Selecione um arquivo primeiro.",
+                getString(R.string.select_file_first),
                 Toast.LENGTH_SHORT
         ).show();
 
@@ -1454,7 +1512,7 @@ private void showHash() {
     layout.setPadding(padding, padding, padding, padding);
 
     TextView nameLabel = new TextView(this);
-    nameLabel.setText("Nome do arquivo:");
+    nameLabel.setText(getString(R.string.file_name_label));
     nameLabel.setTextSize(14);
 
     TextView nameValue = new TextView(this);
@@ -1462,21 +1520,21 @@ private void showHash() {
     nameValue.setTextSize(16);
 
     TextView hashLabel = new TextView(this);
-    hashLabel.setText("\nSHA-256 do arquivo:");
+    hashLabel.setText(getString(R.string.sha256_file_label));
     hashLabel.setTextSize(14);
 
     TextView calculatedHashValue = new TextView(this);
-    calculatedHashValue.setText("Calculando...");
+    calculatedHashValue.setText(getString(R.string.calculating));
     calculatedHashValue.setTextSize(12);
     calculatedHashValue.setTextIsSelectable(true);
 
     TextView compareLabel = new TextView(this);
-    compareLabel.setText("\nHash para comparação:");
+    compareLabel.setText(getString(R.string.hash_compare_label));
     compareLabel.setTextSize(14);
 
     EditText hashInput = new EditText(this);
     hashInput.setSingleLine(true);
-    hashInput.setHint("Cole a hash SHA-256 aqui");
+    hashInput.setHint(getString(R.string.paste_sha256_hint));
 
     hashInput.setInputType(
             android.text.InputType.TYPE_CLASS_TEXT
@@ -1501,10 +1559,10 @@ private void showHash() {
     layout.addView(resultText);
 
     AlertDialog dialog = new AlertDialog.Builder(this)
-            .setTitle("🔗 COMPARAR SHA-256")
+            .setTitle(getString(R.string.compare_sha256_title))
             .setView(layout)
-            .setNegativeButton("Fechar", null)
-            .setNeutralButton("Copiar Hash", null)
+            .setNegativeButton(getString(R.string.close), null)
+            .setNeutralButton(getString(R.string.copy_hash), null)
             .setCancelable(false)
             .create();
 
@@ -1537,7 +1595,7 @@ private void showHash() {
 
             Toast.makeText(
                     MainActivity.this,
-                    "Hash copiada!",
+                    getString(R.string.hash_copied),
                     Toast.LENGTH_SHORT
             ).show();
         });
@@ -1621,7 +1679,7 @@ private void showHash() {
                     calculationFailed[0] = true;
 
                     calculatedHashValue.setText(
-                            "Falha ao calcular SHA-256."
+                            getString(R.string.sha256_calculation_failed)
                     );
 
                     updateHashComparison(
@@ -1648,7 +1706,7 @@ private void showHash() {
                         )
                         .setMessage(
                                 getString(
-                                        R.string.meta_message                                  
+                                        R.string.meta_message
                                 )
                         )
                         .setNegativeButton(
@@ -1656,7 +1714,7 @@ private void showHash() {
                                 null
                                 )
                         .setPositiveButton(
-                        "REMOVER METADADOS",
+                        getString(R.string.remove_metadata),
                         (d, which) -> startMetadataCleaning()
                         )
                         .create();
@@ -1674,11 +1732,11 @@ private void showHash() {
                         )
                         .setMessage(
                                 getString(
-                                        R.string.crypto_message                                  
+                                        R.string.crypto_message
                                 )
                         )
                         .setNeutralButton(
-                                "CÓDIGO FONTE",
+                                getString(R.string.source_code),
                                 (d, which) -> {
 
                                     try {
@@ -1722,7 +1780,7 @@ private void showHash() {
                                 )
                         )
                         .setNeutralButton(
-                                "⭐AVALIAR",
+                                getString(R.string.rate_app),
                                 (d, which) -> {
 
                                     try {
@@ -1782,7 +1840,7 @@ private void showHash() {
                                     }
                                 }
                         )
-                        .setNegativeButton("☕DOAR",
+                        .setNegativeButton(getString(R.string.donate),
                                 (d, which) -> {
 
                                     try {
@@ -1885,7 +1943,7 @@ private void showHash() {
 
         Toast.makeText(
                 this,
-                "Nenhum aplicativo bancário compatível foi encontrado.",
+                getString(R.string.no_compatible_bank_apps),
                 Toast.LENGTH_LONG
         ).show();
 
@@ -1984,8 +2042,8 @@ private void showHash() {
             };
 
     new AlertDialog.Builder(this)
-            .setTitle("PIX Copiado!\n" +
-                "Escolha seu app bancário"
+            .setTitle(getString(R.string.pix_copied_choose_bank_prefix) +
+                getString(R.string.choose_bank_app)
         )
             .setAdapter(
                     adapter,
@@ -2002,13 +2060,13 @@ private void showHash() {
 
                             Toast.makeText(
                                     MainActivity.this,
-                                    "Não foi possível abrir o aplicativo.",
+                                    getString(R.string.bank_app_open_failed),
                                     Toast.LENGTH_SHORT
                             ).show();
                         }
                     }
             )
-            .setNegativeButton("Fechar", null)
+            .setNegativeButton(getString(R.string.close), null)
             .setCancelable(false)
             .show();
 }
@@ -2236,7 +2294,7 @@ public void onAuthenticationSucceeded(
         if (result.getCryptoObject() == null
                 || result.getCryptoObject().getCipher() == null) {
             throw new IllegalStateException(
-                    "Cipher biométrico indisponível."
+                    getString(R.string.biometric_cipher_unavailable)
             );
         }
 
@@ -2404,7 +2462,7 @@ public void onAuthenticationSucceeded(
         );
     }
 
-    
+
 private void authenticateForDecryption(
         Cipher cipher,
         boolean showPassword,
@@ -2430,7 +2488,7 @@ private void authenticateForDecryption(
                                 if (result.getCryptoObject() == null
                                         || result.getCryptoObject().getCipher() == null) {
                                     throw new IllegalStateException(
-                                            "Cipher biométrico indisponível."
+                                            getString(R.string.biometric_cipher_unavailable)
                                     );
                                 }
 
@@ -2519,7 +2577,7 @@ private void authenticateForDecryption(
                     '\0'
             );
 
-            toast(R.string.select_file);
+            toast(R.string.bined_select_filer);
 
             return;
         }
@@ -2623,7 +2681,7 @@ private void authenticateForDecryption(
         dialog.show();
     }
 
-    
+
 private void authenticateForReplacement(
         char[] replacement
 ) {
@@ -2665,7 +2723,7 @@ private void authenticateForReplacement(
                                 if (result.getCryptoObject() == null
                                         || result.getCryptoObject().getCipher() == null) {
                                     throw new IllegalStateException(
-                                            "Cipher biométrico indisponível."
+                                            getString(R.string.biometric_cipher_unavailable)
                                     );
                                 }
 
@@ -2765,7 +2823,7 @@ private void authenticateForReplacement(
                 i,
                 PICK_FILE
         );
-       
+
     }
 
     private void pickFolder() {
@@ -2942,7 +3000,7 @@ private void authenticateForReplacement(
 
     intent.putExtra(
             Intent.EXTRA_TITLE,
-            "Relatorio_Exclusao-" + record.reportId + ".pdf"
+            getString(R.string.erasure_report_filename_prefix) + record.reportId + ".pdf"
     );
 
     startActivityForResult(
@@ -2955,274 +3013,319 @@ private void authenticateForReplacement(
        RESULTADOS DOS SELETORES
        ========================================================= */
 
-    @Override
-    protected void onActivityResult(
-            int requestCode,
-            int resultCode,
-            Intent data
-    ) {
 
-        super.onActivityResult(
-                requestCode,
-                resultCode,
-                data
-        );
+@Override
+protected void onActivityResult(
+        int requestCode,
+        int resultCode,
+        Intent data
+) {
 
-        if (requestCode == CREATE_ERASURE_PDF) {
-
-    if (resultCode != RESULT_OK
-            || data == null
-            || data.getData() == null) {
-
-        pendingErasureRecord = null;
-        return;
-    }
-
-    Uri destination = data.getData();
-
-    persistWritePermission(destination, data);
-
-    ErasureRecord record = pendingErasureRecord;
-    pendingErasureRecord = null;
-
-    if (record == null) {
-        Toast.makeText(
-                this,
-                "Registro do relatório indisponível.",
-                Toast.LENGTH_LONG
-        ).show();
-        return;
-    }
-
-    executor.execute(() -> {
-
-        try (OutputStream output =
-                     getContentResolver().openOutputStream(
-                             destination,
-                             "w"
-                     )) {
-
-            if (output == null) {
-                throw new IOException(
-                        "Não foi possível abrir o destino."
-                );
-            }
-
-            ErasureReport.exportPdf(
-                    getApplicationContext(),
-                    output,
-                    record
-            );
-
-            runOnUiThread(() ->
-                    Toast.makeText(
-                            MainActivity.this,
-                            "Relatório PDF salvo com sucesso.",
-                            Toast.LENGTH_LONG
-                    ).show()
-            );
-
-        } catch (Exception e) {
-
-            runOnUiThread(() ->
-                    Toast.makeText(
-                            MainActivity.this,
-                            "Falha ao salvar o PDF: "
-                                    + e.getMessage(),
-                            Toast.LENGTH_LONG
-                    ).show()
-            );
-        }
-    });
-
-    return;
-}
-
-        if (requestCode == CREATE_METADATA_OUTPUT) {
-
-    if (resultCode != RESULT_OK
-            || data == null
-            || data.getData() == null) {
-
-        deleteQuietly(metadataTempFile);
-
-        metadataTempFile = null;
-        metadataOutputName = null;
-        metadataCleaningInProgress = false;
-
-        setBusy(false);
-
-        getWindow().clearFlags(
-                WindowManager.LayoutParams.FLAG_KEEP_SCREEN_ON
-        );
-
-        return;
-    }
-
-    Uri destination = data.getData();
-
-    persistWritePermission(destination, data);
-
-    saveMetadataOutput(destination);
-
-    return;
-}
-
-        if (
-                resultCode != RESULT_OK ||
-                data == null ||
-                data.getData() == null
-        ) {
-
-            if (
-                    requestCode == CREATE_OUTPUT ||
-                    requestCode == PICK_OUTPUT_FOLDER
-            ) {
-                clearPendingPassword();
-                deleteOriginalAfterEncryption = false;
-            }
-
-            return;
-        }
-
-        if (requestCode == PICK_FILE) {
-
-            inputUri = data.getData();
-
-            persistReadPermission(
-                    inputUri,
-                    data
-            );
-
-            inputMode = MODE_FILE;
-            inputIsFolder = false;           
-
-            String selectedName =
-                    name(inputUri);
-
-            fileName.setText(
-                    selectedName
-            );
-
-            updateFileInfo(inputUri, false);
-
-            decryptMode = selectedName
-                            .toLowerCase(java.util.Locale.ROOT)
-                            .endsWith(".aes");
-        
-            action.setText(
-                    decryptMode
-                            ? R.string.decrypt
-                            : R.string.encrypt
-            );
-
-            return;
-        }
-
-        if (requestCode == PICK_FOLDER) {
-            
-            inputUri = data.getData();
-
-            persistTreePermission(
-                    inputUri,
-                    data
-            );
-
-            inputMode = MODE_FOLDER;
-            inputIsFolder = true;
-
-            String selectedName =
-                    treeName(inputUri);
-
-            fileName.setText(
-                    selectedName
-            );
-
-            updateFileInfo(inputUri, true);
-
-            decryptMode = false;
-
-            action.setText(
-                    R.string.encrypt
-            );
-
-            return;
-        }
-
-        if (requestCode == CREATE_OUTPUT) {
-
-    outputUri = data.getData();
-    outputDocumentCreatedByApp = true;
-
-    // Não permite salvar o AES dentro da pasta
-    // que está sendo criptografada.
-    if (inputIsFolder && !decryptMode
-            && isOutputInsideInputFolder(outputUri)) {
-
-        // Tenta remover o arquivo vazio criado pelo seletor.
-        try {
-
-            DocumentsContract.deleteDocument(
-                    getContentResolver(),
-                    outputUri
-            );
-
-        } catch (Exception ignored) {
-        }
-
-        outputUri = null;
-        outputDocumentCreatedByApp = false;
-
-        new AlertDialog.Builder(this)
-                .setTitle("Destino inválido")
-                .setMessage(
-                        "Você não pode salvar o arquivo criptografado "
-                                + "dentro da própria pasta que está sendo "
-                                + "criptografada.\n\n"
-                                + "Escolha outro local para evitar que "
-                                + "o arquivo de saída seja incluído "
-                                + "na operação."
-                )
-                .setCancelable(false)
-                .setPositiveButton(
-                        "Escolher outro local",
-                        (dialog, which) -> pickOutputFile()
-                )
-                .setNegativeButton(
-                        "Cancelar",
-                        (dialog, which) -> {
-                            clearPendingPassword();
-                            deleteOriginalAfterEncryption = false;
-                        }
-                )
-                .show();
-
-        return;
-    }
-
-    persistWritePermission(
-            outputUri,
+    super.onActivityResult(
+            requestCode,
+            resultCode,
             data
     );
 
-    startPendingWork();
+    // HEX EDITOR
+    if (requestCode == PICK_HEX_FILE) {
 
-    return;
-}
+        if (resultCode != RESULT_OK
+                || data == null
+                || data.getData() == null) {
+            return;
+        }
 
-        if (requestCode == PICK_OUTPUT_FOLDER) {
+        Uri hexUri = data.getData();
 
-            outputUri = data.getData();
-            outputDocumentCreatedByApp = false;
+        try {
+            getContentResolver().takePersistableUriPermission(
+                    hexUri,
+                    Intent.FLAG_GRANT_READ_URI_PERMISSION |
+                    Intent.FLAG_GRANT_WRITE_URI_PERMISSION
+            );
+        } catch (Exception ignored) {
+        }
 
-            persistTreePermission(
-                    outputUri,
-                    data
+        Intent intent = new Intent(
+                Intent.ACTION_VIEW,
+                hexUri,
+                MainActivity.this,
+                HexEditorActivity.class
+        );
+
+        intent.addFlags(
+                Intent.FLAG_GRANT_READ_URI_PERMISSION |
+                Intent.FLAG_GRANT_WRITE_URI_PERMISSION
+        );
+
+        startActivity(intent);
+
+        return;
+    }
+
+    // RELATÓRIO PDF DE EXCLUSÃO
+    if (requestCode == CREATE_ERASURE_PDF) {
+
+        if (resultCode != RESULT_OK
+                || data == null
+                || data.getData() == null) {
+
+            pendingErasureRecord = null;
+            return;
+        }
+
+        Uri destination = data.getData();
+
+        persistWritePermission(destination, data);
+
+        ErasureRecord record = pendingErasureRecord;
+        pendingErasureRecord = null;
+
+        if (record == null) {
+            Toast.makeText(
+                    this,
+                    getString(R.string.report_record_unavailable),
+                    Toast.LENGTH_LONG
+            ).show();
+            return;
+        }
+
+        executor.execute(() -> {
+
+            try (OutputStream output =
+                         getContentResolver().openOutputStream(
+                                 destination,
+                                 "w"
+                         )) {
+
+                if (output == null) {
+                    throw new IOException(
+                            getString(R.string.destination_open_failed)
+                    );
+                }
+
+                ErasureReport.exportPdf(
+                        getApplicationContext(),
+                        output,
+                        record
+                );
+
+                runOnUiThread(() ->
+                        Toast.makeText(
+                                MainActivity.this,
+                                getString(R.string.pdf_report_saved),
+                                Toast.LENGTH_LONG
+                        ).show()
+                );
+
+            } catch (Exception e) {
+
+                runOnUiThread(() ->
+                        Toast.makeText(
+                                MainActivity.this,
+                                getString(R.string.pdf_save_failed)
+                                        + e.getMessage(),
+                                Toast.LENGTH_LONG
+                        ).show()
+                );
+            }
+        });
+
+        return;
+    }
+
+    // SAÍDA DA REMOÇÃO DE METADADOS
+    if (requestCode == CREATE_METADATA_OUTPUT) {
+
+        if (resultCode != RESULT_OK
+                || data == null
+                || data.getData() == null) {
+
+            deleteQuietly(metadataTempFile);
+
+            metadataTempFile = null;
+            metadataOutputName = null;
+            metadataCleaningInProgress = false;
+
+            setBusy(false);
+
+            getWindow().clearFlags(
+                    WindowManager.LayoutParams.FLAG_KEEP_SCREEN_ON
             );
 
-            startPendingWork();
+            return;
         }
+
+        Uri destination = data.getData();
+
+        persistWritePermission(destination, data);
+
+        saveMetadataOutput(destination);
+
+        return;
     }
+
+    // VALIDAÇÃO GERAL
+    if (
+            resultCode != RESULT_OK ||
+            data == null ||
+            data.getData() == null
+    ) {
+
+        if (
+                requestCode == CREATE_OUTPUT ||
+                requestCode == PICK_OUTPUT_FOLDER
+        ) {
+            clearPendingPassword();
+            deleteOriginalAfterEncryption = false;
+        }
+
+        return;
+    }
+
+    // SELEÇÃO DE ARQUIVO PARA CRIPTOGRAFIA/DESCRIPTOGRAFIA
+    if (requestCode == PICK_FILE) {
+
+        inputUri = data.getData();
+
+        persistReadPermission(
+                inputUri,
+                data
+        );
+
+        inputMode = MODE_FILE;
+        inputIsFolder = false;
+
+        String selectedName =
+                name(inputUri);
+
+        fileName.setText(
+                selectedName
+        );
+
+        updateFileInfo(inputUri, false);
+
+        decryptMode = selectedName
+                .toLowerCase(java.util.Locale.ROOT)
+                .endsWith(".aes");
+
+        action.setText(
+                decryptMode
+                        ? R.string.decrypt
+                        : R.string.encrypt
+        );
+
+        return;
+    }
+
+    // SELEÇÃO DE PASTA
+    if (requestCode == PICK_FOLDER) {
+
+        inputUri = data.getData();
+
+        persistTreePermission(
+                inputUri,
+                data
+        );
+
+        inputMode = MODE_FOLDER;
+        inputIsFolder = true;
+
+        String selectedName =
+                treeName(inputUri);
+
+        fileName.setText(
+                selectedName
+        );
+
+        updateFileInfo(inputUri, true);
+
+        decryptMode = false;
+
+        action.setText(
+                R.string.encrypt
+        );
+
+        return;
+    }
+
+    // CRIAÇÃO DO ARQUIVO DE SAÍDA
+    if (requestCode == CREATE_OUTPUT) {
+
+        outputUri = data.getData();
+        outputDocumentCreatedByApp = true;
+
+        // Não permite salvar o AES dentro da pasta
+        // que está sendo criptografada.
+        if (inputIsFolder && !decryptMode
+                && isOutputInsideInputFolder(outputUri)) {
+
+            try {
+
+                DocumentsContract.deleteDocument(
+                        getContentResolver(),
+                        outputUri
+                );
+
+            } catch (Exception ignored) {
+            }
+
+            outputUri = null;
+            outputDocumentCreatedByApp = false;
+
+            new AlertDialog.Builder(this)
+                    .setTitle(getString(R.string.invalid_destination))
+                    .setMessage(
+                            getString(R.string.encrypted_file_invalid_destination_prefix)
+                                    + getString(R.string.encrypted_file_invalid_destination_mid)
+                                    + getString(R.string.encrypted_file_invalid_destination_end)
+                                    + getString(R.string.choose_other_location_prefix)
+                                    + getString(R.string.output_file_included)
+                                    + getString(R.string.operation)
+                    )
+                    .setCancelable(false)
+                    .setPositiveButton(
+                            getString(R.string.choose_other_location),
+                            (dialog, which) -> pickOutputFile()
+                    )
+                    .setNegativeButton(
+                            getString(R.string.cancel),
+                            (dialog, which) -> {
+                                clearPendingPassword();
+                                deleteOriginalAfterEncryption = false;
+                            }
+                    )
+                    .show();
+
+            return;
+        }
+
+        persistWritePermission(
+                outputUri,
+                data
+        );
+
+        startPendingWork();
+
+        return;
+    }
+
+    // SELEÇÃO DE PASTA DE SAÍDA
+    if (requestCode == PICK_OUTPUT_FOLDER) {
+
+        outputUri = data.getData();
+        outputDocumentCreatedByApp = false;
+
+        persistTreePermission(
+                outputUri,
+                data
+        );
+
+        startPendingWork();
+    }
+}
+
 
     private void persistReadPermission(
         Uri uri,
@@ -3305,14 +3408,14 @@ private void authenticateForReplacement(
         }
     }
 
-    
+
 
 private void startMetadataCleaning() {
 
         fileInfo.setText("_");
 
     if (inputUri == null || inputIsFolder || decryptMode) {
-        fail("Selecione um arquivo válido para remover os metadados.");
+        fail(getString(R.string.select_valid_file_metadata));
         return;
     }
 
@@ -3340,7 +3443,7 @@ private void startMetadataCleaning() {
             || lowerName.endsWith(".m4a");
 
     setBusy(true);
-    progressText.setText("Preparando...");
+    progressText.setText(getString(R.string.preparing));
 
     getWindow().addFlags(
             WindowManager.LayoutParams.FLAG_KEEP_SCREEN_ON
@@ -3399,7 +3502,7 @@ private void startMetadataCleaning() {
                     || cleanedTemp.length() <= 0) {
 
                 throw new IOException(
-                        "Não foi possível validar o arquivo limpo."
+                        getString(R.string.clean_file_validation_failed)
                 );
             }
 
@@ -3446,9 +3549,9 @@ private void startMetadataCleaning() {
                 }
 
                 new AlertDialog.Builder(MainActivity.this)
-                        .setTitle("Não foi possível limpar")
+                        .setTitle(getString(R.string.metadata_clean_failed_title))
                         .setMessage(
-                                "Não foi possível remover os metadados deste arquivo.\n\n"
+                                getString(R.string.metadata_remove_failed)
                                 + errorMessage
                         )
                         .setPositiveButton(
@@ -3511,7 +3614,7 @@ private void pickMetadataOutput() {
         );
 
         fail(
-                "Não foi possível abrir o seletor de destino."
+                getString(R.string.metadata_destination_picker_failed)
         );
     }
 }
@@ -3530,7 +3633,7 @@ private void saveMetadataOutput(Uri destination) {
         metadataOutputName = null;
         metadataCleaningInProgress = false;
 
-        fail("Arquivo temporário ou destino indisponível.");
+        fail(getString(R.string.temp_or_destination_unavailable));
         return;
     }
 
@@ -3594,9 +3697,9 @@ private void saveMetadataOutput(Uri destination) {
             if (success) {
 
                 new AlertDialog.Builder(MainActivity.this)
-                        .setTitle("METADADOS REMOVIDOS!")
+                        .setTitle(getString(R.string.metadata_removed_title))
                         .setMessage(
-                                "Arquivo salvo com sucesso."
+                                getString(R.string.file_saved_success)
                         )
                         .setPositiveButton(
                                 android.R.string.ok,
@@ -3608,10 +3711,10 @@ private void saveMetadataOutput(Uri destination) {
             } else {
 
                 String message =
-                        "Não foi possível salvar o arquivo limpo.";
+                        getString(R.string.clean_file_save_failed);
 
                 if (!outputCleaned) {
-                    message += "\n\nNão foi possível excluir o arquivo incompleto. Verifique o destino e remova-o manualmente.";
+                    message += getString(R.string.incomplete_file_delete_failed);
                 }
 
                 fail(message);
@@ -3678,7 +3781,7 @@ private void saveMetadataOutput(Uri destination) {
         if (inputUri == null) {
 
             toast(
-                    R.string.select_file
+                    R.string.bined_select_filer
             );
 
             return;
@@ -3746,7 +3849,7 @@ if (decryptMode) {
 
         final Cipher cipher;
 
-        
+
 try {
 
     cipher =
@@ -3779,7 +3882,7 @@ try {
         if (inputUri == null) {
 
             toast(
-                    R.string.select_file
+                    R.string.bined_select_filer
             );
 
             return;
@@ -3938,7 +4041,7 @@ zipTree(
             if (total < 1) {
 
                 throw new Exception(
-                        "Arquivo vazio."
+                        getString(R.string.empty_file)
                 );
             }
 
@@ -4085,8 +4188,8 @@ runOnUiThread(() -> {
     new AlertDialog.Builder(MainActivity.this)
             .setTitle(
                     decrypt
-                            ? "🔓 DESCRIPTOGRAFADO!"
-                            : "🔒 CRIPTOGRAFADO!"
+                            ? getString(R.string.decrypted_title)
+                            : getString(R.string.encrypted_title)
             )
             .setMessage(
                     decrypt
@@ -4110,14 +4213,14 @@ runOnUiThread(() -> {
                     tempZip,
                     tempOutput
             );
-            
+
             boolean outputCleaned = deleteOutputQuietly();
 
             fail(
                     outputCleaned
                             ? getString(R.string.wrong_password)
                             : getString(R.string.wrong_password)
-                                    + "\n\nNão foi possível remover o arquivo de saída incompleto. Verifique e exclua-o manualmente no local escolhido."
+                                    + getString(R.string.output_incomplete_delete_failed)
             );
 
         } catch (
@@ -4129,17 +4232,17 @@ runOnUiThread(() -> {
                     tempZip,
                     tempOutput
             );
-            
+
             boolean outputCleaned = deleteOutputQuietly();
 
             fail(
                     outputCleaned
                             ? getString(R.string.corrupt_file)
                             : getString(R.string.corrupt_file)
-                                    + "\n\nNão foi possível remover o arquivo de saída incompleto. Verifique e exclua-o manualmente no local escolhido."
+                                    + getString(R.string.output_incomplete_delete_failed)
             );
 
-        
+
 } catch (Exception e) {
 
     cleanup(
@@ -4151,9 +4254,9 @@ runOnUiThread(() -> {
     boolean outputCleaned = deleteOutputQuietly();
 
     // Não exibe mensagens de exceção/caminhos internos na interface.
-    String errorMessage = "Não foi possível concluir a operação. Verifique a senha, o arquivo e o espaço disponível.";
+    String errorMessage = getString(R.string.operation_failed_general);
     if (!outputCleaned) {
-        errorMessage += "\n\nNão foi possível remover o arquivo de saída incompleto. Verifique e exclua-o manualmente no local escolhido.";
+        errorMessage += getString(R.string.output_incomplete_delete_failed);
     }
     fail(errorMessage);
 
@@ -4197,7 +4300,7 @@ runOnUiThread(() -> {
             progress.setProgress(
                     percent
             );
-                    
+
             progressText.setText(
                     getString(
                             decrypting
@@ -4206,7 +4309,7 @@ runOnUiThread(() -> {
                             percent
                     )
             );
-        
+
         });
     }
 
@@ -4230,7 +4333,7 @@ runOnUiThread(() -> {
         progress.setProgress(percent);
 
         progressText.setText(
-                "Sobrescrevendo arquivo: " + percent + "%"
+                getString(R.string.overwriting_file) + percent + "%"
         );
     });
 }
@@ -4317,7 +4420,7 @@ runOnUiThread(() -> {
 
         if (c == null) {
             throw new Exception(
-                    "Não foi possível ler a pasta."
+                    getString(R.string.folder_read_failed)
             );
         }
 
@@ -4342,9 +4445,9 @@ runOnUiThread(() -> {
 
     if (zipEntryCount > MAX_ZIP_ENTRIES) {
         throw new Exception(
-                "A pasta excede o limite de "
+                getString(R.string.folder_exceeds_limit_prefix)
                         + MAX_ZIP_ENTRIES
-                        + " entradas."
+                        + getString(R.string.entries_suffix)
         );
     }
 
@@ -4353,7 +4456,7 @@ runOnUiThread(() -> {
                     || childName.contains("/")
                     || childName.contains("\\")) {
                 throw new Exception(
-                        "A pasta contém um nome de arquivo inválido."
+                        getString(R.string.folder_invalid_filename)
                 );
             }
 
@@ -4363,7 +4466,7 @@ runOnUiThread(() -> {
 
             boolean directory = isDirectoryMime(mime);
 
-            validateZipEntryPath(path, directory);            
+            validateZipEntryPath(path, directory);
 
             if (directory) {
 
@@ -4389,15 +4492,15 @@ runOnUiThread(() -> {
 
                 if (size > MAX_ZIP_ENTRY_SIZE) {
                     throw new Exception(
-                            "O arquivo "
+                            getString(R.string.file_prefix)
                                     + childName
-                                    + " excede o limite de 1 GiB."
+                                    + getString(R.string.exceeds_1gb_suffix)
                     );
                 }
 
                 if (size > MAX_ZIP_TOTAL_SIZE - zipTotalBytes) {
                     throw new Exception(
-                            "A pasta excede o limite total de 2 GiB."
+                            getString(R.string.folder_exceeds_total_limit)
                     );
                 }
 
@@ -4481,7 +4584,7 @@ runOnUiThread(() -> {
             if (c == null) {
 
                 throw new Exception(
-                        "Não foi possível ler a pasta."
+                        getString(R.string.folder_read_failed)
                 );
             }
 
@@ -4497,7 +4600,7 @@ if (childName == null
         || childName.contains("\\")) {
 
     throw new Exception(
-            "A pasta contém um nome de arquivo inválido."
+            getString(R.string.folder_invalid_filename)
     );
 }
 
@@ -4523,9 +4626,9 @@ zipEntryCount++;
 
 if (zipEntryCount > MAX_ZIP_ENTRIES) {
     throw new Exception(
-            "A pasta excede o limite de "
+            getString(R.string.folder_exceeds_limit_prefix)
                     + MAX_ZIP_ENTRIES
-                    + " entradas."
+                    + getString(R.string.entries_suffix)
     );
 }
 
@@ -4568,7 +4671,7 @@ if (zipEntryCount > MAX_ZIP_ENTRIES) {
                         if (in == null) {
 
                             throw new Exception(
-                                    "Não foi possível abrir "
+                                    getString(R.string.open_failed_prefix)
                                             + childName
                             );
                         }
@@ -4582,15 +4685,15 @@ if (zipEntryCount > MAX_ZIP_ENTRIES) {
 
     if (n > MAX_ZIP_ENTRY_SIZE - entryBytes) {
         throw new Exception(
-                "O arquivo "
+                getString(R.string.file_prefix)
                         + childName
-                        + " excede o limite de 1 GiB."
+                        + getString(R.string.exceeds_1gb_suffix)
         );
     }
 
     if (n > MAX_ZIP_TOTAL_SIZE - zipActualBytes) {
         throw new Exception(
-                "A compactação excede o limite total de 2 GiB."
+                getString(R.string.compression_exceeds_total_limit)
         );
     }
 
@@ -4678,7 +4781,7 @@ if (zipEntryCount > MAX_ZIP_ENTRIES) {
        CÁLCULO DA DESCOMPACTAÇÃO
        ========================================================= */
 
-    
+
 
 private long calculateUnzipTotal(
         File zipFile
@@ -4699,9 +4802,9 @@ private long calculateUnzipTotal(
 
             if (entryCount > MAX_ZIP_ENTRIES) {
                 throw new Exception(
-                        "O ZIP excede o limite de "
+                        getString(R.string.zip_exceeds_limit_prefix)
                                 + MAX_ZIP_ENTRIES
-                                + " entradas."
+                                + getString(R.string.entries_suffix)
                 );
             }
 
@@ -4714,7 +4817,7 @@ private long calculateUnzipTotal(
                     || !isSafeZipPath(entryName)) {
 
                 throw new Exception(
-                        "O ZIP contém um caminho inválido ou não seguro."
+                        getString(R.string.zip_invalid_unsafe_path)
                 );
             }
 
@@ -4728,7 +4831,7 @@ private long calculateUnzipTotal(
                     || path.length() > MAX_ZIP_PATH_LENGTH) {
 
                 throw new Exception(
-                        "O ZIP contém um caminho vazio ou muito longo."
+                        getString(R.string.zip_empty_long_path)
                 );
             }
 
@@ -4744,9 +4847,9 @@ private long calculateUnzipTotal(
 
             if (depth > MAX_ZIP_DEPTH) {
                 throw new Exception(
-                        "O ZIP excede o limite de "
+                        getString(R.string.zip_exceeds_limit_prefix)
                                 + MAX_ZIP_DEPTH
-                                + " níveis."
+                                + getString(R.string.levels_suffix)
                 );
             }
 
@@ -4764,16 +4867,16 @@ private long calculateUnzipTotal(
 
             if (size > MAX_ZIP_ENTRY_SIZE) {
                 throw new Exception(
-                        "O arquivo "
+                        getString(R.string.file_prefix)
                                 + path
-                                + " excede o limite de 1 GiB."
+                                + getString(R.string.exceeds_1gb_suffix)
                 );
             }
 
             // Evita overflow durante a soma.
             if (size > MAX_ZIP_TOTAL_SIZE - total) {
                 throw new Exception(
-                        "O ZIP excede o limite total de 2 GiB."
+                        getString(R.string.zip_exceeds_total_limit)
                 );
             }
 
@@ -4789,7 +4892,7 @@ private long calculateUnzipTotal(
        DESCOMPACTAÇÃO DA PASTA
        ========================================================= */
 
-    
+
 private void unzipToTree(
         File zipFile,
         Uri destinationTree
@@ -4799,7 +4902,7 @@ private void unzipToTree(
     String suffix = "_pasta.aes";
 
     if (originalName == null || !originalName.endsWith(suffix)) {
-        throw new Exception("Nome do arquivo inválido.");
+        throw new Exception(getString(R.string.invalid_filename));
     }
 
     String folderName = originalName.substring(
@@ -4808,7 +4911,7 @@ private void unzipToTree(
     );
 
     if (folderName.isEmpty()) {
-        throw new Exception("Nome da pasta inválido.");
+        throw new Exception(getString(R.string.invalid_folder_name));
     }
 
     // Registra exclusivamente os documentos criados nesta extração.
@@ -4827,7 +4930,7 @@ private void unzipToTree(
 
     if (outputFolder == null) {
         throw new Exception(
-                "Não foi possível criar a pasta de destino."
+                getString(R.string.create_destination_folder_failed)
         );
     }
 
@@ -4851,12 +4954,12 @@ private void unzipToTree(
 
             if (entryCount > MAX_ZIP_ENTRIES) {
                 throw new Exception(
-                        "O ZIP excede o limite de "
-                                + MAX_ZIP_ENTRIES + " entradas."
+                        getString(R.string.zip_exceeds_limit_prefix)
+                                + MAX_ZIP_ENTRIES + getString(R.string.entries_suffix)
                 );
             }
 
-            
+
 String entryName = entry.getName();
 
 // Rejeita barras invertidas antes de qualquer normalização.
@@ -4866,7 +4969,7 @@ if (entryName == null
         || !isSafeZipPath(entryName)) {
 
     throw new Exception(
-            "O ZIP contém um caminho inválido ou não seguro."
+            getString(R.string.zip_invalid_unsafe_path)
     );
 }
 
@@ -4881,14 +4984,14 @@ if (entryName == null
 
             if (path.isEmpty()) {
                 throw new Exception(
-                        "O ZIP contém um caminho vazio."
+                        getString(R.string.zip_empty_path)
                 );
             }
 
             // Limite de comprimento.
             if (path.length() > MAX_ZIP_PATH_LENGTH) {
                 throw new Exception(
-                        "O ZIP contém um caminho muito longo."
+                        getString(R.string.zip_path_too_long)
                 );
             }
 
@@ -4905,16 +5008,16 @@ if (entryName == null
 
             if (depth > MAX_ZIP_DEPTH) {
                 throw new Exception(
-                        "O ZIP excede o limite de "
+                        getString(R.string.zip_exceeds_limit_prefix)
                                 + MAX_ZIP_DEPTH
-                                + " níveis de pastas."
+                                + getString(R.string.folder_levels_suffix)
                 );
             }
 
             // Impede entradas explícitas repetidas.
             if (!seenEntries.add(path)) {
                 throw new Exception(
-                        "O ZIP contém caminhos duplicados."
+                        getString(R.string.zip_duplicate_paths)
                 );
             }
 
@@ -4931,7 +5034,7 @@ if (entryName == null
 
                 if (Boolean.FALSE.equals(parentType)) {
                     throw new Exception(
-                            "O ZIP contém conflito entre arquivo e pasta."
+                            getString(R.string.zip_file_folder_conflict)
                     );
                 }
 
@@ -4947,7 +5050,7 @@ if (entryName == null
 
                 if (Boolean.FALSE.equals(existingType)) {
                     throw new Exception(
-                            "O ZIP contém conflito entre arquivo e pasta."
+                            getString(R.string.zip_file_folder_conflict)
                     );
                 }
 
@@ -4958,7 +5061,7 @@ if (entryName == null
 
                 if (existingType != null) {
                     throw new Exception(
-                            "O ZIP contém conflito entre arquivo e pasta."
+                            getString(R.string.zip_file_folder_conflict)
                     );
                 }
 
@@ -4997,7 +5100,7 @@ if (entryName == null
 
                 if (fileName.isEmpty()) {
                     throw new Exception(
-                            "Nome de arquivo inválido."
+                            getString(R.string.invalid_filename)
                     );
                 }
 
@@ -5005,7 +5108,7 @@ if (entryName == null
 
                 if (fileUri == null) {
                     throw new Exception(
-                            "Não foi possível criar " + fileName
+                            getString(R.string.create_failed_prefix) + fileName
                     );
                 }
 
@@ -5021,7 +5124,7 @@ if (entryName == null
 
                     if (out == null) {
                         throw new Exception(
-                                "Não foi possível escrever " + fileName
+                                getString(R.string.write_failed_prefix) + fileName
                         );
                     }
 
@@ -5032,14 +5135,14 @@ if (entryName == null
                         // Protege contra limites excedidos e overflow.
                         if (n > MAX_ZIP_ENTRY_SIZE - entryExtracted) {
                             throw new Exception(
-                                    "O arquivo " + fileName
-                                            + " excede o limite de 1 GiB."
+                                    getString(R.string.file_prefix) + fileName
+                                            + getString(R.string.exceeds_1gb_suffix)
                             );
                         }
 
                         if (n > MAX_ZIP_TOTAL_SIZE - totalExtracted) {
                             throw new Exception(
-                                    "A extração excede o limite total de 2 GiB."
+                                    getString(R.string.extraction_exceeds_total_limit)
                             );
                         }
 
@@ -5110,8 +5213,8 @@ if (entryName == null
             || !isSafeZipPath(path)) {
 
         throw new Exception(
-                "O caminho excede os limites permitidos "
-                        + "ou é inválido."
+                getString(R.string.path_exceeds_limits_prefix)
+                        + getString(R.string.or_invalid)
         );
     }
 
@@ -5124,7 +5227,7 @@ if (entryName == null
                 || "..".equals(segment)) {
 
             throw new Exception(
-                    "A pasta contém um caminho inválido."
+                    getString(R.string.folder_invalid_path)
             );
         }
     }
@@ -5133,14 +5236,14 @@ if (entryName == null
 
     if (depth > MAX_ZIP_DEPTH) {
         throw new Exception(
-                "A pasta excede o limite de "
+                getString(R.string.folder_exceeds_limit_prefix)
                         + MAX_ZIP_DEPTH
-                        + " níveis."
+                        + getString(R.string.levels_suffix)
         );
     }
 }
 
-    
+
 private boolean isSafeZipPath(String path) {
 
     if (path == null || path.isEmpty()) {
@@ -5460,7 +5563,7 @@ private boolean isSafeZipPath(String path) {
             if (in == null) {
 
                 throw new Exception(
-                        "Não foi possível abrir o arquivo."
+                        getString(R.string.open_file_failed)
                 );
             }
 
@@ -5471,7 +5574,7 @@ private boolean isSafeZipPath(String path) {
                 while ((n = in.read(buffer)) != -1) {
                     if (n == 0) continue;
                     if (copied > MAX_INPUT_BYTES - n) {
-                        throw new IOException("O arquivo excede o limite permitido.");
+                        throw new IOException(getString(R.string.file_exceeds_limit));
                     }
                     out.write(buffer, 0, n);
                     copied += n;
@@ -5484,7 +5587,7 @@ private boolean isSafeZipPath(String path) {
         }
     }
 
-    
+
 private void copyFile(
         File source,
         File destination
@@ -5518,7 +5621,7 @@ private void copyFile(
 }
 
 
-    
+
 
 private void copyToOutput(
         File source,
@@ -5527,7 +5630,7 @@ private void copyToOutput(
 ) throws Exception {
 
     if (source == null || destination == null) {
-        throw new Exception("Destino inválido.");
+        throw new Exception(getString(R.string.invalid_destination_period));
     }
 
     long total = source.length();
@@ -5543,7 +5646,7 @@ private void copyToOutput(
         ) {
             if (out == null) {
                 throw new Exception(
-                        "Não foi possível abrir o destino."
+                        getString(R.string.destination_open_failed)
                 );
             }
 
@@ -5595,7 +5698,7 @@ private void copyToOutput(
     private String name(Uri uri) {
 
         if (uri == null) {
-            return "arquivo";
+            return getString(R.string.file_word);
         }
 
         if (DocumentsContract.isTreeUri(uri)) {
@@ -5642,7 +5745,7 @@ private void copyToOutput(
             }
         }
 
-        return "arquivo";
+        return getString(R.string.file_word);
     }
 
     private String treeName(Uri treeUri) {
@@ -5698,7 +5801,7 @@ private void copyToOutput(
             }
         }
 
-        return "pasta";
+        return getString(R.string.folder_word);
     }
 
     private boolean isFolderEncryptedName(
@@ -5738,7 +5841,7 @@ private void copyToOutput(
 
             if (metadataCleaningInProgress) {
 
-                progressText.setText("Limpando...");
+                progressText.setText(getString(R.string.cleaning));
 
             } else {
 
@@ -5775,7 +5878,8 @@ private void copyToOutput(
             metaButton.setEnabled(!busy);
             deleteButton.setEnabled(!busy);
             hashButton.setEnabled(!busy);
-            
+            hexButton.setEnabled(!busy);
+
             biometricSwitch.setEnabled(!busy);
 
             biometricSettings.setEnabled(
@@ -5798,7 +5902,7 @@ private void copyToOutput(
         });
     }
 
-    
+
 private void fail(int res) {
     fail(getString(res));
 }
@@ -5814,11 +5918,11 @@ private void fail(String message) {
         String errorMessage = message;
 
         if (errorMessage == null || errorMessage.trim().isEmpty()) {
-            errorMessage = "Ocorreu um erro inesperado.";
+            errorMessage = getString(R.string.unexpected_error);
         }
 
         new AlertDialog.Builder(MainActivity.this)
-                .setTitle("‼️ ERRO!")
+                .setTitle(getString(R.string.error_title))
                 .setMessage(errorMessage)
                 .setCancelable(false)
                 .setPositiveButton(
@@ -5898,7 +6002,7 @@ private void fail(String message) {
                 Toast.LENGTH_LONG
         ).show();
     }
-        
+
 private Uri createZipDirectories(
         String relativePath,
         Uri rootFolder,
@@ -5914,7 +6018,7 @@ private Uri createZipDirectories(
         if (segment.isEmpty()
                 || ".".equals(segment)
                 || "..".equals(segment)) {
-            throw new Exception("Caminho de pasta inválido.");
+            throw new Exception(getString(R.string.invalid_folder_path));
         }
 
         if (currentPath.length() > 0) {
@@ -5940,7 +6044,7 @@ private Uri createZipDirectories(
 
         if (created == null) {
             throw new Exception(
-                    "Não foi possível criar a pasta " + segment
+                    getString(R.string.create_folder_failed_prefix) + segment
             );
         }
 
@@ -5979,7 +6083,7 @@ private Uri createZipDirectories(
 
     String path = uri.getLastPathSegment();
 
-    return path != null ? path : "Arquivo selecionado";
+    return path != null ? path : getString(R.string.selected_file);
 }
 
         private void handleIncomingIntent(Intent intent) {
@@ -6103,17 +6207,17 @@ protected void onNewIntent(Intent intent) {
 private void showExitDialog() {
 
     new AlertDialog.Builder(this)
-            .setTitle("SAIR?")            
+            .setTitle(getString(R.string.exit_title))
             .setPositiveButton(
-                    "SIM",
+                    getString(R.string.yes),
                     (dialog, which) -> finish()
             )
             .setNegativeButton(
-                    "NÃO",
+                    getString(R.string.no),
                     (dialog, which) -> dialog.dismiss()
             )
             .setNeutralButton(
-              "⭐AVALIAR",
+              getString(R.string.rate_app),
                                 (d, which) -> {
 
                                     try {
@@ -6141,7 +6245,7 @@ private void showExitDialog() {
                                         startActivity(intent);
                                     }
                                 }
-                        )            
+                        )
             .setCancelable(true)
             .show();
 }
@@ -6149,7 +6253,7 @@ private void showExitDialog() {
         private void updateFileInfo(Uri uri, boolean isFolder) {
 
     if (uri == null) {
-        fileInfo.setText("Nenhum arquivo selecionado");
+        fileInfo.setText(getString(R.string.no_file_selected));
         return;
     }
 
@@ -6158,7 +6262,7 @@ private void showExitDialog() {
             : name(uri);
 
     String mimeType = isFolder
-            ? "Pasta"
+            ? getString(R.string.folder)
             : getContentResolver().getType(uri);
 
     long fileSize = -1;
@@ -6219,57 +6323,57 @@ private void showExitDialog() {
 
         android.util.Log.w(
                 "SFileEncryptor",
-                "Falha ao consultar informações do documento.",
+                getString(R.string.document_info_failed),
                 e
         );
     }
 
     String extension = isFolder
-            ? "Não aplicável"
+            ? getString(R.string.not_applicable)
             : getFileExtension(displayName);
 
     String category = isFolder
-            ? "Pasta"
+            ? getString(R.string.folder)
             : getFileCategory(mimeType, extension);
 
     StringBuilder info = new StringBuilder();
 
-    info.append("Nome: ")
+    info.append(getString(R.string.name_label))
             .append(displayName)
             .append("\n\n");
 
-    info.append("Categoria: ")
+    info.append(getString(R.string.category_label))
             .append(category)
             .append("\n\n");
 
-    info.append("Extensão: ")
+    info.append(getString(R.string.extension_label))
             .append(extension)
             .append("\n\n");
 
-    info.append("Tipo MIME: ")
+    info.append(getString(R.string.mime_type_label))
             .append(mimeType != null
                     ? mimeType
-                    : "Não identificado")
+                    : getString(R.string.not_identified))
             .append("\n\n");
 
     if (isFolder) {
 
-        info.append("Tamanho: Não aplicável\n\n");
+        info.append(getString(R.string.size_not_applicable));
 
     } else {
 
-        info.append("Tamanho: ")
+        info.append(getString(R.string.size_label))
                 .append(formatFileSize(fileSize))
                 .append("\n");
 
-        info.append("Tamanho exato: ")
+        info.append(getString(R.string.exact_size_label))
                 .append(fileSize >= 0
                         ? String.format(
                                 Locale.US,
-                                "%,d bytes",
+                                getString(R.string.formatted_bytes),
                                 fileSize
                         )
-                        : "Não disponível")
+                        : getString(R.string.not_available))
                 .append("\n\n");
     }
 
@@ -6281,23 +6385,23 @@ private void showExitDialog() {
                         Locale.getDefault()
                 );
 
-        info.append("Última modificação: ")
+        info.append(getString(R.string.last_modified_label))
                 .append(dateFormat.format(new Date(lastModified)))
                 .append("\n\n");
 
     } else {
 
-        info.append("Última modificação: Não disponível\n\n");
+        info.append(getString(R.string.last_modified_unavailable));
     }
 
-    info.append("Origem: ")
+    info.append(getString(R.string.origin_label))
             .append(getStorageOrigin(uri, isFolder))
             .append("\n\n");
 
-    info.append("Provedor SAF: ")
+    info.append(getString(R.string.saf_provider_label))
             .append(uri.getAuthority() != null
                     ? uri.getAuthority()
-                    : "Não identificado")
+                    : getString(R.string.not_identified))
             .append("\n\n");
 
     try {
@@ -6313,24 +6417,24 @@ private void showExitDialog() {
             documentId = DocumentsContract.getDocumentId(uri);
         }
 
-        info.append("Identificador: ")
+        info.append(getString(R.string.identifier_label))
                 .append(documentId != null
                         ? documentId
-                        : "Não disponibilizado")
+                        : getString(R.string.not_provided))
                 .append("\n\n");
 
     } catch (Exception e) {
 
-        info.append("Identificador: Não disponibilizado\n\n");
+        info.append(getString(R.string.identifier_not_provided));
     }
 
-    info.append("URI: ")
+    info.append(getString(R.string.uri_label))
             .append(uri.toString());
 
     // Informações específicas de imagens.
-    if (!isFolder && category.equals("Imagem")) {
+    if (!isFolder && category.equals(getString(R.string.image))) {
 
-        info.append("\n\n--- INFORMAÇÕES DA IMAGEM ---\n\n");
+        info.append(getString(R.string.image_info_header));
 
         appendImageInfo(info, uri);
     }
@@ -6341,19 +6445,19 @@ final long selectedFileSize = fileSize;
 fileInfo.setText(baseInfo);
 
 if (!isFolder
-        && (category.equals("Vídeo")
-        || category.equals("Áudio")
-        || category.equals("Documento PDF"))) {
+        && (category.equals(getString(R.string.video))
+        || category.equals(getString(R.string.audio))
+        || category.equals(getString(R.string.pdf_document)))) {
 
     new Thread(() -> {
 
         String extraInfo;
 
-        if (category.equals("Vídeo")) {
+        if (category.equals(getString(R.string.video))) {
 
             extraInfo = getMediaInfo(uri, true);
 
-        } else if (category.equals("Áudio")) {
+        } else if (category.equals(getString(R.string.audio))) {
 
             extraInfo = getMediaInfo(uri, false);
 
@@ -6380,11 +6484,11 @@ if (!isFolder
 private String formatFileSize(long bytes) {
 
     if (bytes < 0) {
-        return "Não disponível";
+        return getString(R.string.not_available);
     }
 
     if (bytes < 1024) {
-        return bytes + " bytes";
+        return bytes + getString(R.string.bytes_suffix);
     }
 
     if (bytes < 1024L * 1024) {
@@ -6415,7 +6519,7 @@ private String formatFileSize(long bytes) {
     String authority = uri.getAuthority();
 
     if (authority == null) {
-        return "Origem não identificada";
+        return getString(R.string.source_not_identified);
     }
 
     // Armazenamento interno ou volume externo.
@@ -6434,51 +6538,51 @@ private String formatFileSize(long bytes) {
                     : documentId;
 
             if ("primary".equalsIgnoreCase(volume)) {
-                return "Memória interna do aparelho";
+                return getString(R.string.device_internal_storage);
             }
 
-            return "Cartão SD ou outro volume externo";
+            return getString(R.string.sd_or_external_storage);
 
         } catch (Exception e) {
 
-            return "Armazenamento externo";
+            return getString(R.string.external_storage);
         }
     }
 
     // Google Drive.
     if (authority.startsWith("com.google.android.apps.docs")) {
-        return "Google Drive";
+        return getString(R.string.google_drive);
     }
 
     // OneDrive.
     if (authority.equals(
             "com.microsoft.skydrive.content.StorageAccessProvider")) {
-        return "Microsoft OneDrive";
+        return getString(R.string.microsoft_onedrive);
     }
 
     // Provedor de downloads.
     if (authority.equals("com.android.providers.downloads.documents")) {
-        return "Downloads do Android";
+        return getString(R.string.android_downloads);
     }
 
     // Provedor de mídia.
     if (authority.equals("com.android.providers.media.documents")) {
-        return "Biblioteca de mídia do Android";
+        return getString(R.string.android_media_library);
     }
 
-    return "Outro provedor: " + authority;
+    return getString(R.string.other_provider_prefix) + authority;
 }
 
         private String getFileExtension(String fileName) {
 
     if (fileName == null || fileName.isEmpty()) {
-        return "Não identificada";
+        return getString(R.string.not_identified_feminine);
     }
 
     int dot = fileName.lastIndexOf('.');
 
     if (dot <= 0 || dot == fileName.length() - 1) {
-        return "Sem extensão";
+        return getString(R.string.no_extension);
     }
 
     return fileName.substring(dot + 1)
@@ -6489,38 +6593,38 @@ private String formatFileSize(long bytes) {
 
     if (mimeType != null) {
 
-        if (mimeType.startsWith("image/")) return "Imagem";
-        if (mimeType.startsWith("video/")) return "Vídeo";
-        if (mimeType.startsWith("audio/")) return "Áudio";
-        if (mimeType.equals("application/pdf")) return "Documento PDF";
-        if (mimeType.startsWith("text/")) return "Arquivo de texto";
+        if (mimeType.startsWith("image/")) return getString(R.string.image);
+        if (mimeType.startsWith("video/")) return getString(R.string.video);
+        if (mimeType.startsWith("audio/")) return getString(R.string.audio);
+        if (mimeType.equals("application/pdf")) return getString(R.string.pdf_document);
+        if (mimeType.startsWith("text/")) return getString(R.string.text_file);
     }
 
     String ext = extension.toLowerCase(Locale.ROOT);
 
     if (ext.matches("jpg|jpeg|png|gif|bmp|webp|heic|heif|tif|tiff")) {
-        return "Imagem";
+        return getString(R.string.image);
     }
 
     if (ext.matches("mp4|m4v|3gp|mkv|avi|mov|webm")) {
-        return "Vídeo";
+        return getString(R.string.video);
     }
 
     if (ext.matches("mp3|m4a|aac|wav|flac|ogg|opus|wma")) {
-        return "Áudio";
+        return getString(R.string.audio);
     }
 
-    if (ext.equals("pdf")) return "Documento PDF";
+    if (ext.equals("pdf")) return getString(R.string.pdf_document);
 
     if (ext.matches("zip|rar|7z|tar|gz")) {
-        return "Arquivo compactado";
+        return getString(R.string.compressed_file);
     }
 
     if (ext.matches("doc|docx|odt|xls|xlsx|ppt|pptx")) {
-        return "Documento";
+        return getString(R.string.document);
     }
 
-    return "Outro arquivo";
+    return getString(R.string.other_file);
 }
 
         private void appendImageInfo(StringBuilder info, Uri uri) {
@@ -6543,13 +6647,13 @@ private String formatFileSize(long bytes) {
 
         if (options.outWidth > 0 && options.outHeight > 0) {
 
-            info.append("Dimensões: ")
+            info.append(getString(R.string.dimensions_label))
                     .append(options.outWidth)
-                    .append(" × ")
+                    .append(getString(R.string.times))
                     .append(options.outHeight)
-                    .append(" pixels\n\n");
+                    .append(getString(R.string.pixels));
 
-            info.append("Proporção: ")
+            info.append(getString(R.string.aspect_ratio_label))
                     .append(String.format(
                             Locale.US,
                             "%.2f:1",
@@ -6562,7 +6666,7 @@ private String formatFileSize(long bytes) {
 
         android.util.Log.w(
                 "SFileEncryptor",
-                "Não foi possível obter dimensões da imagem.",
+                getString(R.string.image_dimensions_failed),
                 e
         );
     }
@@ -6571,7 +6675,7 @@ private String formatFileSize(long bytes) {
         private String formatMediaDuration(long durationMs) {
 
     if (durationMs < 0) {
-        return "Não disponível";
+        return getString(R.string.not_available);
     }
 
     long seconds = durationMs / 1000;
@@ -6608,14 +6712,14 @@ private String formatFileSize(long bytes) {
 
         retriever.setDataSource(this, uri);
 
-        info.append("\n\n--- INFORMAÇÕES DE MÍDIA ---\n\n");
+        info.append(getString(R.string.media_info_header));
 
         String duration = retriever.extractMetadata(
                 MediaMetadataRetriever.METADATA_KEY_DURATION
         );
 
         if (duration != null) {
-            info.append("Duração: ")
+            info.append(getString(R.string.duration_label))
                     .append(formatMediaDuration(
                             Long.parseLong(duration)
                     ))
@@ -6627,7 +6731,7 @@ private String formatFileSize(long bytes) {
         );
 
         if (mediaMime != null) {
-            info.append("Formato de mídia: ")
+            info.append(getString(R.string.media_format_label))
                     .append(mediaMime)
                     .append("\n\n");
         }
@@ -6637,7 +6741,7 @@ private String formatFileSize(long bytes) {
         );
 
         if (bitrate != null) {
-            info.append("Bitrate: ")
+            info.append(getString(R.string.bitrate_label))
         .append(String.format(
                 Locale.getDefault(),
                 "%.0f kbps",
@@ -6657,11 +6761,11 @@ private String formatFileSize(long bytes) {
             );
 
             if (width != null && height != null) {
-                info.append("Resolução: ")
+                info.append(getString(R.string.resolution_label))
                         .append(width)
-                        .append(" × ")
+                        .append(getString(R.string.times))
                         .append(height)
-                        .append(" pixels\n\n");
+                        .append(getString(R.string.pixels));
             }
 
             String rotation = retriever.extractMetadata(
@@ -6669,9 +6773,9 @@ private String formatFileSize(long bytes) {
             );
 
             if (rotation != null) {
-                info.append("Rotação: ")
+                info.append(getString(R.string.rotation_label))
                         .append(rotation)
-                        .append("°\n\n");
+                        .append(getString(R.string.degrees_suffix));
             }
 
             String frameRate = retriever.extractMetadata(
@@ -6679,36 +6783,36 @@ private String formatFileSize(long bytes) {
             );
 
             if (frameRate != null) {
-                info.append("Taxa de quadros: ")
+                info.append(getString(R.string.frame_rate_label))
                         .append(frameRate)
-                        .append(" fps\n\n");
+                        .append(getString(R.string.fps_suffix));
             }
         }
 
-        appendMediaTag(info, retriever, "Título",
+        appendMediaTag(info, retriever, getString(R.string.title),
                 MediaMetadataRetriever.METADATA_KEY_TITLE);
 
-        appendMediaTag(info, retriever, "Artista",
+        appendMediaTag(info, retriever, getString(R.string.artist),
                 MediaMetadataRetriever.METADATA_KEY_ARTIST);
 
-        appendMediaTag(info, retriever, "Álbum",
+        appendMediaTag(info, retriever, getString(R.string.album),
                 MediaMetadataRetriever.METADATA_KEY_ALBUM);
 
-        appendMediaTag(info, retriever, "Gênero",
+        appendMediaTag(info, retriever, getString(R.string.genre),
                 MediaMetadataRetriever.METADATA_KEY_GENRE);
 
-        appendMediaTag(info, retriever, "Data da mídia",
+        appendMediaTag(info, retriever, getString(R.string.media_date),
                 MediaMetadataRetriever.METADATA_KEY_DATE);
 
     } catch (Exception e) {
 
         android.util.Log.w(
                 "SFileEncryptor",
-                "Não foi possível consultar os metadados de mídia.",
+                getString(R.string.media_metadata_failed),
                 e
         );
 
-        return "\n\nMetadados de mídia: Não foi possível consultar este arquivo.";
+        return getString(R.string.media_metadata_unavailable);
     } finally {
 
         try {
@@ -6744,8 +6848,8 @@ private String formatFileSize(long bytes) {
 
     // Evita analisar PDFs muito grandes durante a consulta de informações.
     if (fileSize > 30L * 1024 * 1024) {
-        return "\n\n--- INFORMAÇÕES DO PDF ---\n\n"
-                + "Leitura dos metadados ignorada: arquivo maior que 30 MB.";
+        return getString(R.string.pdf_info_header)
+                + getString(R.string.pdf_metadata_skipped_large);
     }
 
     PDFBoxResourceLoader.init(getApplicationContext());
@@ -6754,30 +6858,30 @@ private String formatFileSize(long bytes) {
                  getContentResolver().openInputStream(uri)) {
 
         if (input == null) {
-            return "\n\nNão foi possível abrir o PDF para leitura.";
+            return getString(R.string.pdf_open_failed);
         }
 
         try (PDDocument document = PDDocument.load(input)) {
 
-            info.append("\n\n--- INFORMAÇÕES DO PDF ---\n\n");
+            info.append(getString(R.string.pdf_info_header));
 
-            info.append("Quantidade de páginas: ")
+            info.append(getString(R.string.pdf_pages_label))
                     .append(document.getNumberOfPages())
                     .append("\n\n");
 
-            info.append("Versão do PDF: ")
+            info.append(getString(R.string.pdf_version_label))
                     .append(document.getVersion())
                     .append("\n\n");
 
             PDDocumentInformation metadata =
                     document.getDocumentInformation();
 
-            appendPdfField(info, "Título", metadata.getTitle());
-            appendPdfField(info, "Autor", metadata.getAuthor());
-            appendPdfField(info, "Assunto", metadata.getSubject());
-            appendPdfField(info, "Palavras-chave", metadata.getKeywords());
-            appendPdfField(info, "Aplicativo criador", metadata.getCreator());
-            appendPdfField(info, "Programa produtor", metadata.getProducer());
+            appendPdfField(info, getString(R.string.title), metadata.getTitle());
+            appendPdfField(info, getString(R.string.author), metadata.getAuthor());
+            appendPdfField(info, getString(R.string.subject), metadata.getSubject());
+            appendPdfField(info, getString(R.string.keywords), metadata.getKeywords());
+            appendPdfField(info, getString(R.string.creator_application), metadata.getCreator());
+            appendPdfField(info, getString(R.string.producer_program), metadata.getProducer());
 
             SimpleDateFormat dateFormat =
                     new SimpleDateFormat(
@@ -6786,7 +6890,7 @@ private String formatFileSize(long bytes) {
                     );
 
             if (metadata.getCreationDate() != null) {
-                info.append("Data de criação: ")
+                info.append(getString(R.string.creation_date_label))
                         .append(dateFormat.format(
                                 metadata.getCreationDate().getTime()
                         ))
@@ -6794,7 +6898,7 @@ private String formatFileSize(long bytes) {
             }
 
             if (metadata.getModificationDate() != null) {
-                info.append("Data de modificação: ")
+                info.append(getString(R.string.modification_date_label))
                         .append(dateFormat.format(
                                 metadata.getModificationDate().getTime()
                         ))
@@ -6806,11 +6910,11 @@ private String formatFileSize(long bytes) {
 
         android.util.Log.w(
                 "SFileEncryptor",
-                "Não foi possível consultar os metadados do PDF.",
+                getString(R.string.pdf_metadata_failed),
                 e
         );
 
-        return "\n\nMetadados do PDF: Não foi possível consultar este documento.";
+        return getString(R.string.pdf_metadata_unavailable);
     }
 
     return info.toString();
@@ -6896,7 +7000,7 @@ private void appendPdfField(
                  getContentResolver().openInputStream(uri)) {
 
         if (input == null) {
-            throw new IOException("Não foi possível abrir o arquivo.");
+            throw new IOException(getString(R.string.open_file_failed));
         }
 
         byte[] buffer = new byte[64 * 1024];
@@ -6952,7 +7056,7 @@ private void updateHashComparison(
 
     if (!expectedHash.matches("(?i)[0-9a-f]{64}")) {
 
-        resultText.setText("❌ HASH SHA-256 INVÁLIDA");
+        resultText.setText(getString(R.string.sha256_invalid));
 
         resultText.setTextColor(
                 android.graphics.Color.rgb(198, 40, 40)
@@ -6963,7 +7067,7 @@ private void updateHashComparison(
 
     if (!calculationFinished) {
 
-        resultText.setText("Calculando SHA-256...");
+        resultText.setText(getString(R.string.calculating_sha256));
 
         resultText.setTextColor(
                 android.graphics.Color.GRAY
@@ -6975,7 +7079,7 @@ private void updateHashComparison(
     if (calculationFailed || calculatedHash == null) {
 
         resultText.setText(
-                "❌ NÃO FOI POSSÍVEL CALCULAR A HASH"
+                getString(R.string.sha256_could_not_calculate)
         );
 
         resultText.setTextColor(
@@ -6988,7 +7092,7 @@ private void updateHashComparison(
     if (calculatedHash.equalsIgnoreCase(expectedHash)) {
 
         resultText.setText(
-                "✅ HASHES CORRESPONDEM"
+                getString(R.string.hashes_match)
         );
 
         resultText.setTextColor(
@@ -6998,7 +7102,7 @@ private void updateHashComparison(
     } else {
 
         resultText.setText(
-                "❌ HASHES DIFERENTES"
+                getString(R.string.hashes_different)
         );
 
         resultText.setTextColor(
@@ -7007,7 +7111,23 @@ private void updateHashComparison(
     }
 }
 
-        
+        private void pickHexFile() {
+
+    Intent i = new Intent(Intent.ACTION_OPEN_DOCUMENT);
+
+    i.setType("*/*");
+
+    i.addCategory(Intent.CATEGORY_OPENABLE);
+
+    i.addFlags(
+            Intent.FLAG_GRANT_READ_URI_PERMISSION |
+            Intent.FLAG_GRANT_WRITE_URI_PERMISSION |
+            Intent.FLAG_GRANT_PERSISTABLE_URI_PERMISSION
+    );
+
+    startActivityForResult(i, PICK_HEX_FILE);
+}
+
     @Override
     protected void onDestroy() {
 

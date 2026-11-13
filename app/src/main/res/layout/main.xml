@@ -103,7 +103,7 @@
             android:layout_width="match_parent"
             android:layout_height="50dp"
             android:layout_marginTop="70dp"
-            android:text="Nenhum arquivo selecionado"
+            android:text="@string/no_file"
             android:textColor="#FFFFFF"
             android:textSize="20sp"
             android:gravity="center" />
@@ -171,7 +171,7 @@
                         android:id="@+id/fileInfo"
                         android:layout_width="match_parent"
                         android:layout_height="wrap_content"
-                        android:text="Nenhum arquivo selecionado"
+                        android:text="getString/no_file"
                         android:textColor="#FFFFFF"
                         android:textSize="16sp" />
 
@@ -190,6 +190,18 @@
                 android:paddingStart="8dp"
                 android:paddingEnd="8dp"
                 android:paddingBottom="8dp">
+
+                <Button
+                    android:id="@+id/hexButton"
+                    android:layout_width="44dp"
+                    android:layout_height="wrap_content"
+                    android:layout_marginTop="6dp"
+                    android:text="@string/hex_button"
+                    android:textSize="22sp"
+                    android:textColor="#000000"
+                    android:minWidth="0dp"
+                    android:padding="0dp"
+                    android:contentDescription="@string/hex_title" />
 
                 <Button
                     android:id="@+id/hashButton"

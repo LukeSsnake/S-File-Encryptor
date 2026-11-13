@@ -98,16 +98,16 @@ class ErasureRecord {
                 method,
                 status,
                 errorMessage,
-                "Não registrado",
-                "Não registrado",
-                "Não registrado",
+                "Not recorded",
+                "Not recorded",
+                "Not recorded",
                 0,
-                "Não registrado",
-                "Não registrada",
+                "Not recorded",
+                "Not recorded",
                 1,
                 0,
-                "Não registrado",
-                "Não registrado"
+                "Not recorded",
+                "Not recorded"
         );
     }
 
@@ -187,7 +187,7 @@ class ErasureRecord {
 
     // O nome nunca será armazenado.
     this.fileName = "FOLDER".equals(operationType)
-            ? "Pasta"
+            ? "Folder"
             : redactFileName(fileName);
 
     this.sizeBytes = sizeBytes;
@@ -234,7 +234,7 @@ final class ErasureReport {
             "erasure_report.jsonl";
 
     private static final String METHOD_DESCRIPTION =
-            "Sobrescrita única com dados aleatórios";
+            "Single overwrite with random data";
 
     private ErasureReport() {
     }
@@ -325,34 +325,37 @@ final class ErasureReport {
 
         List<ErasureRecord> records =
                 readAll(context);
+        String methodDescription =
+                context.getString(R.string.single_random_overwrite);
 
         try (BufferedWriter writer =
                      new BufferedWriter(
                              new FileWriter(outFile)
                      )) {
 
-            writer.write("RELATORIO DE EXCLUSAO SEGURA");
+            writer.write(context.getString(R.string.erasure_report_title));
             writer.newLine();
 
-            writer.write("S-File Encryptor - "
-                    + formatDateTime(System.currentTimeMillis()));
+            writer.write(context.getString(
+                    R.string.erasure_report_app,
+                    formatDateTime(System.currentTimeMillis())
+            ));
             writer.newLine();
             writer.newLine();
 
-            writer.write("Total de registros: "
-                    + records.size());
+            writer.write(context.getString(
+                    R.string.erasure_report_total,
+                    records.size()
+            ));
             writer.newLine();
 
-            writer.write("Metodo: " + METHOD_DESCRIPTION);
+            writer.write(context.getString(R.string.erasure_report_method, methodDescription));
             writer.newLine();
 
-            writer.write("Limitacao conhecida: sistemas de "
-                    + "arquivos com journaling (ext4/f2fs) "
-                    + "podem reter residuos fora do controle "
-                    + "do aplicativo.");
+            writer.write(context.getString(R.string.erasure_report_divider));
             writer.newLine();
 
-            writer.write("----------------------------------------");
+            writer.write(context.getString(R.string.erasure_report_divider));
             writer.newLine();
 
             SimpleDateFormat fmt =
@@ -363,33 +366,36 @@ final class ErasureReport {
 
             for (ErasureRecord r : records) {
 
-                writer.write("Arquivo:   " + r.fileName);
+                writer.write(context.getString(R.string.erasure_report_file, r.fileName));
                 writer.newLine();
 
-                writer.write("Tamanho:   "
-                        + r.sizeBytes + " bytes");
+                writer.write(context.getString(R.string.erasure_report_size, r.sizeBytes));
                 writer.newLine();
 
-                writer.write("Inicio:    "
-                        + fmt.format(new Date(r.startedAtMillis)));
+                writer.write(context.getString(
+                        R.string.erasure_report_start,
+                        fmt.format(new Date(r.startedAtMillis))
+                ));
                 writer.newLine();
 
-                writer.write("Termino:   "
-                        + fmt.format(new Date(r.finishedAtMillis)));
+                writer.write(context.getString(
+                        R.string.erasure_report_end,
+                        fmt.format(new Date(r.finishedAtMillis))
+                ));
                 writer.newLine();
 
-                writer.write("Metodo:    " + r.method);
+                writer.write(context.getString(R.string.erasure_report_method, r.method));
                 writer.newLine();
 
-                writer.write("Status:    " + r.status);
+                writer.write(context.getString(R.string.erasure_report_status, r.status));
                 writer.newLine();
 
                 if (!r.errorMessage.isEmpty()) {
-                    writer.write("Erro:      " + r.errorMessage);
+                    writer.write(context.getString(R.string.erasure_report_error, r.errorMessage));
                     writer.newLine();
                 }
 
-                writer.write("----------------------------------------");
+                writer.write(context.getString(R.string.erasure_report_divider));
                 writer.newLine();
             }
         }
@@ -407,6 +413,8 @@ final class ErasureReport {
 
         List<ErasureRecord> records =
                 readAll(context);
+        String methodDescription =
+                context.getString(R.string.single_random_overwrite);
 
         SimpleDateFormat fmt =
                 new SimpleDateFormat(
@@ -476,7 +484,7 @@ final class ErasureReport {
                 y = margin;
 
                 canvas.drawText(
-                        "Relatorio de Exclusao Segura",
+                        context.getString(R.string.erasure_report_title),
                         margin,
                         y,
                         titlePaint
@@ -485,8 +493,10 @@ final class ErasureReport {
                 y += lineHeight;
 
                 canvas.drawText(
-                        "S-File Encryptor - "
-                                + fmt.format(new Date()),
+                        context.getString(
+                                R.string.erasure_report_app,
+                                fmt.format(new Date())
+                        ),
                         margin,
                         y,
                         textPaint
@@ -495,7 +505,10 @@ final class ErasureReport {
                 y += lineHeight;
 
                 canvas.drawText(
-                        "Metodo: " + METHOD_DESCRIPTION,
+                        context.getString(
+                                R.string.erasure_report_method,
+                                methodDescription
+                        ),
                         margin,
                         y,
                         textPaint
@@ -504,8 +517,9 @@ final class ErasureReport {
                 y += lineHeight;
 
                 canvas.drawText(
-                        "Registros: " + records.size()
-                                + "  |  Pagina " + pageIndex,
+                        context.getString(R.string.erasure_report_records, records.size())
+                                + "  |  "
+                                + context.getString(R.string.erasure_report_page, pageIndex),
                         margin,
                         y,
                         smallPaint
@@ -514,8 +528,7 @@ final class ErasureReport {
                 y += lineHeight;
 
                 canvas.drawText(
-                        "Nota: journaling do sistema de "
-                                + "arquivos pode reter residuos.",
+                        context.getString(R.string.erasure_report_divider),
                         margin,
                         y,
                         smallPaint
@@ -526,7 +539,7 @@ final class ErasureReport {
 
             // Desenha o registro.
             canvas.drawText(
-                    truncate("Arquivo: " + r.fileName, 88),
+                    truncate(context.getString(R.string.erasure_report_file, r.fileName), 88),
                     margin,
                     y,
                     textPaint
@@ -534,8 +547,9 @@ final class ErasureReport {
             y += lineHeight;
 
             canvas.drawText(
-                    "Tamanho: " + r.sizeBytes
-                            + " bytes  |  Status: " + r.status,
+                    context.getString(R.string.erasure_report_size, r.sizeBytes)
+                            + "  |  "
+                            + context.getString(R.string.erasure_report_status, r.status),
                     margin,
                     y,
                     textPaint
@@ -543,10 +557,13 @@ final class ErasureReport {
             y += lineHeight;
 
             canvas.drawText(
-                    "Inicio: "
-                            + fmt.format(new Date(r.startedAtMillis))
-                            + "   Termino: "
-                            + fmt.format(new Date(r.finishedAtMillis)),
+                    context.getString(
+                            R.string.erasure_report_start,
+                            fmt.format(new Date(r.startedAtMillis))
+                    ) + "   " + context.getString(
+                            R.string.erasure_report_end,
+                            fmt.format(new Date(r.finishedAtMillis))
+                    ),
                     margin,
                     y,
                     textPaint
@@ -554,7 +571,7 @@ final class ErasureReport {
             y += lineHeight;
 
             canvas.drawText(
-                    truncate("Metodo: " + r.method, 88),
+                    truncate(context.getString(R.string.erasure_report_method, r.method), 88),
                     margin,
                     y,
                     smallPaint
@@ -564,7 +581,7 @@ final class ErasureReport {
             if (!r.errorMessage.isEmpty()) {
 
                 canvas.drawText(
-                        truncate("Erro: " + r.errorMessage, 88),
+                        truncate(context.getString(R.string.erasure_report_error, r.errorMessage), 88),
                         margin,
                         y,
                         smallPaint
@@ -851,15 +868,15 @@ private static ErasureRecord fromJsonLine(String line) {
                         : jsonUnescape(error),
 
                 manufacturer == null
-                        ? "Não registrado"
+                        ? "Not recorded"
                         : jsonUnescape(manufacturer),
 
                 deviceModel == null
-                        ? "Não registrado"
+                        ? "Not recorded"
                         : jsonUnescape(deviceModel),
 
                 androidVersion == null
-                        ? "Não registrado"
+                        ? "Not recorded"
                         : jsonUnescape(androidVersion),
 
                 androidApi == null
@@ -867,11 +884,11 @@ private static ErasureRecord fromJsonLine(String line) {
                         : androidApi.intValue(),
 
                 buildId == null
-                        ? "Não registrado"
+                        ? "Not recorded"
                         : jsonUnescape(buildId),
 
                 appVersion == null
-                        ? "Não registrada"
+                        ? "Not recorded"
                         : jsonUnescape(appVersion),
 
                 cycles == null
@@ -883,11 +900,11 @@ private static ErasureRecord fromJsonLine(String line) {
                         : bytesOverwritten,
 
                 overwriteStatus == null
-                        ? "Não registrado"
+                        ? "Not recorded"
                         : jsonUnescape(overwriteStatus),
 
                 deleteStatus == null
-                        ? "Não registrado"
+                        ? "Not recorded"
                         : jsonUnescape(deleteStatus),
 
                 finalOperationType,
@@ -1188,7 +1205,7 @@ static void exportPdf(
         }
 
         canvas.drawText(
-                "Relatório de Exclusão",
+                context.getString(R.string.erasure_pdf_title),
                 120,
                 65,
                 titlePaint
@@ -1210,7 +1227,7 @@ static void exportPdf(
         // -----------------------------------------
 
         canvas.drawText(
-                "1. DEVICE DETAILS",
+                context.getString(R.string.erasure_pdf_device_details),
                 left,
                 y,
                 sectionPaint
@@ -1219,7 +1236,7 @@ static void exportPdf(
         y += 25;
 
         canvas.drawText(
-                "Fabricante: " + record.manufacturer,
+                context.getString(R.string.erasure_pdf_manufacturer, record.manufacturer),
                 left,
                 y,
                 textPaint
@@ -1228,7 +1245,7 @@ static void exportPdf(
         y += 18;
 
         canvas.drawText(
-                "Modelo: " + record.deviceModel,
+                context.getString(R.string.erasure_pdf_model, record.deviceModel),
                 left,
                 y,
                 textPaint
@@ -1237,7 +1254,7 @@ static void exportPdf(
         y += 18;
 
         canvas.drawText(
-                "Android: " + record.androidVersion,
+                context.getString(R.string.erasure_pdf_android, record.androidVersion),
                 left,
                 y,
                 textPaint
@@ -1246,7 +1263,7 @@ static void exportPdf(
         y += 18;
 
         canvas.drawText(
-                "API: " + record.androidApi,
+                context.getString(R.string.erasure_pdf_api, record.androidApi),
                 left,
                 y,
                 textPaint
@@ -1255,7 +1272,7 @@ static void exportPdf(
         y += 18;
 
         canvas.drawText(
-                "Build ID: " + truncate(record.buildId, 75),
+                context.getString(R.string.erasure_pdf_build_id, truncate(record.buildId, 75)),
                 left,
                 y,
                 textPaint
@@ -1272,7 +1289,7 @@ static void exportPdf(
         y += 25;
 
         canvas.drawText(
-                "2. DELETION DETAILS",
+                context.getString(R.string.erasure_pdf_deletion_details),
                 left,
                 y,
                 sectionPaint
@@ -1284,7 +1301,7 @@ static void exportPdf(
 if ("FOLDER".equals(record.operationType)) {
 
     canvas.drawText(
-            "Operação: Exclusão segura de pasta",
+            context.getString(R.string.erasure_pdf_folder_operation),
             left,
             y,
             textPaint
@@ -1293,7 +1310,7 @@ if ("FOLDER".equals(record.operationType)) {
     y += 18;
 
     canvas.drawText(
-            "Arquivos encontrados: " + record.filesFound,
+            context.getString(R.string.erasure_pdf_files_found, record.filesFound),
             left,
             y,
             textPaint
@@ -1302,7 +1319,7 @@ if ("FOLDER".equals(record.operationType)) {
     y += 18;
 
     canvas.drawText(
-            "Arquivos excluídos: " + record.filesDeleted,
+            context.getString(R.string.erasure_pdf_files_deleted, record.filesDeleted),
             left,
             y,
             textPaint
@@ -1311,7 +1328,7 @@ if ("FOLDER".equals(record.operationType)) {
     y += 18;
 
     canvas.drawText(
-            "Arquivos com falha: " + record.filesFailed,
+            context.getString(R.string.erasure_pdf_files_failed, record.filesFailed),
             left,
             y,
             textPaint
@@ -1322,7 +1339,7 @@ if ("FOLDER".equals(record.operationType)) {
 } else {
 
     canvas.drawText(
-            "Arquivo: " + truncate(record.fileName, 75),
+            context.getString(R.string.erasure_pdf_file, truncate(record.fileName, 75)),
             left,
             y,
             textPaint
@@ -1332,8 +1349,8 @@ if ("FOLDER".equals(record.operationType)) {
 }
 
         String sizeLabel = "FOLDER".equals(record.operationType)
-        ? "Tamanho total dos arquivos: "
-        : "Tamanho original: ";
+        ? context.getString(R.string.erasure_pdf_folder_total_size)
+        : context.getString(R.string.erasure_pdf_original_size);
 
 canvas.drawText(
         sizeLabel + record.sizeBytes + " bytes",
@@ -1345,7 +1362,7 @@ canvas.drawText(
         y += 18;
 
         canvas.drawText(
-                "Método: " + truncate(record.method, 75),
+                context.getString(R.string.erasure_pdf_method, truncate(record.method, 75)),
                 left,
                 y,
                 textPaint
@@ -1354,7 +1371,7 @@ canvas.drawText(
         y += 18;
 
         canvas.drawText(
-                "Ciclos: " + record.cycles,
+                context.getString(R.string.erasure_pdf_cycles, record.cycles),
                 left,
                 y,
                 textPaint
@@ -1363,8 +1380,7 @@ canvas.drawText(
         y += 18;
 
         canvas.drawText(
-                "Bytes sobrescritos: "
-                        + record.bytesOverwritten,
+                context.getString(R.string.erasure_pdf_bytes_overwritten, record.bytesOverwritten),
                 left,
                 y,
                 textPaint
@@ -1373,10 +1389,7 @@ canvas.drawText(
         y += 18;
 
         canvas.drawText(
-                "Início: "
-                        + fmt.format(
-                                new Date(record.startedAtMillis)
-                        ),
+                context.getString(R.string.erasure_pdf_start, fmt.format(new Date(record.startedAtMillis))),
                 left,
                 y,
                 textPaint
@@ -1385,10 +1398,7 @@ canvas.drawText(
         y += 18;
 
         canvas.drawText(
-                "Término: "
-                        + fmt.format(
-                                new Date(record.finishedAtMillis)
-                        ),
+                context.getString(R.string.erasure_pdf_end, fmt.format(new Date(record.finishedAtMillis))),
                 left,
                 y,
                 textPaint
@@ -1397,7 +1407,7 @@ canvas.drawText(
         y += 18;
 
         canvas.drawText(
-                "Duração: " + durationText,
+                context.getString(R.string.erasure_pdf_duration, durationText),
                 left,
                 y,
                 textPaint
@@ -1414,7 +1424,7 @@ canvas.drawText(
         y += 25;
 
         canvas.drawText(
-                "3. OPERATION STATUS",
+                context.getString(R.string.erasure_pdf_operation_status),
                 left,
                 y,
                 sectionPaint
@@ -1423,7 +1433,7 @@ canvas.drawText(
         y += 25;
 
         canvas.drawText(
-                "Sobrescrita: " + record.overwriteStatus,
+                context.getString(R.string.erasure_pdf_overwrite, record.overwriteStatus),
                 left,
                 y,
                 textPaint
@@ -1432,7 +1442,7 @@ canvas.drawText(
         y += 18;
 
         canvas.drawText(
-                "Exclusão: " + record.deleteStatus,
+                context.getString(R.string.erasure_pdf_deletion, record.deleteStatus),
                 left,
                 y,
                 textPaint
@@ -1441,7 +1451,7 @@ canvas.drawText(
         y += 18;
 
         canvas.drawText(
-                "Resultado geral: " + record.status,
+                context.getString(R.string.erasure_pdf_overall_result, record.status),
                 left,
                 y,
                 textPaint
@@ -1452,7 +1462,7 @@ canvas.drawText(
             y += 18;
 
             canvas.drawText(
-                    "Erro: " + truncate(record.errorMessage, 75),
+                    context.getString(R.string.erasure_pdf_error, truncate(record.errorMessage, 75)),
                     left,
                     y,
                     textPaint
@@ -1470,7 +1480,7 @@ canvas.drawText(
         y += 25;
 
         canvas.drawText(
-                "4. REPORT DETAILS",
+                context.getString(R.string.erasure_pdf_report_details),
                 left,
                 y,
                 sectionPaint
@@ -1479,7 +1489,7 @@ canvas.drawText(
         y += 25;
 
         canvas.drawText(
-                "Report ID: " + record.reportId,
+                context.getString(R.string.erasure_pdf_report_id, record.reportId),
                 left,
                 y,
                 smallPaint
@@ -1488,8 +1498,7 @@ canvas.drawText(
         y += 18;
 
         canvas.drawText(
-                "Data do relatório: "
-                        + fmt.format(new Date()),
+                context.getString(R.string.erasure_pdf_report_date, fmt.format(new Date())),
                 left,
                 y,
                 textPaint
@@ -1498,7 +1507,7 @@ canvas.drawText(
         y += 18;
 
         canvas.drawText(
-                "Versão do aplicativo: " + record.appVersion,
+                context.getString(R.string.erasure_pdf_app_version, record.appVersion),
                 left,
                 y,
                 textPaint
@@ -1524,7 +1533,7 @@ canvas.drawText(
         );
 
         canvas.drawText(
-                "Relatório individual de operação de exclusão",
+                context.getString(R.string.erasure_pdf_individual_footer),
                 left,
                 815,
                 smallPaint

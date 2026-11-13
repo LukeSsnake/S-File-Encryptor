@@ -1,0 +1,4 @@
+S-File-Encryptor includes modified source code from BinEd Android 0.2.11.
+Copyright (C) ExBin Project, https://exbin.org
+Licensed under the Apache License, Version 2.0.
+The BinEd source code has been adapted for integration with S-File-Encryptor.

@@ -1,0 +1,85 @@
+/*
+ * Copyright (C) ExBin Project, https://exbin.org
+ *
+ * Licensed under the Apache License, Version 2.0 (the "License");
+ * you may not use this file except in compliance with the License.
+ * You may obtain a copy of the License at
+ *
+ *     https://www.apache.org/licenses/LICENSE-2.0
+ *
+ * Unless required by applicable law or agreed to in writing, software
+ * distributed under the License is distributed on an "AS IS" BASIS,
+ * WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
+ * See the License for the specific language governing permissions and
+ * limitations under the License.
+ */
+package org.exbin.bined.editor.android;
+
+import android.app.ActivityManager;
+import android.app.Application;
+
+import org.exbin.auxiliary.binary_data.android_jna.JnaBuffer;
+import org.exbin.auxiliary.binary_data.android_jna.JnaBufferEditableData;
+import org.exbin.auxiliary.binary_data.delta.SegmentsRepository;
+import org.exbin.bined.android.basic.CodeArea;
+import org.exbin.bined.editor.android.preference.BinaryEditorPreferences;
+import org.exbin.bined.editor.android.preference.PreferencesWrapper;
+import org.exbin.bined.editor.android.search.SearchParameters;
+import org.jspecify.annotations.NullMarked;
+import org.jspecify.annotations.Nullable;
+
+/**
+ * Application context.
+ */
+@NullMarked
+public class ApplicationContext extends Application {
+
+    private @Nullable BinaryEditorPreferences appPreferences;
+    private final SegmentsRepository segmentsRepository = new SegmentsRepository(() -> new JnaBufferEditableData());
+
+    private @Nullable BinEdFileHandler fileHandler = null;
+    private boolean searchActive = false;
+    private @Nullable SearchParameters searchParameters = null;
+
+    @Override
+    public void onCreate() {
+        super.onCreate();
+
+        // Pass activity manager for memory checking
+        JnaBuffer.setActivityManager((ActivityManager) getSystemService(ACTIVITY_SERVICE));
+        appPreferences = new BinaryEditorPreferences(new PreferencesWrapper(getApplicationContext()));
+    }
+
+    public BinaryEditorPreferences getAppPreferences() {
+        return appPreferences;
+    }
+
+    @Nullable
+    public BinEdFileHandler getFileHandler() {
+        return fileHandler;
+    }
+
+    public BinEdFileHandler createFileHandler(CodeArea codeArea) {
+        fileHandler = new BinEdFileHandler(codeArea);
+        fileHandler.setSegmentsRepository(segmentsRepository);
+        fileHandler.setNewData(appPreferences.getEditorPreferences().getFileHandlingMode());
+        return fileHandler;
+    }
+
+    @Nullable
+    public SearchParameters getSearchParameters() {
+        return searchParameters;
+    }
+
+    public void setSearchParameters(@Nullable SearchParameters searchParameters) {
+        this.searchParameters = searchParameters;
+    }
+
+    public boolean isSearchActive() {
+        return searchActive;
+    }
+
+    public void setSearchActive(boolean searchActive) {
+        this.searchActive = searchActive;
+    }
+}

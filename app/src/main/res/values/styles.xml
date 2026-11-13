@@ -1,10 +1,37 @@
 <resources>
-    <style name="AppTheme" parent="android:style/Theme.Material.Light.NoActionBar">
-        <item name="android:fontFamily">sans</item>
-        <item name="android:colorAccent">#3F51B5</item>
-        <item name="android:navigationBarColor">#263238</item>
-        <item name="android:windowLightStatusBar">false</item>
-        <item name="android:statusBarColor">#263238</item>
-        <item name="android:windowLightNavigationBar">false</item>
+
+    <!-- Base application theme. -->
+    <style name="BinEdAppTheme" parent="Theme.AppCompat.Light.NoActionBar">
+
+        <item name="colorPrimary">#263238</item>
+        <item name="colorPrimaryDark">#263238</item>
+        <item name="colorAccent">#00BCAF</item>
+        <item name="android:colorAccent">@color/colorAccent</item>
+        <item name="iconTint">@color/menu_icon_state</item>
+
     </style>
+
+    <style name="BinEdAppTheme.NoActionBar">
+        <item name="windowActionBar">false</item>
+        <item name="windowNoTitle">true</item>
+    </style>
+
+    <style name="BinEdAppTheme.AppBarOverlay" parent="ThemeOverlay.AppCompat.ActionBar" />
+
+    <style name="BinEdAppTheme.PopupOverlay" parent="ThemeOverlay.AppCompat.Light" />
+
+    <style name="Widget.AppTheme.MyView" parent="">
+        <item name="android:background">@color/gray_400</item>
+    </style>
+
+    <style name="MyButtonSmallStyle" parent="android:Widget.Button.Small">
+        <item name="android:minHeight">22dp</item>
+        <item name="android:minWidth">32dp</item>
+    </style>
+    <style name="AppTheme" parent="Theme.AppCompat.Light.NoActionBar">
+    <item name="colorPrimary">#263238</item>
+    <item name="colorPrimaryDark">#263238</item>
+    <item name="colorAccent">#00BCAF</item>
+    <item name="android:windowActionModeOverlay">true</item>
+</style>
 </resources>

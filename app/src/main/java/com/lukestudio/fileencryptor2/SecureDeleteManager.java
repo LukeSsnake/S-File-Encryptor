@@ -73,7 +73,7 @@ public static Result overwriteFile(
             return result(
                     Status.FAILED,
                     0,
-                    "Arquivo ou contexto inválido."
+                    (context != null ? context.getString(R.string.secure_delete_invalid_input) : "Invalid file or context.")
             );
         }
 
@@ -97,7 +97,7 @@ public static Result overwriteFile(
                 return result(
                         Status.UNSUPPORTED,
                         0,
-                        "O provedor não permite escrita."
+                        context.getString(R.string.secure_delete_provider_no_write)
                 );
             }
 
@@ -110,7 +110,7 @@ public static Result overwriteFile(
     return result(
             Status.UNSUPPORTED,
             0,
-            "Não foi possível abrir o canal de escrita."
+            context.getString(R.string.secure_delete_open_channel_failed)
     );
 }
 
@@ -128,7 +128,7 @@ public static Result overwriteFile(
                     return result(
                             Status.UNSUPPORTED,
                             0,
-                            "Não foi possível determinar o tamanho."
+                            context.getString(R.string.secure_delete_size_unknown)
                     );
                 }
 
@@ -160,7 +160,7 @@ public static Result overwriteFile(
                         if (written <= 0) {
 
                             throw new IOException(
-                                    "Falha durante a sobrescrita."
+                                    context.getString(R.string.secure_delete_overwrite_failed)
                             );
                         }
 
@@ -183,7 +183,7 @@ public static Result overwriteFile(
                 return result(
                         Status.SUCCESS,
                         totalWritten,
-                        "Sobrescrita lógica concluída."
+                        context.getString(R.string.secure_delete_overwrite_complete)
                 );
             }
 
@@ -192,7 +192,7 @@ public static Result overwriteFile(
             return result(
                     Status.UNSUPPORTED,
                     totalWritten,
-                    "Operação não suportada pelo provedor."
+                    context.getString(R.string.secure_delete_provider_unsupported)
             );
 
         } catch (SecurityException e) {
@@ -200,7 +200,7 @@ public static Result overwriteFile(
             return result(
                     Status.UNSUPPORTED,
                     totalWritten,
-                    "Permissão de escrita insuficiente."
+                    context.getString(R.string.secure_delete_write_permission)
             );
 
         } catch (Exception e) {
@@ -208,8 +208,7 @@ public static Result overwriteFile(
             return result(
                     Status.FAILED,
                     totalWritten,
-                    "Não foi possível concluir a sobrescrita: "
-                            + e.getMessage()
+                    context.getString(R.string.secure_delete_overwrite_error, e.getMessage())
             );
 
         } finally {
@@ -227,7 +226,7 @@ public static Result overwriteFile(
         return result(
                 Status.FAILED,
                 0,
-                "Arquivo ou contexto inválido."
+                (context != null ? context.getString(R.string.secure_delete_invalid_input) : "Invalid file or context.")
         );
     }
 
@@ -239,7 +238,7 @@ public static Result overwriteFile(
             return result(
                     Status.UNSUPPORTED,
                     0,
-                    "URI não suportada pelo SAF."
+                    context.getString(R.string.secure_delete_unsupported_uri)
             );
         }
 
@@ -278,7 +277,7 @@ public static Result overwriteFile(
                     return result(
                             Status.SUCCESS,
                             0,
-                            "Exclusão confirmada."
+                            context.getString(R.string.secure_delete_confirmed)
                     );
                 }
 
@@ -287,16 +286,14 @@ public static Result overwriteFile(
                 return result(
                         Status.FAILED,
                         0,
-                        "A exclusão apresentou erro e não foi possível "
-                                + "confirmar o estado do arquivo."
+                        context.getString(R.string.secure_delete_verify_failed)
                 );
             }
 
             return result(
                     Status.FAILED,
                     0,
-                    "Erro durante a exclusão: "
-                            + deleteException.getMessage()
+                    context.getString(R.string.secure_delete_error, deleteException.getMessage())
             );
         }
 
@@ -305,7 +302,7 @@ public static Result overwriteFile(
             return result(
                     Status.FAILED,
                     0,
-                    "O provedor não confirmou a exclusão."
+                    context.getString(R.string.secure_delete_not_confirmed)
             );
         }
 
@@ -329,14 +326,14 @@ public static Result overwriteFile(
                 return result(
                         Status.SUCCESS,
                         0,
-                        "Exclusão confirmada."
+                        context.getString(R.string.secure_delete_confirmed)
                 );
             }
 
             return result(
                     Status.FAILED,
                     0,
-                    "O documento ainda está acessível após a exclusão."
+                    context.getString(R.string.secure_delete_still_accessible)
             );
 
         } catch (SecurityException e) {
@@ -350,7 +347,7 @@ public static Result overwriteFile(
             return result(
                     Status.SUCCESS,
                     0,
-                    "Exclusão confirmada pelo provedor."
+                    context.getString(R.string.secure_delete_provider_confirmed)
             );
         }
 
@@ -359,7 +356,7 @@ public static Result overwriteFile(
         return result(
                 Status.UNSUPPORTED,
                 0,
-                "Permissão insuficiente para excluir o arquivo."
+                context.getString(R.string.secure_delete_permission)
         );
 
     } catch (Exception e) {
@@ -367,8 +364,7 @@ public static Result overwriteFile(
         return result(
                 Status.FAILED,
                 0,
-                "Erro durante a exclusão: "
-                        + e.getMessage()
+                context.getString(R.string.secure_delete_error, e.getMessage())
         );
     }
 }

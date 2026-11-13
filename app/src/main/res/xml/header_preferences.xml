@@ -1,0 +1,36 @@
+<PreferenceScreen xmlns:app="http://schemas.android.com/apk/res-auto">
+
+    <Preference
+        app:icon="@drawable/ic_info_24"
+        app:key="appearance_group"
+        app:title="@string/pref_header_appearance" />
+
+    <Preference
+        app:icon="@drawable/ic_eye_24"
+        app:key="view_group"
+        app:title="@string/pref_view_header" />
+
+    <ListPreference
+        app:defaultValue="memory"
+        app:entries="@array/file_handling_mode_entries"
+        app:entryValues="@array/file_handling_mode_values"
+        app:key="file_handling_mode"
+        app:title="@string/file_handling_mode"
+        app:useSimpleSummaryProvider="true" />
+
+    <ListPreference
+        app:defaultValue="small"
+        app:entries="@array/keys_panel_mode_entries"
+        app:entryValues="@array/keys_panel_mode_values"
+        app:key="keys_panel_mode"
+        app:title="@string/keys_panel_mode"
+        app:useSimpleSummaryProvider="true" />
+
+    <ListPreference
+        app:defaultValue="show"
+        app:entries="@array/data_inspector_mode_entries"
+        app:entryValues="@array/data_inspector_mode_values"
+        app:key="data_inspector_mode"
+        app:title="@string/data_inspector_mode"
+        app:useSimpleSummaryProvider="true" />
+</PreferenceScreen>

@@ -1,5 +1,7 @@
 package com.lukestudio.fileencryptor2;
 
+import android.content.Context;
+
 import org.bouncycastle.crypto.InvalidCipherTextException;
 import org.bouncycastle.crypto.engines.AESEngine;
 import org.bouncycastle.crypto.generators.Argon2BytesGenerator;
@@ -178,6 +180,10 @@ public final class CryptoEngine {
         public WrongPasswordException() {
             super("Senha incorreta.");
         }
+
+        public String getUserMessage(Context context) {
+            return context.getString(R.string.wrong_password);
+        }
     }
 
     public static class CorruptFileException
@@ -191,6 +197,10 @@ public final class CryptoEngine {
                 String message
         ) {
             super(message);
+        }
+
+        public String getUserMessage(Context context) {
+            return context.getString(R.string.corrupt_file);
         }
     }
 

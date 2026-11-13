@@ -1,0 +1,59 @@
+<resources>
+    <string-array name="theme_entries">
+        <item>Αυτόματο (σύστημα)</item>
+        <item>Φωτεινό</item>
+        <item>Σκοτεινό</item>
+    </string-array>
+
+    <string-array name="bytes_per_row_entries">
+        <item>Γέμισμα Οθόνης</item>
+        <item>4 Bytes</item>
+        <item>8 Bytes</item>
+        <item>12 Bytes</item>
+        <item>16 Bytes</item>
+        <item>Προσαρμοσμένο</item>
+    </string-array>
+
+    <string-array name="view_mode_entries">
+        <item>Διπλή</item>
+        <item>Κώδικας Matrix</item>
+        <item>Προεπισκόπηση Κειμένου</item>
+    </string-array>
+
+    <string-array name="code_type_entries">
+        <item>Δυαδικός</item>
+        <item>Οκταδικός</item>
+        <item>Δεκαδικός</item>
+        <item>Δεκαεξαδικός</item>
+    </string-array>
+
+    <string-array name="code_type_short">
+        <item>BIN</item>
+        <item>OCT</item>
+        <item>DEC</item>
+        <item>HEX</item>
+    </string-array>
+
+    <string-array name="hex_chars_case_entries">
+        <item>Πεζά Γράμματα</item>
+        <item>Κεφαλαία Γράμματα</item>
+    </string-array>
+
+    <string-array name="file_handling_mode_entries">
+        <item>Φόρτωση πλήρους αρχείου</item>
+        <item>Μόνο αλλαγές</item>
+    </string-array>
+
+    <string-array name="keys_panel_mode_entries">
+        <item>Απόκρυψη</item>
+        <item>Μικρός</item>
+        <item>Μεσαίος</item>
+        <item>Μεγάλος</item>
+    </string-array>
+
+    <string-array name="data_inspector_mode_entries">
+        <item>Απόκρυψη</item>
+        <item>Εμφάνιση</item>
+        <item>Σε Οριζόντιο Προσανατολισμό</item>
+    </string-array>
+</resources>

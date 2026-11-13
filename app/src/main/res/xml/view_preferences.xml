@@ -1,0 +1,54 @@
+<PreferenceScreen xmlns:app="http://schemas.android.com/apk/res-auto">
+
+    <org.exbin.bined.editor.android.preference.FontPreference
+        app:key="font"
+        app:title="@string/font"
+        app:defaultValue="Font"
+        app:useSimpleSummaryProvider="true" />
+
+    <org.exbin.bined.editor.android.preference.EncodingPreference
+        app:key="encoding"
+        app:title="@string/encoding"
+        app:defaultValue="UTF-8"
+        app:useSimpleSummaryProvider="true" />
+
+    <ListPreference
+        app:defaultValue="bytes_per_row"
+        app:entries="@array/bytes_per_row_entries"
+        app:entryValues="@array/bytes_per_row_values"
+        app:key="bytes_per_row"
+        app:title="@string/bytes_per_row"
+        app:useSimpleSummaryProvider="true" />
+
+    <ListPreference
+        app:defaultValue="dual"
+        app:entries="@array/view_mode_entries"
+        app:entryValues="@array/view_mode_values"
+        app:key="view_mode"
+        app:title="@string/view_mode"
+        app:useSimpleSummaryProvider="true" />
+
+    <ListPreference
+        app:defaultValue="hexadecimal"
+        app:entries="@array/code_type_entries"
+        app:entryValues="@array/code_type_values"
+        app:key="code_type"
+        app:title="@string/code_type"
+        app:useSimpleSummaryProvider="true" />
+
+    <ListPreference
+        app:defaultValue="lower"
+        app:entries="@array/hex_chars_case_entries"
+        app:entryValues="@array/hex_chars_case_values"
+        app:key="hex_characters_case"
+        app:title="@string/hex_characters_case"
+        app:useSimpleSummaryProvider="true" />
+
+    <SwitchPreferenceCompat
+        app:key="code_colorization"
+        app:title="@string/code_colorization" />
+
+    <SwitchPreferenceCompat
+        app:key="nonprintable_characters"
+        app:title="@string/nonprintable_characters" />
+</PreferenceScreen>

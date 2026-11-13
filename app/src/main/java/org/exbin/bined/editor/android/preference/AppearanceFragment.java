@@ -1,0 +1,106 @@
+/*
+ * Copyright (C) ExBin Project, https://exbin.org
+ *
+ * Licensed under the Apache License, Version 2.0 (the "License");
+ * you may not use this file except in compliance with the License.
+ * You may obtain a copy of the License at
+ *
+ *     https://www.apache.org/licenses/LICENSE-2.0
+ *
+ * Unless required by applicable law or agreed to in writing, software
+ * distributed under the License is distributed on an "AS IS" BASIS,
+ * WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
+ * See the License for the specific language governing permissions and
+ * limitations under the License.
+ */
+package org.exbin.bined.editor.android.preference;
+
+
+import com.lukestudio.fileencryptor2.R;
+import android.content.res.Configuration;
+import android.content.res.Resources;
+import android.os.Bundle;
+
+import androidx.appcompat.app.AppCompatDelegate;
+import androidx.core.os.LocaleListCompat;
+import androidx.preference.ListPreference;
+import androidx.preference.PreferenceFragmentCompat;
+
+import org.exbin.bined.editor.android.CompatUtils;
+import org.exbin.bined.editor.android.HexEditorActivity;
+import com.lukestudio.fileencryptor2.R;
+import org.exbin.bined.editor.android.SettingsActivity;
+import org.exbin.bined.editor.android.options.Theme;
+
+import org.jspecify.annotations.NullMarked;
+import org.jspecify.annotations.Nullable;
+
+/**
+ * Settings appearance fragment.
+ */
+@NullMarked
+public class AppearanceFragment extends PreferenceFragmentCompat {
+
+    public static final String LANGUAGE_KEY = "language";
+    public static final String THEME_KEY = "theme";
+
+    @Override
+    public void onCreatePreferences(@Nullable Bundle savedInstanceState, @Nullable String rootKey) {
+        setPreferencesFromResource(R.xml.main_preferences, rootKey);
+
+        // Load from preferences
+        SettingsActivity activity = (SettingsActivity) requireActivity();
+        MainPreferences mainPreferences = activity.getAppPreferences().getMainPreferences();
+        ListPreference languagePreference = findPreference(LANGUAGE_KEY);
+        languagePreference.setOnPreferenceChangeListener((preference, newValue) -> {
+            String language = (String) newValue;
+            // Dynamically change language
+            LocaleListCompat locales = HexEditorActivity.getLanguageLocaleList("default".equals(language) ? "" : language);
+            CompatUtils.setApplicationLocales(activity, locales);
+
+            Resources resources = getResources();
+            try {
+                // Update title for possibly switched language
+                Configuration configuration = resources.getConfiguration();
+                configuration.setLocales((android.os.LocaleList) CompatUtils.getApplicationLocales(activity).unwrap());
+                resources = getContext().createConfigurationContext(configuration).getResources();
+            } catch (Throwable tw) {
+                // Might fail on older versions with: Could not find class 'android.os.LocaleList'
+            }
+
+            activity.setTitle(resources.getString(R.string.pref_header_appearance));
+
+            return true;
+        });
+        String localeTag = mainPreferences.getLocaleTag();
+        languagePreference.setValue(localeTag.isEmpty() ? "default" : localeTag);
+
+        ListPreference themePreference = findPreference(THEME_KEY);
+        themePreference.setOnPreferenceChangeListener((preference, newValue) -> {
+            // Dynamically change theme
+            if (Theme.DARK.name().equalsIgnoreCase((String) newValue)) {
+                AppCompatDelegate.setDefaultNightMode(AppCompatDelegate.MODE_NIGHT_YES);
+            } else if (Theme.LIGHT.name().equalsIgnoreCase((String) newValue)) {
+                AppCompatDelegate.setDefaultNightMode(AppCompatDelegate.MODE_NIGHT_NO);
+            } else {
+                AppCompatDelegate.setDefaultNightMode(AppCompatDelegate.MODE_NIGHT_FOLLOW_SYSTEM);
+            }
+
+            return true;
+        });
+        themePreference.setValue(mainPreferences.getTheme());
+    }
+
+    @Override
+    public void onDestroy() {
+        // Save to preferences
+        SettingsActivity activity = (SettingsActivity) requireActivity();
+        BinaryEditorPreferences appPreferences = activity.getAppPreferences();
+        MainPreferences mainPreferences = appPreferences.getMainPreferences();
+        String value = ((ListPreference) findPreference(LANGUAGE_KEY)).getValue();
+        mainPreferences.setLocaleTag("default".equals(value) ? "" : value);
+        mainPreferences.setTheme(((ListPreference) findPreference(THEME_KEY)).getValue());
+
+        super.onDestroy();
+    }
+}

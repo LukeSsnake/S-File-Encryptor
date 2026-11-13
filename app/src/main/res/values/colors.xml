@@ -1,1 +1,12 @@
-<resources><color name="card_background">#FFEEEEEE</color></resources>
+<?xml version="1.0" encoding="utf-8"?>
+<resources>
+    <color name="colorPrimary">#3F51B5</color>
+    <color name="colorPrimaryDark">#303F9F</color>
+    <color name="colorAccent">#263238</color>
+    <color name="light_blue_400">#263238</color>
+    <color name="light_blue_600">#FF039BE5</color>
+    <color name="gray_400">#FFBDBDBD</color>
+    <color name="gray_600">#FF757575</color>
+    <color name="icon_tint">#FF202020</color>
+    <color name="disabled_icon_tint">#FF9F9F9F</color>
+</resources>

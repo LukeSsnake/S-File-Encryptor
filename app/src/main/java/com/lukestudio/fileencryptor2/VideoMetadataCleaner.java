@@ -1746,7 +1746,7 @@ private static void verifyMdtaAtomCleared(
         );
     }
 }
-    
+
 private static void clearTimestamp(
         RandomAccessFile raf,
         MetadataInfo timestamp
@@ -1931,7 +1931,7 @@ for (AtomInfo atom : removableMdta) {
             inspect(raf)
     );
 }
-        
+
         // Confirma que todos os timestamps foram zerados.
 for (MetadataInfo timestamp : timestamps) {
 
@@ -2137,7 +2137,7 @@ for (AtomInfo atom : cleanedAtoms) {
         }
     }
 
-    
+
     private static void saveDiagnosticReport(
         Context context,
         String report

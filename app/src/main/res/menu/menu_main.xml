@@ -1,0 +1,119 @@
+<?xml version="1.0" encoding="utf-8"?>
+<menu xmlns:android="http://schemas.android.com/apk/res/android"
+    xmlns:app="http://schemas.android.com/apk/res-auto"
+    xmlns:tools="http://schemas.android.com/tools"
+    tools:context="org.exbin.bined.editor.android.HexEditorActivity">
+
+    <item
+        android:id="@+id/action_search"
+        android:icon="@drawable/ic_search_24"
+        android:title="@string/action_search"
+        app:showAsAction="ifRoom" />
+
+    <item
+        android:id="@+id/action_undo"
+        android:icon="@drawable/ic_undo_24"
+        android:title="@string/action_undo"
+        app:showAsAction="ifRoom" />
+
+    <item
+        android:id="@+id/action_redo"
+        android:icon="@drawable/ic_redo_24"
+        android:title="@string/action_redo"
+        app:showAsAction="ifRoom" />
+
+    <item
+        android:id="@+id/action_new"
+        android:icon="@drawable/ic_file_new_24"
+        android:title="@string/action_new" />
+
+    <item
+        android:id="@+id/action_open"
+        android:icon="@drawable/ic_file_open_24"
+        android:title="@string/action_open" />
+
+    <item
+        android:id="@+id/action_save"
+        android:icon="@drawable/ic_file_save_24"
+        android:title="@string/action_save" />
+
+    <item
+        android:id="@+id/action_save_as"
+        android:icon="@drawable/ic_file_save_as_24"
+        android:title="@string/action_save_as" />
+
+    <item
+        android:id="@+id/view_menu"
+        android:title="@string/view_menu">
+        <menu>
+
+            <item
+                android:id="@+id/view_mode"
+                android:title="@string/view_mode" />
+
+            <item
+                android:id="@+id/action_open_table_file"
+                android:title="@string/action_open_table_file" />
+
+        </menu>
+    </item>
+
+    <item
+        android:id="@+id/edit_menu"
+        android:title="@string/edit_menu">
+        <menu>
+
+            <item
+                android:id="@+id/action_cut"
+                android:title="@string/action_cut" />
+
+            <item
+                android:id="@+id/action_copy"
+                android:title="@string/action_copy" />
+
+            <item
+                android:id="@+id/action_paste"
+                android:title="@string/action_paste" />
+
+            <item
+                android:id="@+id/action_delete"
+                android:title="@string/action_delete" />
+
+            <item
+                android:id="@+id/action_select_all"
+                android:title="@string/action_select_all" />
+
+            <item
+                android:id="@+id/go_to_position"
+                android:title="@string/go_to_position" />
+
+            <item
+                android:id="@+id/edit_selection"
+                android:title="@string/edit_selection" />
+
+            <item
+                android:id="@+id/insert_data"
+                android:enabled="false"
+                android:title="@string/insert_data" />
+
+            <item
+                android:id="@+id/convert_data"
+                android:enabled="false"
+                android:title="@string/convert_data" />
+
+        </menu>
+    </item>
+
+    <item
+        android:id="@+id/tools_menu"
+        android:enabled="false"
+        android:title="@string/tools_menu">
+        <menu />
+    </item>
+
+    <item
+        android:id="@+id/action_about"
+        android:icon="@drawable/ic_info_24"
+        android:title="@string/action_about" />
+
+</menu>

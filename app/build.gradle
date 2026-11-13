@@ -1,6 +1,16 @@
-plugins { id 'com.android.application' }
+plugins {
+    id 'com.android.application'
+    }
+
+def keystorePropertiesFile = rootProject.file('keystore.properties')
+def keystoreProperties = new Properties()
+
+if (keystorePropertiesFile.exists()) {
+    keystoreProperties.load(new FileInputStream(keystorePropertiesFile))
+}
 
 android {
+    sourceSets { main.java.srcDirs += 'libsrc' }
     namespace 'com.lukestudio.fileencryptor2'
     compileSdk 36
 
@@ -8,9 +18,30 @@ android {
         applicationId 'com.lukestudio.fileencryptor2'
         minSdk 23
         targetSdk 36
-        versionCode 29
-        versionName '3.0.8'
+        versionCode 34
+        versionName '3.1.3'
     }
+
+
+signingConfigs {
+    release {
+        storeFile rootProject.file(keystoreProperties['storeFile'])
+        storePassword keystoreProperties['storePassword']
+        keyAlias keystoreProperties['keyAlias']
+        keyPassword keystoreProperties['keyPassword']
+    }
+}
+
+buildTypes {
+        release {
+            signingConfig signingConfigs.release
+            minifyEnabled true
+            shrinkResources true
+            proguardFiles getDefaultProguardFile('proguard-android-optimize.txt'),
+                'proguard-rules.pro'
+        }
+    }
+
 
     packaging {
         resources {
@@ -23,13 +54,23 @@ android {
             ]
         }
     }
-    
+
 }
 
 
 
 dependencies {
+    implementation 'org.jetbrains.kotlin:kotlin-stdlib-jdk7:1.8.22'
+    implementation 'org.jetbrains.kotlin:kotlin-stdlib-jdk8:1.8.22'
     implementation 'androidx.biometric:biometric:1.1.0'
+    implementation 'androidx.appcompat:appcompat:1.7.1'
+    implementation 'androidx.preference:preference:1.2.1'
+    implementation 'com.google.android.material:material:1.6.1'
+    implementation 'com.google.android.flexbox:flexbox:3.0.0'
+    implementation 'net.java.dev.jna:jna:5.19.1@aar'
+    implementation project(':file_picker')
+    compileOnly 'org.jspecify:jspecify:1.0.0'
+    compileOnly 'com.google.code.findbugs:jsr305:3.0.2'
     implementation 'androidx.documentfile:documentfile:1.0.1'
     implementation 'org.bouncycastle:bcprov-jdk18on:1.86'
     implementation 'org.bouncycastle:bcpkix-jdk18on:1.86'

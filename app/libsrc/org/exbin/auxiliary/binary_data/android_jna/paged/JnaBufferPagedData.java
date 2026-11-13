@@ -1,0 +1,72 @@
+/*
+ * Copyright (C) ExBin Project, https://exbin.org
+ *
+ * Licensed under the Apache License, Version 2.0 (the "License");
+ * you may not use this file except in compliance with the License.
+ * You may obtain a copy of the License at
+ *
+ *     https://www.apache.org/licenses/LICENSE-2.0
+ *
+ * Unless required by applicable law or agreed to in writing, software
+ * distributed under the License is distributed on an "AS IS" BASIS,
+ * WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
+ * See the License for the specific language governing permissions and
+ * limitations under the License.
+ */
+package org.exbin.auxiliary.binary_data.android_jna.paged;
+
+import org.jspecify.annotations.Nullable;
+import org.jspecify.annotations.NullMarked;
+import org.exbin.auxiliary.binary_data.EditableBinaryData;
+import org.exbin.auxiliary.binary_data.android_jna.JnaBufferData;
+import org.exbin.auxiliary.binary_data.buffer.paged.BufferPagedData;
+import org.exbin.auxiliary.binary_data.paged.DataPageCreator;
+
+/**
+ * Paged data stored using JNA byte buffer.
+ */
+@NullMarked
+public class JnaBufferPagedData extends BufferPagedData {
+
+    public JnaBufferPagedData() {
+    }
+
+    public JnaBufferPagedData(DataPageCreator dataPageCreator) {
+        this.dataPageCreator = dataPageCreator;
+    }
+
+    public JnaBufferPagedData(int pageSize) {
+        this.pageSize = pageSize;
+    }
+
+    @Override
+    protected JnaBufferData createNewPage(byte[] pageData) {
+        if (dataPageCreator != null) {
+            EditableBinaryData page = dataPageCreator.createPage(pageData.length);
+            page.replace(0, pageData);
+            return (JnaBufferData) page;
+        }
+
+        return new JnaBufferData(pageData);
+    }
+
+    @Override
+    protected JnaBufferData createNewPage(int pageDataSize) {
+        if (dataPageCreator != null) {
+            return (JnaBufferData) dataPageCreator.createPage(pageDataSize);
+        }
+
+        return new JnaBufferData(pageDataSize);
+    }
+
+    @Nullable
+    @Override
+    public DataPageCreator getDataPageCreator() {
+        return dataPageCreator;
+    }
+
+    @Override
+    public void setDataPageCreator(@Nullable DataPageCreator dataPageCreator) {
+        this.dataPageCreator = dataPageCreator;
+    }
+}

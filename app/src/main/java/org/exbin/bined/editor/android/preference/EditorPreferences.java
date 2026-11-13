@@ -1,0 +1,126 @@
+/*
+ * Copyright (C) ExBin Project, https://exbin.org
+ *
+ * Licensed under the Apache License, Version 2.0 (the "License");
+ * you may not use this file except in compliance with the License.
+ * You may obtain a copy of the License at
+ *
+ *     https://www.apache.org/licenses/LICENSE-2.0
+ *
+ * Unless required by applicable law or agreed to in writing, software
+ * distributed under the License is distributed on an "AS IS" BASIS,
+ * WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
+ * See the License for the specific language governing permissions and
+ * limitations under the License.
+ */
+package org.exbin.bined.editor.android.preference;
+
+import org.exbin.bined.basic.EnterKeyHandlingMode;
+import org.exbin.bined.basic.TabKeyHandlingMode;
+import org.exbin.bined.editor.android.options.DataInspectorMode;
+import org.exbin.bined.editor.android.options.EditorOptions;
+import org.exbin.bined.editor.android.options.KeysPanelMode;
+import org.exbin.bined.component.FileProcessingMode;
+
+import java.util.logging.Level;
+import java.util.logging.Logger;
+
+import org.jspecify.annotations.NullMarked;
+
+/**
+ * Binary editor preferences.
+ */
+@NullMarked
+public class EditorPreferences implements EditorOptions {
+
+    public static final String PREFERENCES_FILE_HANDLING_MODE = "fileHandlingMode";
+    public static final String PREFERENCES_KEYS_PANEL_MODE = "keysPanelMode";
+    public static final String PREFERENCES_ENTER_KEY_HANDLING_MODE = "enterKeyHandlingMode";
+    public static final String PREFERENCES_TAB_KEY_HANDLING_MODE = "tabKeyHandlingMode";
+    public static final String PREFERENCES_DATA_INSPECTOR_MODE = "dataInspectorMode";
+
+    private final OptionsStorage optionsStorage;
+
+    public EditorPreferences(OptionsStorage optionsStorage) {
+        this.optionsStorage = optionsStorage;
+    }
+
+    @Override
+    public FileProcessingMode getFileHandlingMode() {
+        FileProcessingMode defaultFileProcessingMode = FileProcessingMode.MEMORY;
+        try {
+            return FileProcessingMode.valueOf(optionsStorage.get(PREFERENCES_FILE_HANDLING_MODE, defaultFileProcessingMode.name()).toUpperCase());
+        } catch (IllegalArgumentException ex) {
+            Logger.getLogger(EditorPreferences.class.getName()).log(Level.SEVERE, null, ex);
+            return defaultFileProcessingMode;
+        }
+    }
+
+    @Override
+    public void setKeysPanelMode(KeysPanelMode keysPanelMode) {
+        optionsStorage.put(PREFERENCES_KEYS_PANEL_MODE, keysPanelMode.name());
+    }
+
+    @Override
+    public KeysPanelMode getKeysPanelMode() {
+        KeysPanelMode defaultKeysPanelMode = KeysPanelMode.MEDIUM;
+        try {
+            return KeysPanelMode.valueOf(optionsStorage.get(PREFERENCES_KEYS_PANEL_MODE, defaultKeysPanelMode.name()).toUpperCase());
+        } catch (IllegalArgumentException ex) {
+            Logger.getLogger(EditorPreferences.class.getName()).log(Level.SEVERE, null, ex);
+            return defaultKeysPanelMode;
+        }
+    }
+
+    @Override
+    public void setFileHandlingMode(FileProcessingMode fileProcessingMode) {
+        optionsStorage.put(PREFERENCES_FILE_HANDLING_MODE, fileProcessingMode.name());
+    }
+
+    @Override
+    public EnterKeyHandlingMode getEnterKeyHandlingMode() {
+        EnterKeyHandlingMode defaultValue = EnterKeyHandlingMode.PLATFORM_SPECIFIC;
+        try {
+            return EnterKeyHandlingMode.valueOf(optionsStorage.get(PREFERENCES_ENTER_KEY_HANDLING_MODE, defaultValue.name()).toUpperCase());
+        } catch (IllegalArgumentException ex) {
+            return defaultValue;
+        }
+    }
+
+    @Override
+    public void setEnterKeyHandlingMode(EnterKeyHandlingMode enterKeyHandlingMode) {
+        optionsStorage.put(PREFERENCES_ENTER_KEY_HANDLING_MODE, enterKeyHandlingMode.name().toLowerCase());
+    }
+
+    @Override
+    public TabKeyHandlingMode getTabKeyHandlingMode() {
+        TabKeyHandlingMode defaultValue = TabKeyHandlingMode.PLATFORM_SPECIFIC;
+        try {
+            return TabKeyHandlingMode.valueOf(optionsStorage.get(PREFERENCES_TAB_KEY_HANDLING_MODE, defaultValue.name()).toUpperCase());
+        } catch (IllegalArgumentException ex) {
+            return defaultValue;
+        }
+    }
+
+    @Override
+    public void setTabKeyHandlingMode(TabKeyHandlingMode tabKeyHandlingMode) {
+        optionsStorage.put(PREFERENCES_TAB_KEY_HANDLING_MODE, tabKeyHandlingMode.name().toLowerCase());
+    }
+
+    @Override
+    public void setDataInspectorMode(DataInspectorMode dataInspectorMode) {
+        optionsStorage.put(PREFERENCES_DATA_INSPECTOR_MODE, dataInspectorMode.name().toLowerCase());
+    }
+
+    @Override
+    public DataInspectorMode getDataInspectorMode() {
+        DataInspectorMode defaultDataInspectorMode = DataInspectorMode.LANDSCAPE;
+        try {
+            return DataInspectorMode.valueOf(optionsStorage.get(PREFERENCES_DATA_INSPECTOR_MODE, defaultDataInspectorMode.name()).toUpperCase());
+        } catch (IllegalArgumentException ex) {
+            Logger.getLogger(EditorPreferences.class.getName()).log(Level.SEVERE, null, ex);
+            return defaultDataInspectorMode;
+        }
+    }
+
+}

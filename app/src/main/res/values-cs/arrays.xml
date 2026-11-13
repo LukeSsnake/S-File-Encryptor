@@ -1,0 +1,59 @@
+<resources>
+    <string-array name="theme_entries">
+        <item>Výchozí (systém)</item>
+        <item>Světlý</item>
+        <item>Tmavý</item>
+    </string-array>
+
+    <string-array name="bytes_per_row_entries">
+        <item>Vyplnit šířku</item>
+        <item>4 bajty</item>
+        <item>8 bajtů</item>
+        <item>12 bajtů</item>
+        <item>16 bajtů</item>
+        <item>Vlastní</item>
+    </string-array>
+
+    <string-array name="view_mode_entries">
+        <item>Duální</item>
+        <item>Matice kódů</item>
+        <item>Náhled textu</item>
+    </string-array>
+
+    <string-array name="code_type_entries">
+        <item>Binární</item>
+        <item>Osmičková</item>
+        <item>Desetinné</item>
+        <item>Hexadecimální</item>
+    </string-array>
+
+    <string-array name="code_type_short">
+        <item>BIN</item>
+        <item>OSM</item>
+        <item>DES</item>
+        <item>HEX</item>
+    </string-array>
+
+    <string-array name="hex_chars_case_entries">
+        <item>Malá písmena</item>
+        <item>Velká písmena</item>
+    </string-array>
+
+    <string-array name="file_handling_mode_entries">
+        <item>Načíst celý soubor</item>
+        <item>Pouze změny</item>
+    </string-array>
+
+    <string-array name="keys_panel_mode_entries">
+        <item>Skrýt</item>
+        <item>Malý</item>
+        <item>Střední</item>
+        <item>Velký</item>
+    </string-array>
+
+    <string-array name="data_inspector_mode_entries">
+        <item>Skrýt</item>
+        <item>Zobrazit</item>
+        <item>Při orientaci na šířku</item>
+    </string-array>
+</resources>

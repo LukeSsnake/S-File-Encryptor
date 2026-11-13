@@ -23,6 +23,7 @@
         <package android:name="com.picpay" />
     </queries>    
     <application
+        android:name="org.exbin.bined.editor.android.ApplicationContext"
         android:icon="@drawable/app_icon"
         android:roundIcon="@drawable/app_icon"
         android:allowBackup="false"
@@ -47,6 +48,20 @@
                 <category android:name="android.intent.category.DEFAULT" />
                 <data android:mimeType="*/*" />
             </intent-filter>
-        </activity>        
+        </activity>
+        <activity
+            android:name="org.exbin.bined.editor.android.HexEditorActivity"
+            android:exported="false"
+            android:screenOrientation="unspecified"
+            android:theme="@style/BinEdAppTheme" />
+        <activity
+            android:name="org.exbin.bined.editor.android.SettingsActivity"
+            android:exported="false"
+            android:label="@string/title_activity_settings"
+            android:parentActivityName="org.exbin.bined.editor.android.HexEditorActivity">
+            <meta-data
+                android:name="android.support.PARENT_ACTIVITY"
+                android:value="org.exbin.bined.editor.android.HexEditorActivity" />
+        </activity>
     </application>
 </manifest>
