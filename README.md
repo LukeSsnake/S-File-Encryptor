@@ -9,6 +9,19 @@ All file operations are performed locally on the device.
 
 <img width="1080" height="2400" alt="S-File-Encryptor screenshot" src="https://github.com/user-attachments/assets/9b3479d6-a08b-4413-835e-4339c3207fc5" />
 
+## Download
+
+<p align="center">
+  <a href="https://play.google.com/store/apps/details?id=com.lukestudio.fileencryptor2">
+    <img
+      src="https://play.google.com/intl/en_us/badges/static/images/badges/pt-br_badge_web_generic.png"
+      alt="Available on Google Play"
+      height="80">
+  </a>
+</p>
+
+Latest APK: [GitHub Releases](https://github.com/LukeSsnake/S-File-Encryptor/releases).
+
 ## Features
 
 S-File-Encryptor provides a collection of tools for file privacy, security, integrity verification, and binary inspection.
@@ -49,19 +62,6 @@ S-File-Encryptor provides a collection of tools for file privacy, security, inte
 - Allows users to inspect binary file contents directly within the application.
 - Supports editing and saving binary files.
 - Provides a way to examine and modify file data at the hexadecimal level.
-
-## Download
-
-<p align="center">
-  <a href="https://play.google.com/store/apps/details?id=com.lukestudio.fileencryptor2">
-    <img
-      src="https://play.google.com/intl/en_us/badges/static/images/badges/pt-br_badge_web_generic.png"
-      alt="Available on Google Play"
-      height="80">
-  </a>
-</p>
-
-Latest APK: [GitHub Releases](https://github.com/LukeSsnake/S-File-Encryptor/releases).
 
 ## Cryptography
 
