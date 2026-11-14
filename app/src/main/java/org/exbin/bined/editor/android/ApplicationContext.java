@@ -13,6 +13,9 @@
  * See the License for the specific language governing permissions and
  * limitations under the License.
  */
+/*
+ * Modified for integration into S-File-Encryptor.
+ */
 package org.exbin.bined.editor.android;
 
 import android.app.ActivityManager;
@@ -35,10 +38,12 @@ import org.jspecify.annotations.Nullable;
 public class ApplicationContext extends Application {
 
     private @Nullable BinaryEditorPreferences appPreferences;
-    private final SegmentsRepository segmentsRepository = new SegmentsRepository(() -> new JnaBufferEditableData());
 
-    private @Nullable BinEdFileHandler fileHandler = null;
+    private final SegmentsRepository segmentsRepository =
+            new SegmentsRepository(() -> new JnaBufferEditableData());
+
     private boolean searchActive = false;
+
     private @Nullable SearchParameters searchParameters = null;
 
     @Override
@@ -46,32 +51,44 @@ public class ApplicationContext extends Application {
         super.onCreate();
 
         // Pass activity manager for memory checking
-        JnaBuffer.setActivityManager((ActivityManager) getSystemService(ACTIVITY_SERVICE));
-        appPreferences = new BinaryEditorPreferences(new PreferencesWrapper(getApplicationContext()));
+        JnaBuffer.setActivityManager(
+                (ActivityManager) getSystemService(ACTIVITY_SERVICE)
+        );
+
+        appPreferences = new BinaryEditorPreferences(
+                new PreferencesWrapper(getApplicationContext())
+        );
     }
 
     public BinaryEditorPreferences getAppPreferences() {
         return appPreferences;
     }
 
-    @Nullable
-    public BinEdFileHandler getFileHandler() {
-        return fileHandler;
-    }
-
+    /**
+     * Creates a new file handler owned by the current Activity.
+     *
+     * The handler is intentionally NOT stored in ApplicationContext.
+     * This prevents ApplicationContext from retaining the Activity's
+     * CodeArea and other Activity-owned objects after the Activity is
+     * destroyed.
+     */
     public BinEdFileHandler createFileHandler(CodeArea codeArea) {
-        fileHandler = new BinEdFileHandler(codeArea);
+        BinEdFileHandler fileHandler = new BinEdFileHandler(codeArea);
+
         fileHandler.setSegmentsRepository(segmentsRepository);
-        fileHandler.setNewData(appPreferences.getEditorPreferences().getFileHandlingMode());
+        fileHandler.setNewData(
+                appPreferences.getEditorPreferences().getFileHandlingMode()
+        );
+
         return fileHandler;
     }
 
-    @Nullable
-    public SearchParameters getSearchParameters() {
+    public @Nullable SearchParameters getSearchParameters() {
         return searchParameters;
     }
 
-    public void setSearchParameters(@Nullable SearchParameters searchParameters) {
+    public void setSearchParameters(
+            @Nullable SearchParameters searchParameters) {
         this.searchParameters = searchParameters;
     }
 
