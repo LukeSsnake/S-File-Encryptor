@@ -12,11 +12,14 @@
  * WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
  * See the License for the specific language governing permissions and
  * limitations under the License.
+ *
+ * Modified for integration into S-File-Encryptor.
  */
 package org.exbin.bined.editor.android;
 
 import android.content.ContentResolver;
 import android.net.Uri;
+import android.widget.Toast;
 
 import org.exbin.auxiliary.binary_data.BinaryData;
 import org.exbin.auxiliary.binary_data.EditableBinaryData;
@@ -40,8 +43,6 @@ import org.exbin.bined.component.FileProcessingMode;
 import java.io.IOException;
 import java.io.InputStream;
 import java.io.OutputStream;
-import java.util.logging.Level;
-import java.util.logging.Logger;
 
 import org.jspecify.annotations.Nullable;
 import org.jspecify.annotations.NullMarked;
@@ -130,7 +131,11 @@ public class BinEdFileHandler {
             pickerInitialUri = fileUri;
             fileSync();
         } catch (IOException ex) {
-            Logger.getLogger(BinEdFileHandler.class.getName()).log(Level.SEVERE, null, ex);
+            Toast.makeText(
+            codeArea.getContext(),
+            "Erro ao salvar arquivo: " + ex.getMessage(),
+            Toast.LENGTH_LONG
+    ).show();
         }
     }
 
@@ -167,7 +172,11 @@ public class BinEdFileHandler {
                 pickerInitialUri = fileUri;
             }
         } catch (IOException ex) {
-            Logger.getLogger(BinEdFileHandler.class.getName()).log(Level.SEVERE, null, ex);
+            Toast.makeText(
+            codeArea.getContext(),
+            "Erro ao salvar arquivo: " + ex.getMessage(),
+            Toast.LENGTH_LONG
+    ).show();
         }
     }
 
