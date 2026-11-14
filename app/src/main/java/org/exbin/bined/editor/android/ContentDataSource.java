@@ -12,6 +12,9 @@
  * WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
  * See the License for the specific language governing permissions and
  * limitations under the License.
+ * 
+ * Modified for integration into S-File-Encryptor.
+ * 
  */
 package org.exbin.bined.editor.android;
 
@@ -79,10 +82,29 @@ public class ContentDataSource implements DataSource {
     }
 
     @Override
-    public void setDataLength(long dataLength) throws IOException {
-        this.dataLength = dataLength;
-        fileChannel.truncate(dataLength);
+public void setDataLength(long dataLength) throws IOException {
+    checkClosed();
+
+    if (dataLength < 0) {
+        throw new IllegalArgumentException(
+                "Invalid data length: " + dataLength
+        );
     }
+
+    long currentLength = fileChannel.size();
+
+    if (dataLength < currentLength) {
+        fileChannel.truncate(dataLength);
+    } else if (dataLength > currentLength) {
+        ByteBuffer zero = ByteBuffer.allocate(1);
+        zero.put((byte) 0);
+        zero.flip();
+
+        writeFully(zero, dataLength - 1);
+    }
+
+    this.dataLength = dataLength;
+}
 
     @Override
     public byte getByte(long position) throws IOException {
@@ -100,13 +122,23 @@ public class ContentDataSource implements DataSource {
     }
 
     @Override
-    public void setByte(long position, byte value) throws IOException {
-        byteBuffer.put(0, value);
-        fileChannel.write(byteBuffer, position);
-        if (position > dataLength) {
-            dataLength = position + 1;
-        }
+public void setByte(long position, byte value) throws IOException {
+    checkClosed();
+
+    if (position < 0 || position == Long.MAX_VALUE) {
+        throw new IOException(
+                "Invalid write position: " + position
+        );
     }
+
+    byteBuffer.clear();
+    byteBuffer.put(value);
+    byteBuffer.flip();
+
+    writeFully(byteBuffer, position);
+
+    dataLength = Math.max(dataLength, position + 1);
+}
 
     @Override
     public int read(long position, byte[] buffer, int offset, int length) throws IOException {
@@ -115,17 +147,71 @@ public class ContentDataSource implements DataSource {
     }
 
     @Override
-    public void write(long position, byte[] buffer, int offset, int length) throws IOException {
-        ByteBuffer writeBuffer = ByteBuffer.wrap(buffer, offset, length);
-        int written = fileChannel.write(writeBuffer, position);
-        if (written == -1) {
-            throw new IllegalStateException("Writing error at position " + position);
+public void write(
+        long position,
+        byte[] buffer,
+        int offset,
+        int length
+) throws IOException {
+
+    checkClosed();
+
+    if (buffer == null) {
+        throw new NullPointerException("buffer");
+    }
+
+    if (position < 0 || length < 0 ||
+            offset < 0 || offset > buffer.length - length) {
+
+        throw new IOException("Invalid write parameters");
+    }
+
+    if (position > Long.MAX_VALUE - length) {
+        throw new IOException("Write position overflow");
+    }
+
+    if (length == 0) {
+        return;
+    }
+
+    ByteBuffer writeBuffer = ByteBuffer.wrap(
+            buffer,
+            offset,
+            length
+    );
+
+    writeFully(writeBuffer, position);
+
+    dataLength = Math.max(
+            dataLength,
+            position + length
+    );
+}
+
+    private void writeFully(
+        ByteBuffer buffer,
+        long position
+) throws IOException {
+
+    long currentPosition = position;
+
+    while (buffer.hasRemaining()) {
+
+        int written = fileChannel.write(
+                buffer,
+                currentPosition
+        );
+
+        if (written <= 0) {
+            throw new IOException(
+                    "Unable to complete write at position "
+                            + currentPosition
+            );
         }
 
-        if (position + length > dataLength) {
-            dataLength = position + length;
-        }
+        currentPosition += written;
     }
+}
 
     @Override
     public void clearCache() {
