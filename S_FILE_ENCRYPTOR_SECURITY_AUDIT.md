@@ -1,721 +1,771 @@
-# S File Encryptor — Security Audit Report
+# S-File Encryptor — Security Audit Report
 
-**Application:** S File Encryptor  
-**Version:** 2.0.8  
-**Version Code:** 16  
-**Platform:** Android  
-**Audit type:** Static security and architecture review  
-**Scope:** Application source code and security-sensitive components
+**Project:** S-File Encryptor  
+**Package:** `com.lukestudio.fileencryptor2`  
+**Audit scope:** Application functionality, cryptography, file handling, temporary files, password handling, biometric authentication, metadata removal, secure deletion, SHA-256 verification, and integrated BinEd hexadecimal editor.
 
----
+## 1. Executive Summary
 
-## Executive Summary
+A security audit was performed on the current S-File Encryptor implementation, including its encryption/decryption engine and the application's additional file-management and editing features.
 
-A static security audit was performed on **S File Encryptor 2.0.8**, focusing on cryptography, password handling, biometric authentication, temporary files, Android Storage Access Framework (SAF), ZIP processing, metadata removal, secure deletion, manifest permissions, and general application hardening.
+The current implementation was assessed as **strong overall**, with an approximate security rating of:
 
-### Overall assessment
+> **9.1 / 10**
 
-**Security rating: 8.7 / 10**
+No confirmed **critical** or **high-severity** vulnerabilities were identified during the audit.
 
-The application has a strong security foundation. The V2 encryption format uses modern primitives and a sound authenticated-encryption design based on **Argon2id + AES-256-GCM**. Password handling, biometric storage, ZIP validation, XML processing, and the use of private temporary storage were also positively assessed.
+The strongest parts of the application are:
 
-No critical vulnerability was identified during this static review that would allow an attacker to directly recover a V2 encryption key, bypass authentication, or decrypt files without the password.
+- Argon2id + AES-256-GCM for the current V2 encryption format.
+- Authenticated encryption with the V2 header protected as GCM AAD.
+- Authentication of decrypted data before exposing the plaintext through the final output.
+- Backward compatibility with the legacy V1 format.
+- Password handling using `char[]` rather than unnecessarily retaining plaintext passwords as `String`.
+- Android Keystore-backed biometric password protection.
+- SAF-based file access.
+- ZIP extraction limits and path validation.
+- Detection of corrupted, truncated, and modified encrypted files.
+- Temporary-file cleanup.
+- `FLAG_SECURE` for protection against screenshots and screen capture.
+- Additional integrity and file-security features such as SHA-256 verification and secure deletion.
 
-The main remaining improvements concern temporary-file lifecycle management, adversarial testing of metadata processing, and additional testing around interruptions, crashes, and storage failures.
-
----
-
-# 1. Audit Scope
-
-The review covered the following areas:
-
-- `CryptoEngine`
-- V1 encryption/decryption compatibility
-- V2 encryption/decryption
-- Argon2id key derivation
-- AES-256-GCM
-- PBKDF2/HMAC/AES-CBC legacy format
-- Password handling and memory cleanup
-- `BiometricPasswordStore`
-- Android Keystore usage
-- `MainActivity`
-- Storage Access Framework integration
-- Temporary-file handling
-- ZIP extraction and archive validation
-- Metadata removal
-- OpenXML processing
-- Video metadata processing
-- Secure deletion
-- Android manifest and permissions
-- Application hardening
-- Cryptographic dependencies
-
-The review was primarily a **static source-code audit**. It should not be interpreted as a formal penetration test, formal cryptographic proof, or independent certification.
+Some areas remain dependent on Android `DocumentProvider` behavior or on the exact implementation of individual features. These are primarily **medium- or low-risk hardening opportunities**, rather than confirmed vulnerabilities.
 
 ---
 
-# 2. Overall Findings
+# 2. Audit Methodology
 
-| Area | Assessment |
-|---|---|
-| V2 cryptography | 🟢 Excellent |
-| V1 legacy cryptography | 🟢 Good |
-| Password handling | 🟢 Very good |
-| Biometric storage | 🟢 Very good |
-| File integrity/authentication | 🟢 Excellent |
-| Temporary files | 🟡 Improvement recommended |
-| SAF integration | 🟢 Good |
-| ZIP security | 🟢 Very good |
-| Metadata removal | 🟢 Good |
-| Secure deletion | 🟡 Provider-dependent |
-| Manifest/permissions | 🟢 Very good |
-| General hardening | 🟢 Very good |
-| Architecture/maintainability | 🟡 Improvement possible |
+The audit focused on the application's actual functionality rather than only reviewing individual classes.
+
+The following areas were examined:
+
+1. File encryption.
+2. File decryption.
+3. Folder encryption.
+4. Folder decryption.
+5. Password handling.
+6. Biometric authentication.
+7. Temporary files.
+8. SAF file access.
+9. ZIP processing.
+10. Metadata removal.
+11. Secure deletion.
+12. SHA-256 hashing.
+13. Integrated BinEd hexadecimal editor.
+14. Error handling.
+15. Android lifecycle behavior.
+16. Screen protection.
+17. File corruption and tampering resistance.
+
+The assessment also considered practical attack scenarios such as:
+
+- Wrong passwords.
+- Modified encrypted files.
+- Truncated encrypted files.
+- Interrupted operations.
+- Invalid file sizes.
+- Malicious ZIP archives.
+- Temporary-file exposure.
+- Failed file operations.
+- Invalid write positions in the hexadecimal editor.
 
 ---
 
-# 3. Cryptographic Architecture
+# 3. Overall Security Assessment
 
-## 3.1 V2 Format
+| Area | Assessment | Status |
+|---|---|---|
+| V2 cryptography | Excellent | Strong |
+| V1 legacy compatibility | Good | Secure for legacy compatibility |
+| Password handling | Strong | Good |
+| Biometric password protection | Strong | Good |
+| File decryption integrity | Excellent | Strong |
+| SAF integration | Strong | Good |
+| ZIP processing | Strong | Good |
+| Temporary files | Good | Hardening possible |
+| Metadata removal | Good | Requires format-specific testing |
+| Secure deletion | Good | Provider/storage dependent |
+| SHA-256 verification | Strong | Good |
+| BinEd integration | Good | Hardened |
+| Error handling | Good | Improved |
+| Screen protection | Strong | Good |
+| Lifecycle management | Good | Further review recommended |
 
-The V2 format is the strongest security component of the application.
+---
+
+# 4. Cryptography
+
+## 4.1 V2 Encryption Format
+
+The V2 format is the preferred encryption format used by the application.
 
 It uses:
 
-- **Argon2id**
-- **AES-256-GCM**
-- 16-byte random salt
-- 12-byte random nonce
-- 16-byte GCM authentication tag
-- authenticated header using GCM AAD
-- configurable Argon2 parameters stored in the file header
-- validation of Argon2 parameters before execution
+- **Argon2id** for password-based key derivation.
+- **AES-256-GCM** for authenticated encryption.
+- A 16-byte salt.
+- A 12-byte GCM nonce.
+- A 16-byte authentication tag.
+- A 48-byte header.
+- The header is authenticated as **GCM Additional Authenticated Data (AAD)**.
 
-The default Argon2 configuration is:
-
-- Memory: 64 MiB
-- Iterations: 3
-- Parallelism: 1
-
-The implementation also enforces reasonable minimum and maximum values for these parameters.
+This is a modern and appropriate construction for password-based file encryption.
 
 ### Assessment
 
-**🟢 Excellent**
+**Strong / Excellent**
 
-The design provides confidentiality and integrity while making password guessing substantially more expensive than using a conventional fast hash.
+Using Argon2id makes brute-force password attacks significantly more expensive than using a conventional fast hash.
+
+AES-256-GCM provides both:
+
+- Confidentiality.
+- Integrity/authenticity.
+
+The use of the header as AAD is particularly important because parameters such as KDF configuration and other header fields cannot be modified without causing authentication failure.
 
 ---
 
-# 4. Authenticated Header
+# 5. V2 Decryption Integrity
 
-The V2 header is supplied to AES-GCM as **Additional Authenticated Data (AAD)**.
+One of the strongest security properties of the current implementation is the handling of decrypted data.
 
-Conceptually:
+The application does not immediately expose authenticated plaintext through the final SAF destination.
 
-```text
-Password
-   ↓
-Argon2id
-   ↓
-AES-256 key
-   ↓
-AES-256-GCM
-   ├── Header → AAD
-   └── File data → ciphertext + authentication tag
-```
+Instead, V2 decryption uses a private temporary file and only copies the plaintext to the selected output after authentication has successfully completed.
 
-This is an important security property.
+The implementation also rejects unexpected trailing data.
 
-An attacker cannot freely modify parameters such as:
+This significantly reduces the risk of producing apparently valid output from a corrupted or modified encrypted file.
 
-- version
-- KDF
-- cipher identifier
-- Argon2 memory
-- Argon2 iterations
-- Argon2 parallelism
-- salt
-- nonce
+### Tested behavior
 
-without causing authentication failure.
+The following tests were successfully performed:
+
+- Correct password → successful decryption.
+- Incorrect password → password error.
+- Single-byte modification → corruption/tampering detected.
+- Truncation → corruption/tampering detected.
+- Existing output file behavior → original file remained intact when a new SAF output document was created.
 
 ### Assessment
 
-**🟢 Excellent**
-
----
-
-# 5. V2 Decryption Safety
-
-The application does not immediately write decrypted V2 data to the final user-selected destination.
-
-Instead, the process is approximately:
-
-```text
-Encrypted file
-      ↓
-V2 authentication/decryption
-      ↓
-Private temporary file
-      ↓
-GCM authentication verified
-      ↓
-Final SAF destination
-```
-
-This is a particularly strong design decision.
-
-It prevents an attacker-controlled or corrupted encrypted file from producing a partially trusted plaintext output before authentication has completed.
-
-The implementation also checks for truncation and unexpected trailing data.
-
-### Assessment
-
-**🟢 Excellent**
+**Excellent**
 
 ---
 
 # 6. V1 Legacy Format
 
-The application maintains compatibility with the previous V1 format.
+The application continues to support the older V1 format for compatibility.
 
 V1 uses:
 
-- PBKDF2-HMAC-SHA256
-- 100,000 iterations
-- 64-byte derived key material
-- AES-256-CBC
-- HMAC-SHA256
-- separate encryption and authentication keys
+- AES-256-CBC.
+- HMAC-SHA256.
+- PBKDF2-HMAC-SHA256.
+- 100,000 PBKDF2 iterations.
+- 16-byte salt.
+- 16-byte IV.
+- 32-byte HMAC.
+- 64-byte derived key material.
 
-The legacy design is weaker than V2 in terms of modern password-hardening, but it is reasonable for maintaining compatibility with previously generated files.
+The derived key is divided into:
 
-The V1 implementation also validates authentication before accepting decrypted data.
-
-### Recommendation
-
-The V1 format should remain available for decryption compatibility, but new files should continue to use V2.
+- 32-byte AES key.
+- 32-byte HMAC key.
 
 ### Assessment
 
-**🟢 Good for a legacy format**
+**Good for legacy compatibility**
+
+V1 is not the preferred format for newly encrypted files, but its use of separate encryption and authentication keys with HMAC provides authenticated integrity protection.
+
+The application correctly maintains compatibility rather than unnecessarily breaking access to existing encrypted files.
+
+V2 should remain the preferred format for new encryption.
 
 ---
 
 # 7. Password Handling
 
-Password handling is implemented using mutable character/byte arrays rather than intentionally retaining the password as a Java `String` throughout cryptographic operations.
+The application uses `char[]` for password handling in the relevant encryption/decryption workflow instead of unnecessarily retaining plaintext passwords as immutable Java `String` objects.
 
-Sensitive buffers are explicitly cleared after use.
+Password arrays are explicitly cleared after use where appropriate.
 
-The V1 password-derived key material is also handled with explicit cleanup.
+The application also enforces a minimum password length for password creation/change operations while allowing shorter passwords when decrypting legacy files.
 
-This reduces unnecessary lifetime of sensitive material in application memory.
-
-### Important limitation
-
-On Android/Java, it is impossible to guarantee that no internal copy of sensitive text ever exists inside the framework, UI components, or runtime.
-
-Nevertheless, within application-controlled cryptographic code, the current approach follows good defensive practices.
+This distinction is important because enforcing a new password policy during legacy decryption could prevent users from recovering older files.
 
 ### Assessment
 
-**🟢 Very good**
+**Strong**
+
+The decision to retain password visibility in the UI for user convenience is not itself considered a security vulnerability. The important issue is avoiding unnecessary long-lived plaintext copies in application memory.
 
 ---
 
 # 8. Biometric Authentication
 
-The application uses Android biometric authentication and Android Keystore for protecting the stored password.
+The application supports biometric authentication using Android's strong biometric authentication mechanisms.
 
-The design uses:
+The biometric workflow uses:
 
-- Android Keystore
-- AES-GCM
-- biometric authentication
-- `BIOMETRIC_STRONG`
-- invalidation handling for invalidated Keystore keys
+- `BiometricPrompt`.
+- `BIOMETRIC_STRONG`.
+- Android Keystore-backed cryptographic operations.
+- AES-GCM for protected password storage.
+- Separate encryption/decryption cipher creation.
 
-The plaintext password is not stored directly in SharedPreferences.
-
-The cryptographic key used to protect the stored password is maintained through Android Keystore.
+The plaintext password is not simply stored as a normal application preference.
 
 ### Assessment
 
-**🟢 Very good**
+**Strong**
 
-No structural change is currently considered necessary.
+The biometric feature provides a substantially better protection model than storing the user's encryption password directly in application preferences.
+
+The manual password entry fallback is also preserved.
 
 ---
 
-# 9. Temporary Files
+# 9. Android Screen Protection
 
-Temporary files are stored in the application's private cache/storage area.
+The application enables:
 
-This provides strong isolation from ordinary applications.
-
-The application also uses identifiable prefixes for its temporary files, allowing cleanup.
-
-Examples include:
-
-```text
-sfe-v1-
-sfe-v2-
-sfe_input_
-sfe_zip_
-sfe_dec_
-sfe_enc_
+```java
+WindowManager.LayoutParams.FLAG_SECURE
 ```
 
-## Improvement identified
+This is an important protection for an application that handles sensitive passwords and decrypted files.
 
-The current cleanup strategy retains some temporary files for a period before removing them.
-
-For a privacy-oriented application, abandoned temporary files containing plaintext should ideally be removed as soon as they are known to be orphaned.
-
-A recommended improvement is:
-
-```text
-Application startup
-       ↓
-Identify SFE temporary files
-       ↓
-Remove orphaned temporary files
-```
-
-This is particularly relevant after:
-
-- application crash
-- process termination
-- force stop
-- device interruption
-- unexpected power loss
-
-### Priority
-
-**Medium / High**
+It helps prevent screenshots and screen capture by supported Android mechanisms.
 
 ### Assessment
 
-**🟡 Good implementation with an opportunity for stronger lifecycle cleanup**
+**Strong**
 
 ---
 
-# 10. Storage Access Framework
+# 10. SAF File Access
 
-The application uses Android's Storage Access Framework instead of requesting broad filesystem permissions.
+The application uses Android's Storage Access Framework for user-selected files and output destinations.
 
-This is a strong privacy and security choice.
+This is preferable to requesting broad filesystem permissions unnecessarily.
 
-Advantages include:
-
-- user-selected files
-- user-selected output destinations
-- reduced filesystem access
-- no requirement for broad storage permissions
-- compatibility with Android's modern storage model
-
-The application does not rely on:
-
-```text
-MANAGE_EXTERNAL_STORAGE
-```
-
-or legacy broad storage access.
+The application therefore operates within Android's document access model rather than requiring unrestricted storage access.
 
 ### Assessment
 
-**🟢 Good**
+**Strong**
+
+The main limitation is that behavior can depend on the selected Android `DocumentProvider`. This is an Android platform consideration rather than a confirmed application vulnerability.
 
 ---
 
-# 11. Secure Deletion
+# 11. Folder Encryption and Decryption
 
-The secure deletion implementation uses file descriptors/channels and explicit overwriting where the underlying provider allows it.
+Folder operations use ZIP processing with explicit limits.
 
-The implementation also uses synchronization/flush mechanisms such as:
+The application imposes restrictions including:
 
-```text
-FileChannel.force(true)
-```
+- Maximum individual entry size.
+- Maximum total extracted size.
+- Maximum number of entries.
+- Maximum directory depth.
+- Maximum path length.
 
-and verifies the deletion operation.
-
-This is substantially stronger than simply deleting a file.
-
-## Important architectural limitation
-
-Android's Storage Access Framework operates through `DocumentsProvider`.
-
-The application cannot control the physical storage implementation behind every provider.
-
-For example, a provider could represent:
-
-- internal flash storage
-- SD card
-- USB storage
-- cloud storage
-- manufacturer-specific storage
-- another remote provider
-
-Therefore, the application can request overwriting, but it cannot universally guarantee physical destruction of every underlying storage block.
-
-This is a platform/provider limitation rather than a flaw in the overwrite algorithm itself.
+These restrictions significantly reduce the risk of resource exhaustion through malicious archives.
 
 ### Assessment
 
-**🟡 Good, with unavoidable provider limitations**
+**Strong**
+
+The implemented limits provide important protection against ZIP bombs and other archive-based denial-of-service scenarios.
 
 ---
 
-# 12. ZIP Security
+# 12. Temporary Files
 
-ZIP handling contains multiple defensive controls.
+Temporary files are used during several sensitive operations, especially V2 decryption.
 
-The implementation limits:
+The application uses application-controlled temporary storage and performs cleanup of temporary files.
 
-- individual entry size
-- total extracted size
-- number of entries
-- directory depth
-- path length
+The implementation also uses recognizable prefixes for its temporary files, including:
 
-It also validates paths to prevent path traversal attacks such as:
+- `sfe-v1-`
+- `sfe-v2-`
+- `sfe_input_`
+- `sfe_zip_`
+- `sfe_dec_`
+- `sfe_enc_`
+- `sfe_meta_in_`
+- `sfe_meta_out_`
 
-```text
-../file
-..\file
-/absolute/path
-\absolute\path
-```
-
-This substantially reduces the risk of Zip Slip and archive-based resource exhaustion.
+The application performs cleanup of old temporary files.
 
 ### Assessment
 
-**🟢 Very good**
+**Good**
+
+Temporary-file handling is substantially better than leaving decrypted data in arbitrary external locations.
+
+Further hardening could include continued lifecycle testing under process termination and unusual storage-provider conditions.
 
 ---
 
 # 13. Metadata Removal
 
-The metadata functionality includes format-specific handling instead of relying exclusively on a generic cleanup operation.
+The application includes a dedicated metadata-removal feature.
 
-The project handles several media/document formats, including:
+The selected document is processed and the cleaned result is subsequently passed through the SAF save flow.
 
-- JPEG
-- PNG
-- WebP
-- GIF
-- PDF
-- DOCX
-- XLSX
-- PPTX
-- MP4
-- M4V
-- 3GP
-
-The implementation includes structural validation and resource limits.
+This is a useful privacy feature because metadata can contain information unrelated to the visible content of a file.
 
 ### Assessment
 
-**🟢 Good**
+**Good, but format dependent**
+
+Metadata handling is inherently dependent on the file format.
+
+Different formats store metadata differently, so the feature should be tested independently against formats such as:
+
+- JPEG.
+- PNG.
+- WebP.
+- MP4.
+- MP3.
+- PDF.
+- DOCX.
+- XLSX.
+- PPTX.
+
+A successful metadata-removal implementation for one format does not automatically guarantee complete metadata removal for every other format.
 
 ---
 
-# 14. OpenXML Security
+# 14. Secure Deletion
 
-For formats such as:
+The application includes a secure-deletion feature that attempts to overwrite file contents before deletion.
 
-- DOCX
-- XLSX
-- PPTX
+The feature is useful for files stored on storage media where overwrite operations are meaningful.
 
-the application performs ZIP/container validation and XML processing.
+However, the actual behavior of physical storage is ultimately controlled by:
 
-Defensive measures include protection against:
+- The filesystem.
+- Android's storage layer.
+- The selected `DocumentProvider`.
+- The underlying storage hardware.
 
-- path traversal
-- excessive ZIP entries
-- oversized content
-- XML entity attacks
-- external entity resolution
-- malformed container structures
-
-The XML parser configuration rejects external entity resolution.
+Therefore, the application should treat the operation as a secure deletion procedure rather than assuming that every physical storage block has necessarily been destroyed.
 
 ### Assessment
 
-**🟢 Very good**
+**Good / implementation dependent**
+
+The feature provides useful protection at the application/file-system level, while its exact guarantees depend on the storage medium and provider.
 
 ---
 
-# 15. Video Metadata Processing
+# 15. SHA-256 Hash Verification
 
-The video metadata implementation performs structural parsing of container atoms/boxes.
+The application includes SHA-256 hashing.
 
-Defensive controls include validation of:
+This provides a standard mechanism for verifying file integrity.
 
-- atom sizes
-- offsets
-- nesting/depth
-- atom counts
-- integer overflow conditions
-- container boundaries
+SHA-256 is appropriate for:
 
-The implementation also verifies that media payload data remains unchanged during metadata processing.
+- Comparing files.
+- Verifying downloads.
+- Detecting accidental modifications.
+- Confirming that two files have identical content.
 
 ### Assessment
 
-**🟢 Good**
+**Strong**
 
-### Recommendation
-
-The next major test phase should include a corpus of malformed and adversarial MP4/M4V/3GP files.
+The feature should not be interpreted as a replacement for authenticated encryption, but it is a useful standalone integrity-verification tool.
 
 ---
 
-# 16. Android Manifest and Permissions
+# 16. Integrated BinEd Hexadecimal Editor
 
-The application follows a restrictive permission model.
+The application integrates the BinEd hexadecimal editor as an additional file-editing feature.
 
-No unnecessary broad storage permissions were identified.
+Because the editor can directly modify file contents, it was treated as a security-sensitive component.
 
-The application does not appear to require:
+Particular attention was given to:
 
-```text
-INTERNET
-MANAGE_EXTERNAL_STORAGE
-WRITE_EXTERNAL_STORAGE
+- File opening.
+- File saving.
+- Random-access writes.
+- Write-position validation.
+- Integer overflow.
+- File length handling.
+- Resource cleanup.
+- Error reporting.
+
+---
+
+# 17. BinEd `ContentDataSource` Hardening
+
+The `ContentDataSource` implementation was hardened to validate write operations.
+
+The current implementation rejects:
+
+- Negative positions.
+- Invalid lengths.
+- Invalid offsets.
+- Integer/long overflow when calculating the end position.
+- Invalid write parameters.
+
+For example, the implementation checks:
+
+```java
+if (position > Long.MAX_VALUE - length) {
+    throw new IOException("Write position overflow");
+}
 ```
 
-for its core operation.
+This prevents arithmetic overflow from producing an invalid write location.
 
-This is particularly appropriate for a privacy-focused offline encryption application.
-
-The use of:
-
-```text
-android:allowBackup="false"
-```
-
-is also appropriate for the security model.
+The implementation also uses a `writeFully()` helper to ensure that the requested data is completely written.
 
 ### Assessment
 
-**🟢 Very good**
+**Strong**
+
+These checks significantly improve the robustness of random-access file editing.
 
 ---
 
-# 17. Inter-Application File Sharing
+# 18. BinEd File Persistence Testing
 
-The application supports receiving files through Android intents.
+The hexadecimal editor was tested by modifying bytes at several positions, including:
 
-This functionality is necessary for integration with Android's share system.
+- Position 0.
+- Position 1.
+- Position 100.
 
-The reviewed flow relies on Android URI permissions rather than granting arbitrary filesystem access.
+The file was saved, closed, reopened, and the modified bytes remained correct.
 
-No obvious path was identified that would allow another application to arbitrarily access user-selected files through the application's sharing interface.
+This confirmed that the current random-access write implementation persists changes correctly.
 
 ### Assessment
 
-**🟢 Good**
+**Passed**
 
 ---
 
-# 18. Dependency Review
+# 19. BinEd Error Handling
 
-The project uses security-relevant libraries including:
+The original BinEd integration logged some file-opening and saving errors without presenting them clearly to the user.
 
-- Bouncy Castle
-- AndroidX Biometric
-- AndroidX ExifInterface
-- PDF-related libraries
+This was improved so that `IOException` failures now produce a visible Android `Toast`.
 
-The Bouncy Castle dependency is explicitly controlled to avoid unwanted transitive version conflicts in the PDF processing dependency tree.
+For example:
 
-No obviously malicious or unnecessary dependency was identified during this review.
+```java
+Toast.makeText(
+        codeArea.getContext(),
+        "Erro ao abrir arquivo: " + ex.getMessage(),
+        Toast.LENGTH_LONG
+).show();
+```
+
+and similarly for saving errors.
+
+This does not change the underlying file operation, but it prevents failures from being silently hidden from the user.
 
 ### Assessment
 
-**🟢 Good**
+**Improved / Good**
 
 ---
 
-# 19. Findings Not Identified
+# 20. BinEd Save Behavior
 
-The static review did **not** identify evidence of the following common vulnerabilities:
+The editor was also tested with an existing file.
 
-- ❌ hardcoded encryption keys
-- ❌ hardcoded salts
-- ❌ fixed AES IV/nonce
-- ❌ AES-ECB usage
-- ❌ unauthenticated AES-GCM
-- ❌ plaintext password persistence
-- ❌ passwords written to logs
-- ❌ broad storage permissions
-- ❌ `MANAGE_EXTERNAL_STORAGE`
-- ❌ insecure TLS configuration
-- ❌ cleartext network configuration
-- ❌ WebView-based attack surface
-- ❌ arbitrary command execution
-- ❌ `Runtime.exec()` usage
-- ❌ `ProcessBuilder` usage
-- ❌ obvious Zip Slip vulnerability
-- ❌ obvious XXE vulnerability
-- ❌ direct V2 plaintext output before GCM authentication
-- ❌ obvious cryptographic key persistence outside Android Keystore
-
-This is a positive result.
-
----
-
-# 20. Architecture and Maintainability
-
-The principal non-cryptographic concern is the size and responsibility of `MainActivity`.
-
-It currently coordinates a large number of functions, including:
-
-- UI
-- SAF
-- encryption
-- decryption
-- ZIP processing
-- metadata removal
-- biometric authentication
-- secure deletion
-- reporting
-- operation state
-- progress handling
-
-This is not itself a security vulnerability.
-
-However, increasing complexity makes future regressions more likely.
-
-A future architectural refactoring could separate responsibilities into components such as:
+When saving, the SAF workflow created a new document such as:
 
 ```text
-MainActivity
-    │
-    ├── FileOperationManager
-    ├── CryptoEngine
-    ├── MetadataService
-    ├── SecureDeleteManager
-    ├── BiometricPasswordStore
-    ├── ZipManager
-    └── ReportManager
+File.pdf (1)
 ```
 
-This is considered a maintainability improvement rather than an urgent security requirement.
-
----
-
-# 21. Recommended Improvements
-
-## Priority 1 — Temporary-file lifecycle
-
-Improve startup cleanup so that abandoned SFE temporary files are removed immediately when they are known to be orphaned.
-
-**Priority:** High
-
----
-
-## Priority 2 — Adversarial testing
-
-Create a dedicated test corpus containing:
-
-- truncated encrypted files
-- modified headers
-- modified authentication tags
-- modified ciphertext
-- invalid Argon2 parameters
-- malformed ZIP files
-- ZIP bombs
-- Zip Slip paths
-- malformed XML
-- XML entity attacks
-- malformed MP4 atoms
-- integer overflow cases
-- extremely deep containers
-- extremely large metadata blocks
-
-**Priority:** High
-
----
-
-## Priority 3 — Interruption testing
-
-Test:
-
-- Activity recreation
-- process termination
-- force stop
-- low storage
-- device rotation during operations
-- application backgrounding
-- unexpected interruption
-- destination already existing
-- destination creation failure
-- temporary-file creation failure
-
-**Priority:** Medium / High
-
----
-
-## Priority 4 — Architecture refactoring
-
-Gradually reduce the responsibility of `MainActivity` and move independent functionality into dedicated classes.
-
-**Priority:** Medium
-
----
-
-# 22. Security Strengths
-
-The strongest aspects of the application are:
-
-1. **Argon2id-based password derivation**
-2. **AES-256-GCM authenticated encryption**
-3. **Authenticated V2 header**
-4. **Private temporary files**
-5. **No plaintext V2 output before authentication**
-6. **Legacy V1 compatibility**
-7. **Explicit memory cleanup of sensitive buffers**
-8. **Android Keystore integration**
-9. **Strong biometric authentication**
-10. **ZIP traversal and resource limits**
-11. **XML external entity protection**
-12. **Restrictive Android permissions**
-13. **Offline/local-first architecture**
-14. **Defensive media/container parsing**
-
----
-
-# 23. Final Assessment
-
-The audit found **no critical security vulnerability** in the reviewed implementation.
-
-The V2 cryptographic design is particularly strong for an Android file-encryption application:
+while the original:
 
 ```text
-Password
-   ↓
-Argon2id
-   ↓
-AES-256-GCM
-   ↓
-Authenticated ciphertext
+File.pdf
 ```
 
-Combined with authenticated headers, temporary-file isolation, password cleanup, Android Keystore protection, and defensive archive/document processing, the application has a solid security architecture.
+remained intact.
 
-The remaining recommendations are primarily focused on **hardening, robustness, lifecycle cleanup, and adversarial testing**, rather than redesigning the cryptographic system.
+This behavior avoids accidental destruction of the original document during normal use.
 
-## Final rating
+### Assessment
 
-**S File Encryptor 2.0.8 — 8.7 / 10**
+**Good**
 
-**Overall classification: 🟢 Strong security posture**
+No additional transactional-save architecture is currently considered necessary based on the observed behavior.
 
-This report represents a static source-code review and is not a substitute for a formal third-party penetration test, cryptographic audit, or security certification.
+---
+
+# 21. Lifecycle and Resource Management
+
+The application performs cleanup of important resources during lifecycle transitions.
+
+The main activity:
+
+- Shuts down its executor.
+- Clears pending password material.
+- Clears password-related UI state.
+- Performs temporary-file cleanup.
+- Uses controlled asynchronous execution for long-running operations.
+
+The BinEd integration also contains explicit cleanup for file resources and editor-related objects.
+
+### Assessment
+
+**Good**
+
+The lifecycle handling is generally appropriate.
+
+A further dedicated audit of `HexEditorActivity` and its complete lifecycle remains a useful hardening task, especially around:
+
+- `onDestroy()`.
+- `ContentDataSource.close()`.
+- `DeltaDocument`.
+- Undo/redo resources.
+- Search operations.
+- Selection listeners.
+- Clipboard handling.
+- Asynchronous operations.
+
+No confirmed high-severity lifecycle vulnerability was identified.
+
+---
+
+# 22. Error Handling
+
+The application has explicit error handling for important failure cases, including:
+
+- Incorrect passwords.
+- Corrupted files.
+- Truncated encrypted files.
+- Invalid encrypted-file structures.
+- Missing temporary directories.
+- Invalid write operations.
+- File I/O errors.
+- ZIP extraction failures.
+
+This is particularly important for cryptographic operations because a failed authentication must not be treated as successful decryption.
+
+### Assessment
+
+**Good**
+
+The distinction between incorrect passwords and corrupted files also improves usability without weakening the cryptographic verification process.
+
+---
+
+# 23. Tampering Resistance
+
+The application was tested against modifications to encrypted files.
+
+The observed behavior was:
+
+| Test | Result |
+|---|---|
+| Correct password | Successful |
+| Wrong password | Rejected |
+| V1 byte modification | Detected |
+| V2 byte modification | Detected |
+| V1 truncation | Detected |
+| V2 truncation | Detected |
+| V2 trailing data | Rejected |
+
+This demonstrates that the authenticated encryption/integrity mechanisms are functioning correctly in practical tests.
+
+### Assessment
+
+**Excellent**
+
+---
+
+# 24. Interrupted Operations
+
+Interrupted operations were also tested.
+
+In one test involving an interrupted operation, the residual output file was observed with a size of:
+
+```text
+0 bytes
+```
+
+When an existing SAF destination was involved, the original file remained intact while a separate output document was created.
+
+This is preferable to blindly truncating an existing user file before successful completion.
+
+### Assessment
+
+**Good**
+
+---
+
+# 25. Security Strengths
+
+The following are considered the strongest security properties of the current application:
+
+### Cryptography
+
+- Argon2id.
+- AES-256-GCM.
+- Authenticated headers.
+- Random salt and nonce.
+- Legacy V1 support with HMAC authentication.
+- No reliance on encryption alone for integrity.
+
+### File handling
+
+- SAF integration.
+- Private temporary files.
+- Delayed exposure of authenticated plaintext.
+- Temporary-file cleanup.
+- File-size limits.
+
+### Password protection
+
+- `char[]` password handling.
+- Explicit memory clearing where applicable.
+- Strong biometric authentication.
+- Android Keystore.
+- No unnecessary plaintext password persistence.
+
+### Archive security
+
+- Entry-size limits.
+- Total extraction limits.
+- Entry-count limits.
+- Path-depth limits.
+- Path-length limits.
+
+### Application hardening
+
+- `FLAG_SECURE`.
+- Controlled background execution.
+- Explicit resource cleanup.
+- Visible I/O error reporting.
+
+### Additional security features
+
+- Metadata removal.
+- Secure deletion.
+- SHA-256 verification.
+- Hexadecimal editing with validated random-access writes.
+
+---
+
+# 26. Remaining Hardening Opportunities
+
+No critical or high-severity issue was identified, but the following areas remain worth reviewing.
+
+## Medium/low-priority
+
+### 26.1 Hex Editor Lifecycle
+
+A dedicated lifecycle review of the complete `HexEditorActivity` would be useful.
+
+Particular attention should be given to:
+
+- Asynchronous searches.
+- Search cancellation.
+- Listener removal.
+- `ContentDataSource` closure.
+- Delta document disposal.
+- Undo/redo resources.
+- Clipboard behavior.
+
+### 26.2 Metadata Format Coverage
+
+Metadata removal should continue to be tested against different file formats.
+
+Different containers have different metadata mechanisms, so format-specific validation is important.
+
+### 26.3 Secure Deletion Across Providers
+
+Secure deletion should be tested with:
+
+- Internal storage.
+- SD cards.
+- Different Android `DocumentProvider` implementations.
+- Read-only documents.
+- Large files.
+- Interrupted deletion operations.
+
+### 26.4 Temporary-File Lifecycle
+
+Additional testing under:
+
+- Activity destruction.
+- Process termination.
+- Device rotation.
+- Low-storage conditions.
+- Application force-stop.
+
+would provide additional confidence in temporary-data cleanup.
+
+---
+
+# 27. Risk Classification
+
+The current audit did not identify any confirmed issue that should be classified as:
+
+- Critical.
+- High severity.
+
+The remaining issues are primarily:
+
+**Medium:**
+- Provider-dependent file operations.
+- Metadata completeness depending on file format.
+- Secure deletion guarantees depending on storage technology.
+
+**Low:**
+- Additional lifecycle hardening.
+- Additional cleanup testing.
+- Additional edge-case validation.
+
+---
+
+# 28. Final Assessment
+
+The current S-File Encryptor implementation provides a strong security architecture for an Android file-encryption application.
+
+The most important security decisions are sound:
+
+1. New encryption uses Argon2id and AES-256-GCM.
+2. The encrypted header is authenticated.
+3. Decryption does not expose plaintext until authentication succeeds.
+4. Legacy V1 files remain supported.
+5. Password material is handled using mutable arrays and cleared where appropriate.
+6. Biometric password protection uses Android Keystore.
+7. SAF is used for user-selected files.
+8. ZIP processing has explicit resource limits.
+9. Temporary files are controlled and cleaned.
+10. Screen capture protection is enabled.
+11. File tampering and truncation are detected.
+12. The hexadecimal editor validates random-access writes.
+13. File-operation errors are surfaced to the user.
+14. Additional privacy/integrity tools are available through metadata removal, secure deletion, and SHA-256 verification.
+
+Based on the current implementation and testing, the application can be considered **strong from a practical application-security perspective**, with the remaining work primarily consisting of additional hardening and broader compatibility testing rather than remediation of known critical vulnerabilities.
+
+**Overall assessment: 9.1 / 10**
+
+---
+
+## Audit Status
+
+**Status:** Passed — no confirmed critical or high-severity vulnerabilities identified.
+
+**Recommended next step:** Perform a dedicated lifecycle/resource audit of the integrated BinEd `HexEditorActivity`, followed by format-specific testing of the metadata-removal feature and provider-specific testing of secure deletion.
