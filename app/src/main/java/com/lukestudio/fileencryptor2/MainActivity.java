@@ -148,6 +148,7 @@ public class MainActivity extends FragmentActivity {
         private static final int MAX_ZIP_ENTRIES = 10_000;
         private static final int MAX_ZIP_DEPTH = 20;
         private static final int MAX_ZIP_PATH_LENGTH = 1_024;
+        private static final int MAX_DELETE_DEPTH = 64;
 
     private final ExecutorService executor =
             Executors.newSingleThreadExecutor();
@@ -159,7 +160,7 @@ public class MainActivity extends FragmentActivity {
          getWindow().setFlags(
             WindowManager.LayoutParams.FLAG_SECURE,
             WindowManager.LayoutParams.FLAG_SECURE
-    );
+    ); 
 
         PDFBoxResourceLoader.init(getApplicationContext());
 
@@ -174,7 +175,7 @@ public class MainActivity extends FragmentActivity {
             }
         }
 );
-
+        
         cleanTemporaryFiles();
 
         getWindow().setNavigationBarColor(
@@ -189,7 +190,7 @@ public class MainActivity extends FragmentActivity {
 
         getWindow().getDecorView().setSystemUiVisibility(0);
 
-        setContentView(R.layout.main);
+        setContentView(R.layout.main);        
 
         fileName = findViewById(R.id.fileName);
         fileInfo = findViewById(R.id.fileInfo);
@@ -210,7 +211,7 @@ public class MainActivity extends FragmentActivity {
 
         biometricSwitch = findViewById(R.id.biometricSwitch);
         biometricSettings = findViewById(R.id.biometricSettings);
-
+        
         boolean biometricEnabled =
                 BiometricPasswordStore.isEnabled(this);
 
@@ -330,8 +331,8 @@ public class MainActivity extends FragmentActivity {
         return;
     }
 
-    // Considera antigos os temporários com mais de 2 horas.
-    long maxAge = 2L * 60 * 60 * 1000;
+    // Considera antigos os temporários com mais de 1 horas.
+    long maxAge = 1L * 60 * 60 * 1000;
     long now = System.currentTimeMillis();
 
     for (File file : files) {
@@ -760,7 +761,7 @@ progressText.setText(
                     fileName.setText(
                             getString(R.string.no_file_selected)
                     );
-
+                    
                 }
 
             } else {
@@ -844,7 +845,7 @@ progressText.setText(getString(R.string.preparing_deletion));
                 DocumentFile.fromTreeUri(
                         getApplicationContext(),
                         targetUri
-                );
+                );                
 
         if (root == null || !root.isDirectory()) {
 
@@ -871,7 +872,31 @@ progressText.setText(getString(R.string.preparing_deletion));
         }
 
         final int expectedTotalFiles =
-        countFilesInFolder(root);
+        countFilesInFolder(root, 0);
+
+if (expectedTotalFiles < 0) {
+
+    runOnUiThread(() -> {
+
+        setBusy(false);
+
+        new AlertDialog.Builder(MainActivity.this)
+                .setTitle("Operação interrompida")
+                .setMessage(
+                        "A pasta contém uma estrutura inacessível "
+                        + "ou ultrapassa a profundidade máxima "
+                        + "permitida de 64 níveis. Nenhum arquivo "
+                        + "foi sobrescrito."
+                )
+                .setPositiveButton(
+                        getString(R.string.ok_button),
+                        null
+                )
+                .show();
+    });
+
+    return;
+}
 
         final int[] processedFiles = {0};
 
@@ -891,7 +916,8 @@ progressText.setText(getString(R.string.preparing_deletion));
         bytesOverwritten,
         folders,
         expectedTotalFiles,
-        processedFiles
+        processedFiles,
+        0
 );
 
         /*
@@ -943,7 +969,7 @@ final int finalFailedFiles =
 
 final long finalBytesOverwritten =
         bytesOverwritten[0];
-
+        
         final int filesFound = totalFiles[0];
         final int filesSuccessful = successfulFiles[0];
         final int filesFailed = failedFiles[0];
@@ -1092,9 +1118,9 @@ final boolean finalReportSaved = reportSaved;
     getWindow().clearFlags(
             WindowManager.LayoutParams.FLAG_KEEP_SCREEN_ON
     );
-
+            
             setBusy(false);
-
+            
             String title;
             String message;
 
@@ -1119,7 +1145,7 @@ final boolean finalReportSaved = reportSaved;
                     fileName.setText(
                             getString(R.string.no_file_selected)
                     );
-
+                    
                 }
 
             } else {
@@ -1149,7 +1175,7 @@ final boolean finalReportSaved = reportSaved;
                     .setPositiveButton(
                             getString(R.string.ok_button),
                             null
-                    )
+                    )                    
                     .setCancelable(false);
                     // O botão aparece quando a operação
             // foi concluída com sucesso.
@@ -1166,12 +1192,19 @@ final boolean finalReportSaved = reportSaved;
     });
 }
 
-        private int countFilesInFolder(DocumentFile folder) {
+        private int countFilesInFolder(
+        DocumentFile folder,
+        int depth
+) {
+
+    if (depth > MAX_DELETE_DEPTH) {
+        return -1;
+    }
 
     if (folder == null
             || !folder.exists()
             || !folder.isDirectory()) {
-        return 0;
+        return -1;
     }
 
     int count = 0;
@@ -1179,7 +1212,7 @@ final boolean finalReportSaved = reportSaved;
     DocumentFile[] children = folder.listFiles();
 
     if (children == null) {
-        return 0;
+        return -1;
     }
 
     for (DocumentFile child : children) {
@@ -1190,7 +1223,16 @@ final boolean finalReportSaved = reportSaved;
 
         if (child.isDirectory()) {
 
-            count += countFilesInFolder(child);
+            int nestedCount = countFilesInFolder(
+                    child,
+                    depth + 1
+            );
+
+            if (nestedCount < 0) {
+                return -1;
+            }
+
+            count += nestedCount;
 
         } else if (child.isFile()) {
 
@@ -1209,8 +1251,14 @@ final boolean finalReportSaved = reportSaved;
         long[] bytesOverwritten,
         List<DocumentFile> folders,
         int expectedTotalFiles,
-        int[] processedFiles
+        int[] processedFiles,
+        int depth
 ) {
+
+        if (depth > MAX_DELETE_DEPTH) {
+    failedFiles[0]++;
+    return;
+}
 
     if (folder == null
             || !folder.exists()
@@ -1240,7 +1288,8 @@ final boolean finalReportSaved = reportSaved;
                     bytesOverwritten,
                     folders,
                     expectedTotalFiles,
-                    processedFiles
+                    processedFiles,
+                    depth + 1
             );
 
             folders.add(child);
@@ -1382,7 +1431,7 @@ try {
     dialoguee.show();
 }
 
-
+        
 private void showEncryptDelete() {
 
     LinearLayout layout = new LinearLayout(this);
@@ -1444,7 +1493,7 @@ private void showEncryptDelete() {
                 .show();
     }
 
-
+    
 private void showHex() {
 
     new AlertDialog.Builder(this)
@@ -1706,7 +1755,7 @@ private void showHash() {
                         )
                         .setMessage(
                                 getString(
-                                        R.string.meta_message
+                                        R.string.meta_message                                  
                                 )
                         )
                         .setNegativeButton(
@@ -1732,7 +1781,7 @@ private void showHash() {
                         )
                         .setMessage(
                                 getString(
-                                        R.string.crypto_message
+                                        R.string.crypto_message                                  
                                 )
                         )
                         .setNeutralButton(
@@ -2462,7 +2511,7 @@ public void onAuthenticationSucceeded(
         );
     }
 
-
+    
 private void authenticateForDecryption(
         Cipher cipher,
         boolean showPassword,
@@ -2681,7 +2730,7 @@ private void authenticateForDecryption(
         dialog.show();
     }
 
-
+    
 private void authenticateForReplacement(
         char[] replacement
 ) {
@@ -2823,7 +2872,7 @@ private void authenticateForReplacement(
                 i,
                 PICK_FILE
         );
-
+       
     }
 
     private void pickFolder() {
@@ -3013,7 +3062,7 @@ private void authenticateForReplacement(
        RESULTADOS DOS SELETORES
        ========================================================= */
 
-
+    
 @Override
 protected void onActivityResult(
         int requestCode,
@@ -3408,7 +3457,7 @@ protected void onActivityResult(
         }
     }
 
-
+    
 
 private void startMetadataCleaning() {
 
@@ -3849,7 +3898,7 @@ if (decryptMode) {
 
         final Cipher cipher;
 
-
+        
 try {
 
     cipher =
@@ -4213,7 +4262,7 @@ runOnUiThread(() -> {
                     tempZip,
                     tempOutput
             );
-
+            
             boolean outputCleaned = deleteOutputQuietly();
 
             fail(
@@ -4232,7 +4281,7 @@ runOnUiThread(() -> {
                     tempZip,
                     tempOutput
             );
-
+            
             boolean outputCleaned = deleteOutputQuietly();
 
             fail(
@@ -4242,7 +4291,7 @@ runOnUiThread(() -> {
                                     + getString(R.string.output_incomplete_delete_failed)
             );
 
-
+        
 } catch (Exception e) {
 
     cleanup(
@@ -4300,7 +4349,7 @@ runOnUiThread(() -> {
             progress.setProgress(
                     percent
             );
-
+                    
             progressText.setText(
                     getString(
                             decrypting
@@ -4309,7 +4358,7 @@ runOnUiThread(() -> {
                             percent
                     )
             );
-
+        
         });
     }
 
@@ -4466,7 +4515,7 @@ runOnUiThread(() -> {
 
             boolean directory = isDirectoryMime(mime);
 
-            validateZipEntryPath(path, directory);
+            validateZipEntryPath(path, directory);            
 
             if (directory) {
 
@@ -4781,7 +4830,7 @@ if (zipEntryCount > MAX_ZIP_ENTRIES) {
        CÁLCULO DA DESCOMPACTAÇÃO
        ========================================================= */
 
-
+    
 
 private long calculateUnzipTotal(
         File zipFile
@@ -4892,7 +4941,7 @@ private long calculateUnzipTotal(
        DESCOMPACTAÇÃO DA PASTA
        ========================================================= */
 
-
+    
 private void unzipToTree(
         File zipFile,
         Uri destinationTree
@@ -4959,7 +5008,7 @@ private void unzipToTree(
                 );
             }
 
-
+            
 String entryName = entry.getName();
 
 // Rejeita barras invertidas antes de qualquer normalização.
@@ -5243,7 +5292,7 @@ if (entryName == null
     }
 }
 
-
+    
 private boolean isSafeZipPath(String path) {
 
     if (path == null || path.isEmpty()) {
@@ -5587,7 +5636,7 @@ private boolean isSafeZipPath(String path) {
         }
     }
 
-
+    
 private void copyFile(
         File source,
         File destination
@@ -5621,7 +5670,7 @@ private void copyFile(
 }
 
 
-
+    
 
 private void copyToOutput(
         File source,
@@ -5879,7 +5928,7 @@ private void copyToOutput(
             deleteButton.setEnabled(!busy);
             hashButton.setEnabled(!busy);
             hexButton.setEnabled(!busy);
-
+            
             biometricSwitch.setEnabled(!busy);
 
             biometricSettings.setEnabled(
@@ -5902,7 +5951,7 @@ private void copyToOutput(
         });
     }
 
-
+    
 private void fail(int res) {
     fail(getString(res));
 }
@@ -6002,7 +6051,7 @@ private void fail(String message) {
                 Toast.LENGTH_LONG
         ).show();
     }
-
+        
 private Uri createZipDirectories(
         String relativePath,
         Uri rootFolder,
@@ -6207,7 +6256,7 @@ protected void onNewIntent(Intent intent) {
 private void showExitDialog() {
 
     new AlertDialog.Builder(this)
-            .setTitle(getString(R.string.exit_title))
+            .setTitle(getString(R.string.exit_title))            
             .setPositiveButton(
                     getString(R.string.yes),
                     (dialog, which) -> finish()
@@ -6245,7 +6294,7 @@ private void showExitDialog() {
                                         startActivity(intent);
                                     }
                                 }
-                        )
+                        )            
             .setCancelable(true)
             .show();
 }
@@ -7127,7 +7176,7 @@ private void updateHashComparison(
 
     startActivityForResult(i, PICK_HEX_FILE);
 }
-
+                
     @Override
     protected void onDestroy() {
 
