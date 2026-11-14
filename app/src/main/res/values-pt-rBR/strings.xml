@@ -314,8 +314,8 @@
     <string name="hash_copied">Hash copiado!</string>
     <string name="hashes_different">❌ OS HASHES SÃO DIFERENTES</string>
     <string name="hashes_match">✅ OS HASHES CORRESPONDEM</string>
-    <string name="hex_editor_message_prefix">\nUm editor hexadecimal que permite visualizar e editar </string>
-    <string name="hex_editor_message_suffix">o conteúdo bruto de bytes de um arquivo.\n</string>
+    <string name="hex_editor_message_prefix">\nUm editor hexadecimal que permite visualizar e edita</string>
+    <string name="hex_editor_message_suffix">r o conteúdo bruto de bytes de um arquivo.\n</string>
     <string name="hex_editor_title">📝 EDITOR HEXADECIMAL</string>
     <string name="identifier_label">Identificador: </string>
     <string name="identifier_not_provided">Identificador: Não fornecido\n\n</string>
