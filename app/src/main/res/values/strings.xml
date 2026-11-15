@@ -129,7 +129,7 @@
     <string name="edit_selection_dialog_from_start">Position from start</string>
     <string name="edit_selection_dialog_from_end">Position from end</string>
     <string name="edit_selection_dialog_relative_to_cursor">Position relative to cursor</string>
-
+    
     <string name="app_name">S File Encryptor</string>
     <string name="no_file">No file selected</string>
     <string name="short_password">Password too short!</string>
@@ -191,7 +191,7 @@
         ☕ Support the project\n\n
 
         Your support helps keep the project updated and continue developing new features.\n\n
-
+       
         Thank you for your support!</string>
     <string name="pix_email">
         06c3f52a-9085-4b58-96a8-6b4bf2df9801
@@ -488,6 +488,7 @@
     <string name="secure_delete_still_accessible">The document is still accessible after deletion.</string>
     <string name="secure_delete_provider_confirmed">Deletion confirmed by the provider.</string>
     <string name="secure_delete_permission">Insufficient permission to delete the file.</string>
+    <string name="secure_delete_file_changed">The file changed during the secure overwrite operation.</string>
 
 
     <!-- Detailed secure deletion PDF -->
