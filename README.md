@@ -13,8 +13,6 @@ All file operations are performed locally on the device.
 
 <img width="1080" height="2400" alt="Screenshot_2026-11-15-04-49-28-782_com lukestudio fileencryptor2" src="https://github.com/user-attachments/assets/69307039-de62-4ebe-be2a-8015398c8977" />
 
-
-
 ## Download
 
 <p align="center">
