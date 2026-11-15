@@ -9,7 +9,11 @@ S-File-Encryptor is an Android application that combines local file encryption, 
 
 All file operations are performed locally on the device.
 
-<img width="1080" height="2400" alt="S-File-Encryptor screenshot" src="https://github.com/user-attachments/assets/9b3479d6-a08b-4413-835e-4339c3207fc5" />
+<img width="1080" height="2400" alt="Screensho" src="https://github.com/user-attachments/assets/530ce4a6-9ee7-4993-9649-c1d754b13c0c" />
+
+<img width="1080" height="2400" alt="Screenshot_2026-11-15-04-49-28-782_com lukestudio fileencryptor2" src="https://github.com/user-attachments/assets/69307039-de62-4ebe-be2a-8015398c8977" />
+
+
 
 ## Download
 
