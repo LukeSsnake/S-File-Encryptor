@@ -556,10 +556,24 @@ progressText.setText(
 
         if (overwriteResult.status == SecureDeleteManager.Status.SUCCESS) {
 
-            finalResult = SecureDeleteManager.deleteFile(
-                    getApplicationContext(),
-                    targetUri
-            );
+            // TESTE: aguarda 30 segundos antes da exclusão.
+    try {
+        Thread.sleep(5_000);
+    } catch (InterruptedException e) {
+        Thread.currentThread().interrupt();
+    }
+
+    if (Thread.currentThread().isInterrupted()) {
+
+        finalResult = overwriteResult;
+
+    } else {
+
+        finalResult = SecureDeleteManager.deleteFile(
+                getApplicationContext(),
+                targetUri
+        );
+    }
 
         } else {
 
