@@ -485,6 +485,7 @@
     <string name="secure_delete_still_accessible">O documento continua acessível após a exclusão.</string>
     <string name="secure_delete_provider_confirmed">Exclusão confirmada pelo provedor.</string>
     <string name="secure_delete_permission">Permissão insuficiente para excluir o arquivo.</string>
+    <string name="secure_delete_file_changed">O arquivo foi alterado durante a operação de sobrescrita segura.</string>
 
 
     <!-- Relatório PDF detalhado de exclusão segura -->
