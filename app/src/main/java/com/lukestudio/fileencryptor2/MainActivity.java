@@ -556,11 +556,25 @@ progressText.setText(
 
         if (overwriteResult.status == SecureDeleteManager.Status.SUCCESS) {
 
-            // TESTE: aguarda 30 segundos antes da exclusão.
-    try {
-        Thread.sleep(5_000);
-    } catch (InterruptedException e) {
-        Thread.currentThread().interrupt();
+    // Aguarda 5 segundos antes da exclusão,
+    // permitindo que o DocumentsProvider estabilize.
+    for (int i = 1; i <= 5; i++) {
+
+        try {
+            Thread.sleep(1_000);
+        } catch (InterruptedException e) {
+
+            Thread.currentThread().interrupt();
+            break;
+        }
+
+        final int progressValue = i * 20;
+
+        runOnUiThread(() -> {
+
+            progress.setProgress(progressValue);
+
+        });
     }
 
     if (Thread.currentThread().isInterrupted()) {
@@ -575,10 +589,10 @@ progressText.setText(
         );
     }
 
-        } else {
+} else {
 
-            finalResult = overwriteResult;
-        }
+    finalResult = overwriteResult;
+}
 
         long finishedAt = System.currentTimeMillis();
 
