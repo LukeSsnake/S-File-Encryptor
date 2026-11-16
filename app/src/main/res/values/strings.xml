@@ -489,7 +489,7 @@
     <string name="secure_delete_provider_confirmed">Deletion confirmed by the provider.</string>
     <string name="secure_delete_permission">Insufficient permission to delete the file.</string>
     <string name="secure_delete_file_changed">The file changed during the secure overwrite operation.</string>
-
+    <string name="prep_delete">Deleting...</string>
 
     <!-- Detailed secure deletion PDF -->
     <string name="erasure_pdf_title">Secure Deletion Report</string>
