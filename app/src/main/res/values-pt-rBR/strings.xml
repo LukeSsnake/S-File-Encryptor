@@ -178,6 +178,21 @@
     <string name="confirm">CONFIRMAR</string>
     <string name="info_button">ⓘ</string>
     <string name="info_title">Informações</string>
+
+    <string name="allerte_title">⚠️ AVISO DE SEGURANÇA</string>
+    <string name="allerte_message">\nO S-File-Encryptor utiliza criptografia real, todos os dados são realmente criptografados (alterados matemáticamente).\n\n
+
+        A senha correta é a única maneira de recuperar os seus dados, não existe opção de recuperação!\n\n
+
+        Se você esquecer a sua senha, todos os dados serão perdidos!\n\n
+
+        A autenticação biométrica é um recurso de conveniência e não substitui a necessidade de manter sua senha segura!\n\n
+
+        Mantenha sua senha em um local seguro antes de criptografar arquivos importantes!\n</string>
+    <string name="allerte_messagetwo">Entendi e sou responsável por manter minha senha segura.</string>
+    <string name="allerte_okay">ACEITO</string>
+    <string name="allerte_cancel">Não</string>
+
     <string name="support_title">💙 Apoie o projeto</string>
     <string name="support_message">Gostou do S File Encryptor?\n\n
 
