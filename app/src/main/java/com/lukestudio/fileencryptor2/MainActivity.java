@@ -24,6 +24,15 @@ import android.widget.Toast;
 import android.content.ContentValues;
 import android.provider.MediaStore;
 import java.io.OutputStream;
+import android.content.SharedPreferences;
+import android.graphics.Typeface;
+import android.text.SpannableString;
+import android.text.Spanned;
+import android.text.style.StyleSpan;
+import android.view.View;
+import android.widget.Button;
+import android.widget.CheckBox;
+import android.widget.TextView;
 
 import androidx.biometric.BiometricManager;
 import androidx.biometric.BiometricPrompt;
@@ -227,6 +236,8 @@ public class MainActivity extends FragmentActivity {
         handleIncomingIntent(getIntent());
 
         fileInfo.setText("_");
+
+        showFirstLaunchSecurityNotice();
 
         fileButton.setOnClickListener(v -> {
                 deleteButton.setVisibility(View.VISIBLE);
@@ -1969,7 +1980,7 @@ private void showHash() {
 
     launchCount++;
 
-    if (launchCount >= 10) {
+    if (launchCount >= 20) {
 
         prefs.edit()
                 .putInt("launch_count", 0)
@@ -7026,4 +7037,74 @@ private void updateHashComparison(
 
         super.onDestroy();
     }
+
+    private void showFirstLaunchSecurityNotice() {
+
+    SharedPreferences prefs =
+            getSharedPreferences(
+                    "SFileEncryptorPrefs",
+                    MODE_PRIVATE
+            );
+
+    if (prefs.getBoolean("security_notice_shown", false)) {
+        return;
+    }
+
+    View dialogView = getLayoutInflater().inflate(
+            R.layout.dialog_security_notice,
+            null
+    );
+
+    CheckBox checkBox =
+            dialogView.findViewById(
+                    R.id.securityNoticeCheck
+            );
+
+    AlertDialog dialog =
+            new AlertDialog.Builder(this)
+                    .setTitle(R.string.allerte_title)
+                    .setView(dialogView)
+                    .setPositiveButton(
+                            R.string.allerte_okay,
+                            null
+                    )
+                    .setNeutralButton(R.string.allerte_cancel,
+                        (d, which) -> finish()
+                
+                )
+                    .setCancelable(false)
+                    .create();
+
+    dialog.setCanceledOnTouchOutside(false);
+
+    dialog.setOnShowListener(d -> {
+
+        Button continueButton =
+                dialog.getButton(
+                        AlertDialog.BUTTON_POSITIVE
+                );
+
+        continueButton.setEnabled(false);
+
+        checkBox.setOnCheckedChangeListener(
+                (buttonView, isChecked) ->
+                        continueButton.setEnabled(isChecked)
+        );
+
+        continueButton.setOnClickListener(v -> {
+
+            prefs.edit()
+                    .putBoolean(
+                            "security_notice_shown",
+                            true
+                    )
+                    .apply();
+
+            dialog.dismiss();
+        });
+    });
+
+    dialog.show();
+}
+
 }
