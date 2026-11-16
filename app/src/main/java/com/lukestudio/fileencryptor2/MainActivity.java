@@ -574,6 +574,12 @@ progressText.setText(
 
             progress.setProgress(progressValue);
 
+            progressText.setText(
+                    getString(
+                            R.string.prep_delete
+                    )
+            );
+
         });
     }
 
