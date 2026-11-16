@@ -117,6 +117,21 @@ The V1 file format is:
 
 V1 files are decrypted for compatibility, but new files are always created using the V2 format.
 
+## ⚠️ Important Security Notice — Password Loss
+
+S-File-Encryptor uses strong encryption (AES-256-GCM) with Argon2id key derivation to protect your files.
+
+**Your password is essential for recovering your encrypted files.**
+
+- If you lose or forget your password, your encrypted files cannot be recovered through the application.
+- The developer does not have access to your passwords or encryption keys.
+- There is no password reset or recovery mechanism.
+- The developer is not responsible for data loss resulting from lost, forgotten, or incorrectly stored passwords.
+
+**Always keep your password in a safe and secure location.** Consider maintaining a secure backup before encrypting important files.
+
+By using this application, you acknowledge that you are responsible for keeping your password safe.
+
 ## Decrypting Without the App
 
 S-File-Encryptor uses a documented, open file format — not a proprietary one.
