@@ -486,7 +486,7 @@
     <string name="secure_delete_provider_confirmed">Exclusão confirmada pelo provedor.</string>
     <string name="secure_delete_permission">Permissão insuficiente para excluir o arquivo.</string>
     <string name="secure_delete_file_changed">O arquivo foi alterado durante a operação de sobrescrita segura.</string>
-
+    <string name="prep_delete">Excluindo...</string>
 
     <!-- Relatório PDF detalhado de exclusão segura -->
     <string name="erasure_pdf_title">Relatório de exclusão segura</string>
