@@ -181,6 +181,21 @@
     <string name="confirm">CONFIRM</string>
     <string name="info_button">ⓘ</string>
     <string name="info_title">Information</string>
+
+    <string name="allerte_title">⚠️ SECURITY NOTICE</string>
+    <string name="allerte_message">\nS-File-Encryptor uses genuine encryption. All data is actually encrypted (mathematically transformed).\n\n
+
+        The correct password is the only way to recover your data. There is no recovery option!\n\n
+
+        If you forget your password, all your data will be lost!\n\n
+
+        Biometric authentication is a convenience feature and does not replace the need to keep your password safe!\n\n
+
+        Keep your password in a secure location before encrypting important files!\n</string>
+    <string name="allerte_messagetwo">I understand and accept responsibility for keeping my password safe.</string>
+    <string name="allerte_okay">I AGREE</string>
+    <string name="allerte_cancel">No</string>
+
     <string name="support_title">💙 Support the Project</string>
     <string name="support_message">Did you like S File Encryptor?\n\n
 
