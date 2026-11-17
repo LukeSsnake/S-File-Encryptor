@@ -132,6 +132,7 @@ public class MainActivity extends FragmentActivity {
     private Button hexButton;
     private Switch biometricSwitch;
     private TextView biometricSettings;
+    private DialogManager dialogManager;
 
     private boolean restoringBiometricSwitch;
 
@@ -169,7 +170,7 @@ public class MainActivity extends FragmentActivity {
          getWindow().setFlags(
             WindowManager.LayoutParams.FLAG_SECURE,
             WindowManager.LayoutParams.FLAG_SECURE
-    ); 
+    );        
 
         PDFBoxResourceLoader.init(getApplicationContext());
 
@@ -237,7 +238,9 @@ public class MainActivity extends FragmentActivity {
 
         fileInfo.setText("_");
 
-        showFirstLaunchSecurityNotice();
+        dialogManager = new DialogManager(this);
+
+        dialogManager.showFirstLaunchSecurityNotice();
 
         fileButton.setOnClickListener(v -> {
                 deleteButton.setVisibility(View.VISIBLE);
@@ -247,9 +250,9 @@ public class MainActivity extends FragmentActivity {
                 deleteButton.setVisibility(View.VISIBLE);
                 pickFolder();
         });
-        helpButton.setOnClickListener(v -> showHelp());
-        infoButton.setOnClickListener(v -> showSupport());
-        infoCrypto.setOnClickListener(v -> showCrypto());
+        helpButton.setOnClickListener(v -> dialogManager.showHelp());
+        infoButton.setOnClickListener(v -> dialogManager.showSupport());
+        infoCrypto.setOnClickListener(v -> dialogManager.showCrypto());
 
         hexButton.setOnClickListener(v -> {
                 if (inputUri == null || inputIsFolder) {
@@ -1525,20 +1528,7 @@ private void showEncryptDelete() {
 
     dial.show();
 }
-
-    private void showHelp() {
-
-        new AlertDialog.Builder(this)
-                .setTitle(R.string.help_title)
-                .setMessage(R.string.help_message)
-                .setPositiveButton(
-                        android.R.string.ok,
-                        null
-                )
-                .show();
-    }
-
-    
+   
 private void showHex() {
 
     new AlertDialog.Builder(this)
@@ -1817,156 +1807,6 @@ private void showHash() {
 
     }
 
-    private void showCrypto() {
-
-        AlertDialog cryp =
-                new AlertDialog.Builder(this)
-                        .setTitle(
-                                R.string.crypto_title
-                        )
-                        .setMessage(
-                                getString(
-                                        R.string.crypto_message                                  
-                                )
-                        )
-                        .setNeutralButton(
-                                getString(R.string.source_code),
-                                (d, which) -> {
-
-                                    try {
-
-                                        Intent in =
-                                                new Intent(
-                                                        Intent.ACTION_VIEW,
-                                                        Uri.parse(
-                                                                "https://github.com/LukeSsnake/S-File-Encryptor"
-                                                        )
-                                                );
-
-                                        startActivity(in);
-
-                                    } catch (Exception g) {}
-                                }
-                        )
-                        .setPositiveButton(
-                        R.string.okay,
-                        null
-                        )
-                        .create();
-
-        cryp.show();
-
-    }
-
-    private void showSupport() {
-
-        AlertDialog dialog =
-                new AlertDialog.Builder(this)
-                        .setTitle(
-                                R.string.support_title
-                        )
-                        .setMessage(
-                                getString(
-                                        R.string.support_message,
-                                        getString(
-                                                R.string.pix_email
-                                        )
-                                )
-                        )
-                        .setNeutralButton(
-                                getString(R.string.rate_app),
-                                (d, which) -> {
-
-                                    try {
-
-                                        Intent intent =
-                                                new Intent(
-                                                        Intent.ACTION_VIEW,
-                                                        Uri.parse(
-                                                                "market://details?id=com.lukestudio.fileencryptor2"
-                                                        )
-                                                );
-
-                                        startActivity(intent);
-
-                                    } catch (Exception e) {
-
-                                        Intent intent =
-                                                new Intent(
-                                                        Intent.ACTION_VIEW,
-                                                        Uri.parse(
-                                                                "https://play.google.com/store/apps/details?id=com.lukestudio.fileencryptor2"
-                                                        )
-                                                );
-
-                                        startActivity(intent);
-                                    }
-                                }
-                        )
-                        .setPositiveButton(
-                                R.string.copy_pix,
-                                (d, which) -> {
-
-                                    ClipboardManager clipboard =
-                                            (ClipboardManager)
-                                                    getSystemService(
-                                                            CLIPBOARD_SERVICE
-                                                    );
-
-                                    if (clipboard != null) {
-
-                                        clipboard.setPrimaryClip(
-                                                ClipData.newPlainText(
-                                                        "PIX",
-                                                        getString(
-                                                                R.string.pix_email
-                                                        )
-                                                )
-                                        );
-
-                                        Toast.makeText(
-                                                MainActivity.this,
-                                                R.string.pix_copied,
-                                                Toast.LENGTH_SHORT
-                                        ).show();
-               
-                                    }
-                                }
-                        )
-                        .setNegativeButton(getString(R.string.donate),
-                                (d, which) -> {
-
-                                    try {
-
-                                        Intent intent =
-                                                new Intent(
-                                                        Intent.ACTION_VIEW,
-                                                        Uri.parse(
-                                                                "https://buymeacoffee.com/lukess"
-                                                        )
-                                                );
-
-                                        startActivity(intent);
-
-                                    } catch (Exception e) {
-
-                                        Intent intent =
-                                                new Intent(
-                                                        Intent.ACTION_VIEW,
-                                                        Uri.parse(
-                                                                "https://buymeacoffee.com/lukess"
-                                                        )
-                                                );
-
-                                        startActivity(intent);
-                                    }
-                                }
-                        )
-                        .create();
-
-        dialog.show();
-    }
-
         private void checkSupportLaunchCounter() {
 
     android.content.SharedPreferences prefs =
@@ -1986,7 +1826,7 @@ private void showHash() {
                 .putInt("launch_count", 0)
                 .apply();
 
-        showSupport();
+        dialogManager.showSupport();
 
     } else {
 
@@ -7037,74 +6877,5 @@ private void updateHashComparison(
 
         super.onDestroy();
     }
-
-    private void showFirstLaunchSecurityNotice() {
-
-    SharedPreferences prefs =
-            getSharedPreferences(
-                    "SFileEncryptorPrefs",
-                    MODE_PRIVATE
-            );
-
-    if (prefs.getBoolean("security_notice_shown", false)) {
-        return;
-    }
-
-    View dialogView = getLayoutInflater().inflate(
-            R.layout.dialog_security_notice,
-            null
-    );
-
-    CheckBox checkBox =
-            dialogView.findViewById(
-                    R.id.securityNoticeCheck
-            );
-
-    AlertDialog dialog =
-            new AlertDialog.Builder(this)
-                    .setTitle(R.string.allerte_title)
-                    .setView(dialogView)
-                    .setPositiveButton(
-                            R.string.allerte_okay,
-                            null
-                    )
-                    .setNeutralButton(R.string.allerte_cancel,
-                        (d, which) -> finish()
-                
-                )
-                    .setCancelable(false)
-                    .create();
-
-    dialog.setCanceledOnTouchOutside(false);
-
-    dialog.setOnShowListener(d -> {
-
-        Button continueButton =
-                dialog.getButton(
-                        AlertDialog.BUTTON_POSITIVE
-                );
-
-        continueButton.setEnabled(false);
-
-        checkBox.setOnCheckedChangeListener(
-                (buttonView, isChecked) ->
-                        continueButton.setEnabled(isChecked)
-        );
-
-        continueButton.setOnClickListener(v -> {
-
-            prefs.edit()
-                    .putBoolean(
-                            "security_notice_shown",
-                            true
-                    )
-                    .apply();
-
-            dialog.dismiss();
-        });
-    });
-
-    dialog.show();
-}
 
 }
