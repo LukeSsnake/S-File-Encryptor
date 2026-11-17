@@ -182,6 +182,12 @@ It is stored exclusively in the app's private internal storage (`erasure_report.
 
 The entire history can be erased at any time from within the app.
 
+## Threat Model
+
+The [Threat Model](THREAT_MODEL.md) documents the security assumptions, threats considered, mitigations, and limitations of S File Encryptor.
+
+It describes what the application is designed to protect against and what is outside its security guarantees.
+
 ## Security Audit Report
 
 See the [S-File-Encryptor Security Audit Report](S_FILE_ENCRYPTOR_SECURITY_AUDIT.md).
