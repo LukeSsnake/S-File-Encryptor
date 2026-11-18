@@ -1,1 +1,0 @@
-Encrypt files and folders, remove metadata, securely delete — all offline.
