@@ -1,0 +1,88 @@
+S-File-Encryptor is an open-source Android app for local file privacy and security. It combines file encryption, metadata removal, secure deletion, integrity verification and a hexadecimal editor — all in one lightweight, offline tool.
+
+⸻
+
+🔒 ENCRYPTION & DECRYPTION
+
+Protect your files and folders with strong, modern cryptography:
+
+• AES-256-GCM authenticated encryption with Argon2id key derivation (V2 format)
+• Password-based encryption — no account, no cloud, no server
+• Streaming I/O lets you encrypt large files without exhausting memory
+• Authentication is always verified before decrypted data is written, protecting against tampered files
+• Backward compatibility with legacy V1 encrypted files
+• Biometric unlock (fingerprint) backed by the Android Keystore
+
+⸻
+
+🧹 METADATA REMOVAL
+
+Files can carry hidden identifying information. S-File-Encryptor strips it while keeping your content intact:
+
+• EXIF metadata removal from images (orientation preserved)
+• OOXML sanitization for Office documents (docx and friends)
+• PNG, WebP and GIF metadata validation
+• PDF thumbnail and metadata cleanup
+• Choose where to save the processed files
+
+⸻
+
+🗑️ SECURE FILE DELETION
+
+Deleting a file normally leaves its data recoverable. The secure deletion feature performs an overwrite procedure before removing the file:
+
+• Overwrite-before-delete procedure with status tracking
+• Operation history with a unique Report ID per operation
+• Detailed PDF reports you can export
+
+⸻
+
+✅ SHA-256 HASH VERIFICATION
+
+Check that a file has not been altered or corrupted:
+
+• Calculate SHA-256 hashes of any file
+• Compare hashes to verify integrity
+• Ideal for validating backups and downloads
+
+⸻
+
+🔧 INTEGRATED HEX EDITOR
+
+Inspect and edit files at the byte level, powered by the BinEd hex editor (Apache-2.0, © ExBin Project):
+
+• View binary file contents in hexadecimal
+• Edit and save binary files
+• A handy tool for developers and security enthusiasts
+
+⸻
+
+📖 OPEN FORMAT — NO LOCK-IN
+
+Your files belong to you. S-File-Encryptor uses a fully documented, open file format — not a proprietary one:
+
+• FORMAT_SPECIFICATION.md describes the complete binary format, so anyone can audit it or build compatible tools
+• A standalone, cross-platform Python decryptor (sfe_decrypt.py) can decrypt any .aes file without the app
+• Stream large files; output is only released after authentication succeeds
+
+⸻
+
+🛡️ PRIVACY FIRST
+
+• Everything runs locally on your device — no internet permission required for core operations, no analytics, no ads, no trackers
+• Derived keys are ephemeral: they exist only during an operation and buffers are zeroed afterwards
+• Key material is protected by the Android Keystore
+
+⸻
+
+🌐 LANGUAGES
+
+English and Portuguese (Brazil) — automatic according to your device settings.
+
+⸻
+
+🔐 Why S-File-Encryptor?
+
+Because sensitive files deserve real protection without giving them to anyone. Whether it's personal documents, photos, work files or backups, S-File-Encryptor keeps them yours — encrypted, cleaned of hidden data, and verifiably intact.
+
+Open source under the MIT license. Source code: https://github.com/LukeSsnake/S-File-Encryptor
