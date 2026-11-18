@@ -26,7 +26,7 @@ All file operations are performed locally on the device.
 
 Latest APK: [GitHub Releases](https://github.com/LukeSsnake/S-File-Encryptor/releases).
 
-See [CHANGELOG.md](CHANGELOG.md) for version history.
+See [CHANGELOG](CHANGELOG.md) for version history.
 
 ## Features
 
